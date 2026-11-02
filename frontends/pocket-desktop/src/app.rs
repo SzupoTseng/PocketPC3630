@@ -73,6 +73,36 @@ pub struct PocketLauncher {
     binding_capture: Option<GuestButton>,
 }
 
+/// The same quiet palette as the browser version: near-black surfaces, one
+/// soft blue accent, rounded cards and generous spacing.
+fn apply_theme(ctx: &egui::Context) {
+    let accent = Color32::from_rgb(125, 183, 224);
+    let mut visuals = egui::Visuals::dark();
+    visuals.panel_fill = Color32::from_rgb(17, 18, 20);
+    visuals.window_fill = Color32::from_rgb(26, 27, 30);
+    visuals.extreme_bg_color = Color32::from_rgb(13, 14, 16);
+    visuals.selection.bg_fill = accent.linear_multiply(0.35);
+    visuals.selection.stroke = egui::Stroke::new(1.0, accent);
+    visuals.hyperlink_color = accent;
+    visuals.window_rounding = 14.0.into();
+    visuals.menu_rounding = 10.0.into();
+    for widgets in [
+        &mut visuals.widgets.inactive,
+        &mut visuals.widgets.hovered,
+        &mut visuals.widgets.active,
+        &mut visuals.widgets.noninteractive,
+    ] {
+        widgets.rounding = 8.0.into();
+    }
+    visuals.widgets.inactive.weak_bg_fill = Color32::from_rgb(34, 35, 39);
+    visuals.widgets.hovered.weak_bg_fill = Color32::from_rgb(44, 46, 51);
+    ctx.set_visuals(visuals);
+    let mut style = (*ctx.style()).clone();
+    style.spacing.item_spacing = Vec2::new(10.0, 8.0);
+    style.spacing.button_padding = Vec2::new(12.0, 6.0);
+    ctx.set_style(style);
+}
+
 /// Texture corners for a rotated presentation, in
 /// `[left-top, right-top, left-bottom, right-bottom]` order.
 ///
@@ -209,6 +239,7 @@ impl HeldButtons {
 #[derive(Debug)]
 pub enum UiEvent {
     ImportFinished(Result<String, String>),
+    SaveFinished(Result<String, String>),
     RunFinished(RunOutcome),
 }
 
@@ -278,7 +309,8 @@ impl FrameStats {
 }
 
 impl PocketLauncher {
-    pub fn new(_cc: &eframe::CreationContext<'_>, library: Library) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>, library: Library) -> Self {
+        apply_theme(&cc.egui_ctx);
         let (tx, rx) = mpsc::channel();
         Self {
             library,
@@ -295,7 +327,7 @@ impl PocketLauncher {
             held: HeldButtons::default(),
             pointer_down_at: None,
             running_game: None,
-            status: "Welcome to PocketHLE.".to_string(),
+            status: String::new(),
             config_draft: None,
             game_settings_draft: None,
             last_frame_texture: None,
@@ -310,12 +342,15 @@ impl PocketLauncher {
     fn drain_events(&mut self, ctx: &egui::Context) {
         while let Ok(ev) = self.events_rx.try_recv() {
             match ev {
-                UiEvent::ImportFinished(Ok(name)) => {
-                    self.status = format!("Imported {name}.");
+                UiEvent::ImportFinished(Ok(message)) => {
+                    self.status = message;
                     self.reload_library();
                 }
                 UiEvent::ImportFinished(Err(e)) => {
-                    self.status = format!("Import failed: {e}");
+                    self.status = if e == "cancelled" { String::new() } else { e };
+                }
+                UiEvent::SaveFinished(Ok(message)) | UiEvent::SaveFinished(Err(message)) => {
+                    self.status = message;
                 }
                 UiEvent::RunFinished(outcome) => {
                     self.last_frame_status = Some(outcome.summary.clone());
@@ -368,12 +403,7 @@ impl PocketLauncher {
 
     fn ui_top_bar(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.heading("PocketHLE");
-            ui.label(
-                RichText::new("Pocket PC / Windows Mobile launcher")
-                    .small()
-                    .color(Color32::from_gray(160)),
-            );
+            ui.heading(RichText::new("PocketHLE").strong());
             ui.add_space(16.0);
             if ui
                 .selectable_label(self.screen == Screen::Library, "Library")
@@ -389,12 +419,12 @@ impl PocketLauncher {
                 self.screen = Screen::Settings;
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button("Import .CAB / .ZIP / .RAR...").clicked() {
+                if ui.button(RichText::new("Import game").strong()).clicked() {
                     self.spawn_import_dialog();
                 }
             });
         });
-        ui.separator();
+        ui.add_space(6.0);
     }
 
     fn ui_library(&mut self, ui: &mut egui::Ui) {
@@ -408,9 +438,12 @@ impl PocketLauncher {
                         .color(Color32::from_gray(160)),
                 );
                 ui.add_space(8.0);
-                ui.label("Click \"Import .CAB / .ZIP / .RAR...\" to add a Pocket PC game.");
+                ui.label(
+                    RichText::new("Import a game you own: a .zip, .cab or the download as it came.")
+                        .color(Color32::from_gray(150)),
+                );
                 ui.add_space(20.0);
-                if ui.button("Import .CAB / .ZIP / .RAR...").clicked() {
+                if ui.button(RichText::new("Import game").strong()).clicked() {
                     self.spawn_import_dialog();
                 }
             });
@@ -445,9 +478,9 @@ impl PocketLauncher {
     fn ui_game_card(&mut self, ui: &mut egui::Ui, game: &GameEntry, size: Vec2) {
         let (card_rect, card_response) = ui.allocate_exact_size(size, Sense::click());
         let frame = egui::Frame::none()
-            .fill(Color32::from_rgb(35, 38, 46))
-            .stroke(egui::Stroke::new(1.0_f32, Color32::from_rgb(82, 86, 96)))
-            .rounding(16.0)
+            .fill(Color32::from_rgb(26, 27, 30))
+            .stroke(egui::Stroke::new(1.0_f32, Color32::from_rgb(42, 44, 48)))
+            .rounding(14.0)
             .inner_margin(0.0);
         ui.painter().add(frame.paint(card_rect));
 
@@ -456,7 +489,18 @@ impl PocketLauncher {
             Vec2::splat(32.0),
         );
         let mut menu_ui = ui.child_ui(menu_rect, egui::Layout::right_to_left(egui::Align::Center));
-        let menu_response = menu_ui.menu_button(RichText::new("⋮").size(24.0), |ui| {
+        let menu_response = menu_ui.menu_button(RichText::new("···").size(20.0), |ui| {
+            for (label, action) in [
+                ("Export save…", "export"),
+                ("Import save…", "import"),
+                ("Reset save…", "reset"),
+            ] {
+                if ui.button(label).clicked() {
+                    self.spawn_save_action(game, action);
+                    ui.close_menu();
+                }
+            }
+            ui.separator();
             if ui.button("Settings").clicked() {
                 self.selected_game = Some(game.id.clone());
                 self.game_settings_draft = Some((game.id.clone(), game.settings.clone()));
@@ -510,7 +554,7 @@ impl PocketLauncher {
             Vec2::new(size.x, 76.0),
         );
         ui.painter()
-            .rect_filled(label_rect, 0.0, Color32::from_rgb(28, 29, 32));
+            .rect_filled(label_rect, egui::Rounding { nw: 0.0, ne: 0.0, sw: 14.0, se: 14.0 }, Color32::from_rgb(22, 23, 26));
         let text_rect = Rect::from_min_size(
             Pos2::new(label_rect.left() + 12.0, label_rect.top() + 8.0),
             Vec2::new(size.x - 24.0, 58.0),
@@ -528,7 +572,7 @@ impl PocketLauncher {
         );
         text_ui.add(
             egui::Label::new(
-                RichText::new(format!("Backend: {publisher}"))
+                RichText::new(publisher)
                     .size(13.0)
                     .color(Color32::from_gray(180)),
             )
@@ -1213,7 +1257,7 @@ impl PocketLauncher {
                 // the `.exe` instead, rather than seeing nothing in
                 // the picker at all.
                 .add_filter(
-                    "Pocket PC game (.rar / .cab / .zip / .exe / .dll)",
+                    "Pocket PC game or download (.zip / .cab / .exe / .rar)",
                     &[
                         "rar", "RAR", "cab", "CAB", "zip", "ZIP", "exe", "EXE", "dll", "DLL",
                     ],
@@ -1236,26 +1280,80 @@ impl PocketLauncher {
                     .unwrap_or(library_root.clone());
                 lib.config_mut().last_import_dir = Some(parent);
                 lib.save().map_err(|e| e.to_string())?;
-                let ext = path
-                    .extension()
-                    .and_then(|e| e.to_str())
-                    .map(str::to_ascii_lowercase);
-                let entry = match ext.as_deref() {
-                    Some("rar") => lib.import_rar(&path),
-                    Some("cab") => lib.import_cab(&path),
-                    Some("zip") => lib.import_zip(&path),
-                    // Treat anything else (`.exe`, no extension, …)
-                    // as a raw ARM PE32. `import_exe` rejects it
-                    // with a clear error if the machine type is
-                    // wrong.
-                    _ => lib.import_exe(&path),
-                }
-                .map_err(|e| e.to_string())?;
-                Ok(entry.display_name.clone())
+                // The same importer as Android and the browser: a download that
+                // is not a package is looked into through the knowledge base,
+                // and a failure comes back explained.
+                let name = match lib.import_any(&path) {
+                    Ok(entry) => entry.display_name.clone(),
+                    Err(e) => {
+                        let problem = pocket_library::import_kb::KnowledgeBase::load(&library_root)
+                            .explain_import(&e);
+                        return Err(problem.message(pocket_library::import_problem::Lang::En));
+                    }
+                };
+                Ok(match lib.last_import_note() {
+                    Some(note) => format!("Imported {name}. Found inside the download: {note}."),
+                    None => format!("Imported {name}."),
+                })
             })();
             let _ = tx.send(UiEvent::ImportFinished(result));
         });
         self.status = "Importing...".to_string();
+    }
+
+    /// Export, import or reset a game's progress as the save zip shared with the
+    /// Android and browser versions. Dialogs run off the UI thread.
+    fn spawn_save_action(&mut self, game: &GameEntry, action: &'static str) {
+        use pocket_library::save_archive;
+        let game_dir = self.library.root().join("games").join(&game.id);
+        let id = game.id.clone();
+        let name = game.display_name.clone();
+        let tx = self.events_tx.clone();
+        std::thread::spawn(move || {
+            let result = match action {
+                "export" => rfd::FileDialog::new()
+                    .set_title("Export save")
+                    .set_file_name(format!("{id}-save.zip"))
+                    .add_filter("Save zip", &["zip"])
+                    .save_file()
+                    .map(|path| {
+                        std::fs::File::create(&path)
+                            .and_then(|file| save_archive::export(&game_dir, file))
+                            .map(|count| match count {
+                                0 => format!("{name} has not saved anything yet."),
+                                n => format!("Exported {n} file(s) of {name}."),
+                            })
+                            .map_err(|e| format!("Export failed: {e}"))
+                    }),
+                "import" => rfd::FileDialog::new()
+                    .set_title("Import save")
+                    .add_filter("Save zip", &["zip"])
+                    .pick_file()
+                    .map(|path| {
+                        std::fs::File::open(&path)
+                            .and_then(|file| save_archive::import(&game_dir, file))
+                            .map(|n| format!("Restored {n} file(s) of {name}."))
+                            .map_err(|e| format!("Import failed: {e}"))
+                    }),
+                _ => {
+                    let sure = rfd::MessageDialog::new()
+                        .set_title("Reset progress")
+                        .set_description(format!(
+                            "Delete all progress of {name}? Export a save first to keep it."
+                        ))
+                        .set_buttons(rfd::MessageButtons::OkCancel)
+                        .show();
+                    matches!(sure, rfd::MessageDialogResult::Ok).then(|| {
+                        save_archive::reset(&game_dir)
+                            .map(|_| format!("Cleared the progress of {name}."))
+                            .map_err(|e| format!("Reset failed: {e}"))
+                    })
+                }
+            };
+            if let Some(result) = result {
+                let _ = tx.send(UiEvent::SaveFinished(result));
+            }
+        });
     }
 
     fn spawn_run(&mut self, game: &GameEntry) {

@@ -1,0 +1,169 @@
+<!--
+Copyright (C) 2026 PocketHLE Emulator Project
+SPDX-License-Identifier: Apache-2.0 OR MIT
+-->
+
+<p align="center">
+  <img src="docs/images/hero.png" alt="EverQuest、Pocket Quake、Pocket Slay 與 FreeCell 在 PocketPC3630 上執行" width="100%" />
+</p>
+
+<h1 align="center">PocketPC3630</h1>
+
+<p align="center">
+  <b>讓 Pocket PC 的遊戲與軟體重新動起來。</b><br/>
+  在 <b>Windows</b>、<b>Android</b> 與<b>瀏覽器</b>上執行 Windows CE / Pocket PC 程式的高階模擬器，<br/>
+  支援 Pocket PC 用過的三種處理器：<b>ARM</b>、<b>MIPS</b>、<b>SH3</b>，不需要裝置 ROM。
+</p>
+
+<p align="center">
+  <a href="https://szupotseng.github.io/PocketPC3630/"><img src="https://img.shields.io/badge/在瀏覽器上玩-WebAssembly-2ea44f?style=for-the-badge&logo=webassembly&logoColor=white" alt="在瀏覽器上玩" /></a>
+  <a href="docs/COMPATIBILITY.md"><img src="https://img.shields.io/badge/實測-1%2C443_個下載檔-1f6feb?style=for-the-badge" alt="實測 1,443 個下載檔" /></a>
+</p>
+
+<p align="center"><a href="README.md">English</a></p>
+
+---
+
+PocketPC3630 的名字來自 **Compaq iPAQ H3630**，那台讓 Pocket PC 紅起來的 StrongARM 掌上電腦。
+它 fork 自 [PocketHLE](https://github.com/j92580498-max/PocketHLE)，把原本只跑 Pocket PC 2002/2003 ARM 程式的模擬器，擴充成整個 Pocket PC 年代的家：
+2000 年的 MIPS Casio Cassiopeia 與 SH3 HP Jornada、點開連結就能玩的網頁版、在電腦/手機/瀏覽器之間通用的存檔，
+以及能處理網路上各種下載檔的匯入器。
+
+它不模擬整台機器，而是載入原本的 `.exe`、執行它的機器碼，再用 Rust 重新實作程式呼叫的 Windows CE 功能
+（視窗訊息、GDI 繪圖、檔案、登錄檔、聲音、計時器）。所以不需要微軟的 ROM，一秒就能啟動。
+
+## ▶ 馬上玩
+
+| | 方式 | |
+|---|---|---|
+| 🌐 **瀏覽器** | 打開 **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**，按「匯入遊戲」，選 `.zip` 或 `.cab`。 | 不用安裝。遊戲和存檔都留在你的瀏覽器裡。 |
+| 🪟 **Windows** | 建置 `pockethle-gui`（見[建置](#-從原始碼建置)），按 *Import game*。 | 桌面遊戲庫，有圖示、存檔、鍵盤滑鼠操作。 |
+| 🤖 **Android** | 在 [`frontends/pocket-android`](frontends/pocket-android) 建置 APK。 | 觸控方向鍵、動作鍵與連發鍵。 |
+| ⌨️ **命令列** | `pockethle play MyGame.zip` | 測試、追蹤呼叫與截圖用。 |
+
+PocketPC3630 **不附任何遊戲，也不附微軟的檔案**。請使用你合法取得的遊戲包。
+
+## ✨ 功能
+
+<p align="center"><img src="docs/images/cpus.png" alt="FreeCell 的 ARM、MIPS、SH3 三個版本" width="92%" /></p>
+
+### 三種處理器，一個模擬器
+早期的 Pocket PC 有三種 CPU，軟體多半也分成三個版本。PocketPC3630 全都能跑：
+
+| 處理器 | 機種 | 狀態 |
+|---|---|---|
+| **ARM**（StrongARM、XScale、PXA、OMAP、S3C） | Compaq iPAQ、HP iPAQ、Dell Axim、HP Jornada 56x | 可執行：Windows 與 Android 用 Unicorn JIT，瀏覽器用可攜式直譯器 |
+| **MIPS**（NEC VR41xx） | Casio Cassiopeia E-115/E-125、EM500 | 可執行：新的直譯器，支援延遲槽、likely 分支與非對齊存取 |
+| **SH3**（Hitachi SuperH） | HP Jornada 54x | 可執行：新的直譯器，加上 SH 專用的執行期輔助函式 |
+
+兩個新直譯器都逐指令和參考 CPU 比對：**300 組隨機 MIPS 程式**比對 Unicorn，**300 組隨機 SH 程式**比對 QEMU，另有手寫測試。
+過程中還找出 QEMU 8.2 SH-4 模擬的四個錯誤（ADDV/SUBV 溢位旗標、除數為零或 `n == m` 的 DIV1、ROTL/ROTR 之後的 T 位元），這些指令改依硬體手冊驗證。
+
+### 同一個遊戲庫、同一份存檔、到處都能玩
+<p align="center"><img src="docs/images/platforms.png" alt="Windows 程式、Android 程式與網頁版" width="100%" /></p>
+
+- 所有平台共用同一種存檔格式：一個 `.zip`，內含遊戲的存檔資料夾和登錄檔。在瀏覽器下載存檔、在 Android 匯入，再回 Windows 繼續玩。
+- 網頁版是純靜態頁面（沒有伺服器），遊戲與存檔放在 IndexedDB、會自動存檔，並禁止兩個分頁同時執行，避免互相覆蓋進度。
+- 每個平台都有「下載存檔」「匯入存檔」「重置存檔」。
+
+### 看得懂真實下載檔的匯入器
+網路上的 Pocket PC 軟體很少是乾淨的 `.cab`：有桌面安裝程式、自解壓 zip、藏在 setup 裡的 CAB、1999 年的 SZDD 壓縮檔，或一個 zip 裡放三種 CPU 版本。
+匯入器能打開這些檔案，而且**絕不執行它們**：
+
+- **內建的基本規則（快）：** zip、自解壓 zip、從安裝程式切出 CAB、SZDD（`EXPAND.EXE`）、PE 資源、zlib 資料流、校驗碼損壞的 CAB。
+- **JSON 知識庫：** 決定挑哪個版本（先 ARM、再 MIPS、再 SH3，永遠不選 x86）；記住看過的檔案的確切步驟（`size:crc32` → 步驟）；所有錯誤訊息都有英文與繁體中文。
+- **會學習：** 沒有規則適用時，它會在檔案數、位元組數與時間的上限內嘗試所有拆解方式；找到遊戲就把步驟寫進遊戲庫的 `import_kb.json`，下次同類檔案直接匯入。
+- **白話的錯誤說明：**「這是 SH3 版……」「需要裝置內建的 `mfcce300.dll`……」「這是 .NET 程式……」，並告訴你下一步該怎麼做。
+
+遊戲包可以放什麼，請見 [docs/PACKAGE_FORMAT.md](docs/PACKAGE_FORMAT.md)。
+
+### 一塊一塊重建 Windows CE
+這個 fork 在 PocketHLE 之上新增的重點：
+
+- **SuperH 執行期輔助函式：** SH3 的 `coredll` 用和 ARM 相同的序號代表*不同*的函式，而且參數順序相反。直接從 SH3 版 FreeCell 讀出來：序號 2005 在 SH 上是 `x % n`，在 ARM 上卻是 `n / x`。在載入器改成依 CPU 解析序號之前，FreeCell 的洗牌永遠不會結束。
+- **多個計時器：** 以前 `SetTimer` 只會保留最後一個計時器。Pocket Slay 用兩個，所以遊戲一直沒開始。現在所有計時器都會執行，而且永遠先送出最早到期的。
+- **單色點陣圖：** 1 位元點陣圖複製到彩色畫面時，會套用目的端的文字色與背景色，和真機一樣。Pocket Slay 的每一塊領地都是這樣上色的。
+- **正確的模態對話框：** 對話框開著時底下的視窗仍會重繪；對話框會等你操作；靜態文字會依換行斷行。
+- **圖像清單、命令列、Shell 資料夾：** `ImageList_*`、Handheld PC 的 `CommandBar_*`（名稱與序號）、`GetTextMetricsW`、`SendDlgItemMessageW`、`ShellExecuteEx`、`SHGetSpecialFolderLocation`、附可用 COM 配置器的 `SHGetMalloc`、`ExitThread`、`wvsprintfW` 等。
+- **正確的裁切：** 來源超出點陣圖範圍的複製現在不會畫任何東西，不再繞回圖片左上角。
+
+## 📋 相容性
+
+我們下載了 **archive.org 上找得到的所有 Pocket PC 項目**，逐一匯入，並在網頁版執行 20 秒。
+
+| | 結果 | 數量 |
+|---|---|---:|
+| ✅ | **可執行**：能啟動並畫出遊戲或程式畫面 | **89** |
+| 🟡 | **部分可用**：能啟動，但畫面空白或很快停止 | 160 |
+| 🟥 | **無法啟動**：能匯入，啟動時失敗 | 390 |
+| ⛔ | **無法匯入**：下載檔裡沒有 Pocket PC 程式 | 384 |
+| ⚪ | **未測試**：項目沒有套件，或下載失敗 | 420 |
+
+**→ [完整清單：每個失敗的原因，以及每個程式缺少的 API](docs/COMPATIBILITY.md)**（另有 [CSV](docs/compatibility.csv)）
+
+「可執行」代表程式畫出了自己的畫面，不保證每個功能都正常。
+有 73 個程式會呼叫 Pocket PC 內建的 MFC 函式庫 `mfcce300.dll`，缺少時會停止。從你自己的裝置複製一份放進遊戲包，再試一次。
+
+逐一親自驗證過的代表作：
+
+| 名稱 | CPU | 說明 |
+|---|---|---|
+| **EverQuest for the Pocket PC** | ARM | 建立角色、進入世界、存檔與讀檔，三個平台都驗證過 |
+| **Pocket Quake** | ARM | 在瀏覽器中操作選單與遊玩，附螢幕按鍵 |
+| **Pocket Slay** | ARM | 點一下樹，在 *New Game* 按 OK。完整彩色地圖 |
+| **FreeCell**（Pocket-G） | ARM · MIPS · SH3 | 三個版本發出完全相同的牌局 |
+
+## 🔧 運作方式
+
+```mermaid
+flowchart LR
+    A[".zip / .cab / setup.exe<br/>網路上的下載檔"] --> B["匯入器<br/>規則 + 知識庫"]
+    B --> C["遊戲庫<br/>.exe、資料、存檔、登錄檔"]
+    C --> D["PE 載入器<br/>ARM · MIPS · SH3"]
+    D --> E["CPU<br/>Unicorn JIT 或直譯器"]
+    E -- "呼叫 coredll、gx、aygshell……" --> F["Windows CE API<br/>以 Rust 實作"]
+    F --> G["前端<br/>Windows · Android · 網頁 · 命令列"]
+```
+
+## 🛠 從原始碼建置
+
+需要較新的穩定版 [Rust](https://rustup.rs)。
+
+```sh
+# 命令列：target/release/pockethle
+cargo build --release -p pocket-cli
+
+# Windows / Linux 桌面程式：target/release/pockethle-gui
+cargo build --release -p pocket-desktop
+
+# 執行遊戲包
+target/release/pockethle play MyGame.zip
+```
+
+- **網頁版：** 以 `wasm32-unknown-emscripten` 建置 `pocket-wasm`，再用 `node frontends/pocket-wasm/web/prepare-pages.mjs` 複製到 `docs/`。見 [docs/PAGES.md](docs/PAGES.md)。
+- **Android：** 用 `cargo ndk` 建置原生函式庫，再用 Gradle。見 [frontends/pocket-android/README.md](frontends/pocket-android/README.md)。
+
+## 🚧 已知限制
+
+- **SH 的浮點輔助函式：** SH3 的 `coredll` 浮點輔助函式有自己的序號，目前只對應了整數的部分。用到浮點運算的 SH3 程式（例如 Pocket Slay 的 SH3 版）會在那裡停住，請改用 ARM 版。
+- 尚不支援 MIPS16 程式碼（部分 MIPS 版）與 SH-4 浮點指令。
+- .NET Compact Framework 程式、Wise 安裝程式、x86 版本無法執行。
+- 使用 MFC 的程式需要你自己裝置上的 `mfcce300.dll`。
+- Pocket Slay 在瀏覽器中約 1.5 幀/秒。
+- Android 版已用這份程式碼建置，但目前只用 ARM 遊戲測試過。
+
+## ⚖️ 法律聲明
+
+PocketPC3630 用於研究、保存與教育。它不包含任何微軟系統檔案、韌體或遊戲資料。請只使用你合法取得的遊戲與封存檔。
+本頁的遊戲截圖是這些遊戲在模擬器中執行的畫面。EverQuest、Quake 等名稱為各自擁有者的商標。
+
+## 🙏 致謝
+
+- [**PocketHLE**](https://github.com/j92580498-max/PocketHLE) 與其貢獻者，本專案 fork 自它；ARM 模擬器、Windows CE API、桌面與 Android 程式都來自那裡。
+- 啟發 PocketHLE 的 [touchHLE](https://github.com/touchHLE/touchHLE) 與 [EKA2L1](https://github.com/EKA2L1/EKA2L1)。
+- [Unicorn](https://www.unicorn-engine.org/) 與 [QEMU](https://www.qemu.org/)：MIPS 與 SH 直譯器比對用的參考 CPU。
+- Internet Archive，以及所有保存 Pocket PC 軟體的人。
+
+## 📄 授權
+
+與 PocketHLE 相同，採 [MIT](LICENSE-MIT) 或 [Apache 2.0](LICENSE-APACHE) 雙授權。

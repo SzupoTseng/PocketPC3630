@@ -42,6 +42,17 @@ class MainActivity : AppCompatActivity() {
         if (uri != null) handleImport(uri)
     }
 
+    /** The game a save export or import picker was opened for. */
+    private var saveGame: GameEntry? = null
+
+    private val exportSave = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip"),
+    ) { uri -> saveGame?.let { game -> if (uri != null) runSave(game, "export", uri) } }
+
+    private val importSave = registerForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> saveGame?.let { game -> if (uri != null) runSave(game, "import", uri) } }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -60,6 +71,7 @@ class MainActivity : AppCompatActivity() {
                 )
             },
             onRemove = { entry -> confirmRemove(entry) },
+            onSave = { entry, action -> startSaveAction(entry, action) },
             libraryRoot = rootDir,
         )
         recycler.layoutManager = GridLayoutManager(this, gridSpanCount())
@@ -215,11 +227,10 @@ class MainActivity : AppCompatActivity() {
                 return
             }
             val name = obj.optString("display_name", obj.optString("id", "?"))
-            Snackbar.make(
-                recycler,
-                getString(R.string.import_success, name),
-                Snackbar.LENGTH_SHORT,
-            ).show()
+            val note = obj.optString("import_note")
+            val text = getString(R.string.import_success, name) +
+                if (note.isNotEmpty()) "\n" + getString(R.string.import_note, note) else ""
+            Snackbar.make(recycler, text, Snackbar.LENGTH_LONG).show()
         } catch (e: Exception) {
             Snackbar.make(recycler, raw, Snackbar.LENGTH_LONG).show()
         }
@@ -229,6 +240,55 @@ class MainActivity : AppCompatActivity() {
         return contentResolver.query(uri, null, null, null, null)?.use { c ->
             val ix = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
             if (ix >= 0 && c.moveToFirst()) c.getString(ix) else null
+        }
+    }
+
+    private fun startSaveAction(entry: GameEntry, action: String) {
+        saveGame = entry
+        when (action) {
+            "export" -> exportSave.launch("${entry.id}-save.zip")
+            "import" -> importSave.launch(arrayOf("application/zip", "*/*"))
+            else -> AlertDialog.Builder(this)
+                .setTitle(R.string.save_reset_title)
+                .setMessage(getString(R.string.save_reset_message, entry.displayName))
+                .setPositiveButton(R.string.action_reset_save) { _, _ -> runSave(entry, "reset", null) }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
+    }
+
+    /**
+     * Runs a save action through the shared Rust code. The zip goes through the
+     * cache because a document picker hands out a content URI, not a path.
+     */
+    private fun runSave(entry: GameEntry, action: String, uri: Uri?) {
+        lifecycleScope.launch {
+            val message = withContext(Dispatchers.IO) {
+                runCatching {
+                    val zip = java.io.File(cacheDir, "save-transfer.zip")
+                    if (action == "import" && uri != null) {
+                        contentResolver.openInputStream(uri)!!.use { input ->
+                            zip.outputStream().use { input.copyTo(it) }
+                        }
+                    }
+                    val reply = JSONObject(NativeBridge.saveAction(rootDir, entry.id, action, zip.absolutePath))
+                    if (!reply.optBoolean("ok")) error(reply.optString("error"))
+                    val count = reply.optInt("count")
+                    if (action == "export" && uri != null && count > 0) {
+                        contentResolver.openOutputStream(uri)!!.use { output ->
+                            zip.inputStream().use { it.copyTo(output) }
+                        }
+                    }
+                    zip.delete()
+                    when {
+                        action == "export" && count == 0 -> getString(R.string.save_none)
+                        action == "export" -> getString(R.string.save_exported, count)
+                        action == "import" -> getString(R.string.save_imported, count)
+                        else -> getString(R.string.save_reset_done)
+                    }
+                }.getOrElse { getString(R.string.save_failed, it.message ?: "unknown") }
+            }
+            Snackbar.make(recycler, message, Snackbar.LENGTH_LONG).show()
         }
     }
 

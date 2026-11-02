@@ -1,0 +1,18 @@
+[package]
+name = "pocket-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Browser frontend for PocketHLE, built with Emscripten."
+
+[[bin]]
+name = "pockethle"
+path = "src/main.rs"
+
+[dependencies]
+log = { workspace = true }
+anyhow.workspace = true
+pocket-core = { path = "../../crates/pocket-core", default-features = false }
+pocket-library = { path = "../../crates/pocket-library" }

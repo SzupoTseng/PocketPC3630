@@ -16,6 +16,7 @@
 
 use thiserror::Error;
 
+pub mod interp;
 pub mod stub;
 #[cfg(feature = "unicorn")]
 pub mod unicorn;
@@ -93,6 +94,9 @@ pub enum Arch {
     Arm,
     /// 32-bit MIPS little endian used by Windows CE.
     Mips,
+    /// Hitachi SuperH (SH-3) little endian, the HP Jornada 54x's processor.
+    /// Only the portable interpreter runs it; Unicorn has no SuperH.
+    Sh,
 }
 
 bitflags::bitflags! {
@@ -132,9 +136,94 @@ pub enum StopReason {
     OutOfBounds,
 }
 
+/// A guest routine a backend may run natively.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Intrinsic {
+    /// GapiDraw's 16-bit colour-keyed copy. `r3` = key; stack: unused, unused,
+    /// dst, src, width, height, dst pitch, src pitch (pitches in pixels).
+    /// Returns 0.
+    ColorKeyBlit16,
+    /// The same copy blended over the destination in RGB565; the second stack
+    /// slot holds the alpha.
+    ColorKeyAlphaBlit565,
+    /// The word loop inside GapiDraw's rectangle fill: stores `r2` at `r3`,
+    /// `r1` times, then carries on two instructions later.
+    FillWords,
+}
+
+/// Where a routine sits in `GD104.dll`, and the ARM code it must match. A module
+/// whose bytes differ keeps running its own code.
+#[derive(Debug, Clone, Copy)]
+pub struct GuestRoutine {
+    pub code_rva: u32,
+    pub code: &'static [u32],
+    pub entry_rva: u32,
+    pub intrinsic: Intrinsic,
+}
+
+/// EverQuest's drawing loops, which were 90% of its guest instructions. The
+/// interpreter cannot reach playable speed in a browser while it runs them.
+pub const GD104_ROUTINES: [GuestRoutine; 3] = [
+    GuestRoutine {
+        code_rva: 0x148A8,
+        code: &COLOR_KEY_BLIT16_CODE,
+        entry_rva: 0x148A8,
+        intrinsic: Intrinsic::ColorKeyBlit16,
+    },
+    GuestRoutine {
+        code_rva: 0x1778C,
+        code: &COLOR_KEY_ALPHA_BLIT565_CODE,
+        entry_rva: 0x1778C,
+        intrinsic: Intrinsic::ColorKeyAlphaBlit565,
+    },
+    GuestRoutine {
+        code_rva: 0x841C,
+        code: &FILL_WORDS_CODE,
+        entry_rva: 0x8420,
+        intrinsic: Intrinsic::FillWords,
+    },
+];
+const COLOR_KEY_BLIT16_CODE: [u32; 33] = [
+    0xE92D47F0, 0xE59D2034, 0xE3520000, 0xDA00001A, 0xE59D103C,
+    0xE1A06002, 0xE59D002C, 0xE1A09081, 0xE59D1038, 0xE59D8030,
+    0xE1A0A081, 0xE59D1028, 0xE1A04000, 0xE3580000, 0xDA00000A,
+    0xE0417000, 0xE1A05008, 0xE1D420B0, 0xE2455001, 0xE1520003,
+    0x11A02802, 0x11A02822, 0x118720B4, 0xE2844002, 0xE3550000,
+    0x8AFFFFF6, 0xE2466001, 0xE0800009, 0xE081100A, 0xE3560000,
+    0x8AFFFFEC, 0xE3A00000, 0xE8BD87F0,
+];
+const COLOR_KEY_ALPHA_BLIT565_CODE: [u32; 64] = [
+    0xE1A0C00D, 0xE92D0008, 0xE92D5FF0, 0xE24DD00C, 0xE59D004C,
+    0xE58D3034, 0xE3500000, 0xDA000034, 0xE59D3050, 0xE3A06B3E,
+    0xE59D7040, 0xE386601F, 0xE1A03083, 0xE59D8044, 0xE58D3008,
+    0xE59D3054, 0xE58D0000, 0xE1A03083, 0xE58D3004, 0xE59D9048,
+    0xE1A05007, 0xE3590000, 0xDA00001D, 0xE048A007, 0xE19A40B5,
+    0xE59D3034, 0xE1540003, 0x0A000014, 0xE59D303C, 0xE1D500B0,
+    0xE1A02123, 0xE0061000, 0xE0063004, 0xE0433001, 0xE00B0293,
+    0xE2000E7E, 0xE2043E7E, 0xE0433000, 0xE0020293, 0xE081132B,
+    0xE0803322, 0xE59D0000, 0xE0233001, 0xE1A03803, 0xE1A03823,
+    0xE2033E7E, 0xE1A02801, 0xE0233822, 0xE1C530B0, 0xE2499001,
+    0xE2855002, 0xE3590000, 0x8AFFFFE2, 0xE59D3004, 0xE2400001,
+    0xE58D0000, 0xE3500000, 0xE0888003, 0xE59D3008, 0xE0877003,
+    0x8AFFFFD5, 0xE3A00000, 0xE28DD00C, 0xE89DAFF0,
+];
+const FILL_WORDS_CODE: [u32; 4] = [
+    0xE4832004, 0xE2511001, 0x5AFFFFFC, 0xEA00003D,
+];
+
 /// Common interface to a CPU emulation backend.
 pub trait Cpu {
     fn arch(&self) -> Arch;
+
+    /// Whether imports may be served by native thunks, which use ARMv7 division
+    /// and VFP instructions. The ARMv4 interpreter takes the Rust handlers.
+    fn supports_native_thunks(&self) -> bool {
+        true
+    }
+
+    /// Run a guest function natively, if this backend can. Unicorn is fast
+    /// enough without this; the interpreter uses it for hot pixel loops.
+    fn install_intrinsic(&mut self, _va: u32, _intrinsic: Intrinsic) {}
 
     fn map_region(&mut self, va: u32, size: u32, prot: Prot) -> Result<(), CpuError>;
     fn write_mem(&mut self, va: u32, data: &[u8]) -> Result<(), CpuError>;
@@ -195,7 +284,8 @@ pub trait Cpu {
     /// registers. ARM WinCE uses the current SP; MIPS32 O32 uses the
     /// caller-provided four-word argument home area first.
     fn stack_arg_offset(&self) -> u32 {
-        if self.arch() == Arch::Mips {
+        if matches!(self.arch(), Arch::Mips | Arch::Sh) {
+            // Both reserve a 16-byte home area for the four register arguments.
             16
         } else {
             0

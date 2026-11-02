@@ -47,6 +47,32 @@ enum Command {
     ///
     /// Same code path the GUI's "Import" button uses, which makes it
     /// possible to set a library up from a script or a headless host.
+    /// Import a game package once, then play it in a window.
+    ///
+    /// Takes a ZIP holding one `.cab` plus extra files (see
+    /// `Library::import_zip`), or a plain `.cab`. The game lives in a library
+    /// beside this executable, so its saves survive between runs.
+    Play {
+        /// Game package to play.
+        path: PathBuf,
+        /// Library root. Defaults to `Library` beside the executable.
+        #[arg(long)]
+        library: Option<PathBuf>,
+    },
+    /// Download, restore or clear a game's progress as a save zip, the format
+    /// the Android and browser versions use too.
+    Save {
+        /// `export`, `import` or `reset`.
+        #[arg(value_parser = ["export", "import", "reset"])]
+        action: String,
+        /// The game package, as given to `play`.
+        package: PathBuf,
+        /// The save zip to write or read. Not needed for `reset`.
+        zip: Option<PathBuf>,
+        /// Library root. Defaults to `Library` beside the executable.
+        #[arg(long)]
+        library: Option<PathBuf>,
+    },
     Import {
         /// Archive or executable to import.
         path: PathBuf,
@@ -220,6 +246,8 @@ enum CpuBackend {
     Stub,
     #[cfg(feature = "unicorn")]
     Unicorn,
+    /// Portable ARMv4 interpreter, the backend used by Android and the web.
+    Interp,
     #[cfg(feature = "unicorn")]
     Mips,
 }
@@ -248,6 +276,13 @@ fn main() -> Result<()> {
         Command::UnpackCab { cab, out_dir } => cmd_unpack_cab(&cab, &out_dir),
         Command::InspectCab { cab, out_dir } => cmd_inspect_cab(&cab, out_dir.as_deref()),
         Command::Import { path, library } => cmd_import(&path, library),
+        Command::Play { path, library } => cmd_play(&path, library),
+        Command::Save {
+            action,
+            package,
+            zip,
+            library,
+        } => cmd_save(&action, &package, zip.as_deref(), library),
         Command::RenderDemo { out } => cmd_render_demo(&out),
         Command::Run {
             path,
@@ -421,13 +456,176 @@ fn cmd_inspect_cab(cab: &std::path::Path, out_dir: Option<&std::path::Path>) -> 
 }
 
 /// Add a game to the launcher library used by the GUI frontends.
+#[cfg(feature = "unicorn")]
+const PLAY_CPU: CpuBackend = CpuBackend::Unicorn;
+#[cfg(not(feature = "unicorn"))]
+const PLAY_CPU: CpuBackend = CpuBackend::Interp;
+
+/// How `play` hands its save folder to `run`: `<guest prefix>|<host dir>`.
+const PLAY_SAVE_ENV: &str = "POCKETHLE_SAVE_DIR";
+
+/// Records which package a game came from, so playing again keeps its saves
+/// instead of importing over them.
+const PACKAGE_MARKER: &str = "pockethle-package.txt";
+
+fn package_identity(path: &std::path::Path) -> Result<String> {
+    let size = std::fs::metadata(path)
+        .with_context(|| format!("reading {}", path.display()))?
+        .len();
+    let name = path.file_name().unwrap_or_default().to_string_lossy();
+    Ok(format!("{name}:{size}"))
+}
+
+fn play_library_root(library: Option<PathBuf>) -> Result<PathBuf> {
+    Ok(match library {
+        Some(root) => root,
+        None => std::env::current_exe()?
+            .parent()
+            .context("locating the executable")?
+            .join("Library"),
+    })
+}
+
+/// The library id a package was imported under by `play`, if it was.
+fn played_game_id(lib: &pocket_library::Library, path: &std::path::Path) -> Result<Option<String>> {
+    let identity = package_identity(path)?;
+    Ok(lib
+        .games()
+        .iter()
+        .find(|game| {
+            std::fs::read_to_string(lib.root().join("games").join(&game.id).join(PACKAGE_MARKER))
+                .is_ok_and(|text| text == identity)
+        })
+        .map(|game| game.id.clone()))
+}
+
+fn cmd_save(
+    action: &str,
+    package: &std::path::Path,
+    zip: Option<&std::path::Path>,
+    library: Option<PathBuf>,
+) -> Result<()> {
+    use pocket_library::save_archive;
+    let root = play_library_root(library)?;
+    let lib = pocket_library::Library::open(&root)
+        .with_context(|| format!("opening library at {}", root.display()))?;
+    let id = played_game_id(&lib, package)?
+        .with_context(|| format!("{} has not been played yet", package.display()))?;
+    let game_dir = root.join("games").join(&id);
+    let need_zip = || zip.context("give the save zip to write or read");
+    let count = match action {
+        "export" => {
+            let file = std::fs::File::create(need_zip()?)?;
+            save_archive::export(&game_dir, file)?
+        }
+        "import" => {
+            let file = std::fs::File::open(need_zip()?)?;
+            save_archive::import(&game_dir, file)?
+        }
+        _ => save_archive::reset(&game_dir)?,
+    };
+    println!("{action}: {count} file(s) for {id}");
+    Ok(())
+}
+
+fn cmd_play(path: &std::path::Path, library: Option<PathBuf>) -> Result<()> {
+    let root = play_library_root(library)?;
+    let mut lib = pocket_library::Library::open(&root)
+        .with_context(|| format!("opening library at {}", root.display()))?;
+    let identity = package_identity(path)?;
+    let existing = played_game_id(&lib, path)?;
+    let id = match existing {
+        Some(id) => id,
+        None => {
+            let id = lib
+                .import_any(path)
+                .map_err(|e| explained_import_error(&root, &e))?
+                .id
+                .clone();
+            std::fs::write(root.join("games").join(&id).join(PACKAGE_MARKER), &identity)?;
+            println!("Imported {} as {id}", path.display());
+            id
+        }
+    };
+    let game = lib.get(&id).context("imported game is missing")?;
+    let exe = game.launch_path(&root);
+    let extracted = game.extracted_dir(&root);
+    let prefix = game.guest_install_prefix();
+    let module_path = game.guest_exe_path();
+    // What setup would have written; EverQuest reads `InstallDir` back.
+    let registry: Vec<String> = game
+        .registry
+        .iter()
+        .filter_map(|value| {
+            let text = value.string.as_deref()?;
+            Some(format!("{}|{}|{text}", value.key, value.name))
+        })
+        .collect();
+    std::env::set_var("POCKETHLE_REGISTRY", registry.join("\n"));
+    // Writes go to the save folder, as on Android and in the browser, so one
+    // save zip works everywhere; reads still fall through to the game.
+    if let Some(save_prefix) = game.guest_save_prefix() {
+        let save_dir = game.save_dir(&root);
+        std::env::set_var(
+            PLAY_SAVE_ENV,
+            format!("{save_prefix}|{}", save_dir.display()),
+        );
+    }
+    // Pocket PC 2000 software also came as MIPS builds (Casio Cassiopeia);
+    // Unicorn runs those when the executable says it is one.
+    let backend = match std::fs::read(&exe).ok().and_then(|bytes| pocket_library::import_kb::pe_machine(&bytes)) {
+        #[cfg(feature = "unicorn")]
+        Some("mips") => CpuBackend::Mips,
+        // Unicorn has no SuperH; SH3 builds run on the interpreter.
+        Some("sh") => CpuBackend::Interp,
+        _ => PLAY_CPU,
+    };
+    cmd_run(
+        &exe,
+        backend,
+        false,
+        0,
+        1_000_000,
+        None,
+        Some(&extracted),
+        prefix.as_deref().unwrap_or("\\Application\\"),
+        module_path.as_deref(),
+        true,
+        None,
+        None,
+        1,
+        0,
+        &[],
+        &[],
+        INPUT_HOLD_FRAMES,
+        &[],
+        &[],
+        Some(0),
+        None,
+        None,
+        None,
+        0,
+    )
+}
+
+/// An import failure as the knowledge base explains it: what happened, what to
+/// do, and the technical detail.
+fn explained_import_error(root: &std::path::Path, error: &pocket_library::LibraryError) -> anyhow::Error {
+    let problem = pocket_library::import_kb::KnowledgeBase::load(root).explain_import(error);
+    anyhow::anyhow!(problem.message(pocket_library::import_problem::Lang::En))
+}
+
 fn cmd_import(path: &std::path::Path, library: Option<PathBuf>) -> Result<()> {
     let root = library.unwrap_or_else(pocket_library::default_library_root);
     let mut lib = pocket_library::Library::open(&root)
         .with_context(|| format!("opening library at {}", root.display()))?;
     let entry = lib
         .import_any(path)
-        .with_context(|| format!("importing {}", path.display()))?;
+        .map_err(|e| explained_import_error(&root, &e))?
+        .clone();
+    if let Some(note) = lib.last_import_note() {
+        println!("Found inside the download: {note}");
+    }
     println!(
         "Imported \"{}\" as id {} into {}",
         entry.display_name,
@@ -578,8 +776,15 @@ fn cmd_run(
     let screen = screen.map(parse_screen_size).transpose()?;
     let mut emu = match backend {
         CpuBackend::Stub => Emulator::with_stub_cpu(),
+        CpuBackend::Interp => Emulator::with_interp_cpu_for_arch(
+            Emulator::arch_of_executable(path).unwrap_or(pocket_core::cpu::Arch::Arm),
+        ),
         #[cfg(feature = "unicorn")]
-        CpuBackend::Unicorn => Emulator::with_unicorn_cpu()?,
+        CpuBackend::Unicorn => match Emulator::arch_of_executable(path) {
+            // Unicorn has no SuperH: an SH3 build always runs on the interpreter.
+            Some(pocket_core::cpu::Arch::Sh) => Emulator::with_interp_cpu_for_arch(pocket_core::cpu::Arch::Sh),
+            _ => Emulator::with_unicorn_cpu()?,
+        },
         #[cfg(feature = "unicorn")]
         CpuBackend::Mips => Emulator::with_unicorn_cpu_for_arch(pocket_core::cpu::Arch::Mips)?,
     };
@@ -680,6 +885,13 @@ fn cmd_run(
             save_dir.display()
         );
     }
+    if let Some((prefix, dir)) = std::env::var(PLAY_SAVE_ENV)
+        .ok()
+        .and_then(|value| value.split_once('|').map(|(p, d)| (p.to_string(), d.to_string())))
+    {
+        emu.mount_save_dir(&prefix, PathBuf::from(&dir));
+        println!("Save data: {dir} -> {prefix:?}");
+    }
     let effective_module_path = module_path.or(_launcher.guest_exe_path.as_deref());
     let message_budget = resolve_message_budget(message_budget, path, effective_module_path);
     println!("Synthetic message budget: {message_budget} (0 = unlimited)");
@@ -694,6 +906,22 @@ fn cmd_run(
             let dir = &path[..cut + 1];
             emu.set_default_dir(dir);
             println!("Relative guest paths resolve against {dir:?}");
+        }
+    }
+    // A launcher running an installed game, rather than its cabinet, supplies
+    // what setup would have written: EverQuest finds its saved characters
+    // through `InstallDir`. One `KEY|NAME|VALUE` per line.
+    if let Ok(values) = std::env::var("POCKETHLE_REGISTRY") {
+        for line in values.lines() {
+            let mut parts = line.splitn(3, '|');
+            if let (Some(key), Some(name), Some(value)) = (parts.next(), parts.next(), parts.next())
+            {
+                emu.set_registry_value(
+                    key,
+                    name,
+                    pocket_core::kernel::registry::RegistryValue::Sz(value.to_string()),
+                );
+            }
         }
     }
     // Replay the cabinet's `_setup.xml` registry section. A real
@@ -1434,7 +1662,12 @@ mod display_window {
         last_frame: u64,
         last_emit_at: Option<Instant>,
         ticks_since_poll: u64,
+        pointer_down: bool,
+        pointer_at: (i32, i32),
+        last_poll_at: Instant,
     }
+
+    const EVENT_POLL_INTERVAL: Duration = Duration::from_millis(8);
 
     impl DisplayHook {
         pub fn new(width: u32, height: u32) -> Result<Self> {
@@ -1466,6 +1699,9 @@ mod display_window {
                 last_frame: 0,
                 last_emit_at: None,
                 ticks_since_poll: 0,
+                pointer_down: false,
+                pointer_at: (0, 0),
+                last_poll_at: Instant::now(),
             })
         }
     }
@@ -1474,6 +1710,49 @@ mod display_window {
         fn on_frame(&mut self, state: &mut KernelState) -> FrameAction {
             if !self.window.is_open() {
                 return FrameAction::Stop;
+            }
+            // The mouse acts as the stylus. EverQuest is played entirely by
+            // tapping, so a display-only window could not get past its menu.
+            let (mx, my) = self
+                .window
+                .get_mouse_pos(minifb::MouseMode::Clamp)
+                .unwrap_or((0.0, 0.0));
+            let at = (mx as i32, my as i32);
+            let down = self.window.get_mouse_down(minifb::MouseButton::Left);
+            let (x, y) = (at.0 as _, at.1 as _);
+            if down && !self.pointer_down {
+                state
+                    .pending_input
+                    .push_back(pocket_core::kernel::InputEvent::PointerMove { x, y });
+                state
+                    .pending_input
+                    .push_back(pocket_core::kernel::InputEvent::PointerDown { x, y });
+            } else if down && at != self.pointer_at {
+                state
+                    .pending_input
+                    .push_back(pocket_core::kernel::InputEvent::PointerMove { x, y });
+            } else if !down && self.pointer_down {
+                state
+                    .pending_input
+                    .push_back(pocket_core::kernel::InputEvent::PointerUp { x, y });
+            }
+            self.pointer_down = down;
+            self.pointer_at = at;
+            // EverQuest's registration dialog needs typed text, and its other
+            // controls are the device buttons reported by GXGetDefaultKeys.
+            for key in self.window.get_keys_pressed(minifb::KeyRepeat::No) {
+                if let Some(vk) = minifb_key_to_vk(key) {
+                    state
+                        .pending_input
+                        .push_back(pocket_core::kernel::InputEvent::KeyDown { vk });
+                }
+            }
+            for key in self.window.get_keys_released() {
+                if let Some(vk) = minifb_key_to_vk(key) {
+                    state
+                        .pending_input
+                        .push_back(pocket_core::kernel::InputEvent::KeyUp { vk });
+                }
             }
 
             let counter = state.framebuffer.frame_counter;
@@ -1499,14 +1778,43 @@ mod display_window {
                 let _ = self.window.update_with_buffer(&self.buffer, w, h);
                 self.ticks_since_poll = 0;
             } else {
+                // Polled by time as well as by slice count: EverQuest's static
+                // dialogs dispatch few slices, and a counted poll missed whole
+                // clicks and key presses there.
                 self.ticks_since_poll = self.ticks_since_poll.saturating_add(1);
-                if self.ticks_since_poll >= EVENT_POLL_INTERVAL_SLICES {
+                if self.ticks_since_poll >= EVENT_POLL_INTERVAL_SLICES
+                    || self.last_poll_at.elapsed() >= EVENT_POLL_INTERVAL
+                {
                     self.ticks_since_poll = 0;
+                    self.last_poll_at = Instant::now();
                     self.window.update();
                 }
             }
             FrameAction::Continue
         }
+    }
+
+    /// Windows virtual-key code for a host key: letters and digits match ASCII.
+    fn minifb_key_to_vk(key: minifb::Key) -> Option<u16> {
+        use minifb::Key as K;
+        let digit = key as u32;
+        Some(match key {
+            K::Key0 | K::Key1 | K::Key2 | K::Key3 | K::Key4 | K::Key5 | K::Key6 | K::Key7
+            | K::Key8 | K::Key9 => (0x30 + (digit - K::Key0 as u32)) as _,
+            K::A | K::B | K::C | K::D | K::E | K::F | K::G | K::H | K::I | K::J | K::K | K::L
+            | K::M | K::N | K::O | K::P | K::Q | K::R | K::S | K::T | K::U | K::V | K::W | K::X
+            | K::Y | K::Z => (0x41 + (digit - K::A as u32)) as _,
+            K::Enter => 0x0D,
+            K::Backspace => 0x08,
+            K::Space => 0x20,
+            K::Tab => 0x09,
+            K::Escape => 0x1B,
+            K::Left => 0x25,
+            K::Up => 0x26,
+            K::Right => 0x27,
+            K::Down => 0x28,
+            _ => return None,
+        })
     }
 
     fn rgb565_to_minifb(p: u16) -> u32 {

@@ -135,6 +135,8 @@ pub struct LoadedImage {
     /// Map from RVA to "DLL name" for every export of this image, if the
     /// PE happens to be a DLL. For executables this is empty.
     pub exports: IndexMap<String, u32>,
+    /// Base relocation data directory, `(rva, size)`, when the PE declares one.
+    pub reloc_directory: Option<(u32, u32)>,
     /// Flat list of `.rsrc` directory entries. Empty if the image
     /// has no resource section.
     pub resources: Vec<ResourceEntry>,
@@ -159,11 +161,23 @@ impl LoadedImage {
         if delta == 0 {
             return Ok(());
         }
-        let reloc_data = self
-            .sections
-            .iter()
-            .find(|section| section.name.eq_ignore_ascii_case(".reloc"))
-            .map(|section| section.data.clone())
+        // UPX renames sections, so EverQuest's packed `mfcce300.dll` keeps its
+        // table in `UPX2`. The data directory is authoritative; the name is
+        // the fallback for images built without one.
+        let by_directory = self.reloc_directory.and_then(|(rva, size)| {
+            self.sections.iter().find_map(|section| {
+                let offset = rva.checked_sub(section.virtual_address)? as usize;
+                section.data.get(offset..offset.checked_add(size as usize)?)
+            })
+        });
+        let reloc_data = by_directory
+            .map(<[u8]>::to_vec)
+            .or_else(|| {
+                self.sections
+                    .iter()
+                    .find(|section| section.name.eq_ignore_ascii_case(".reloc"))
+                    .map(|section| section.data.clone())
+            })
             .ok_or(LoadError::MissingRelocations)?;
         let mut targets = Vec::new();
         let mut block_offset = 0usize;
@@ -290,6 +304,8 @@ pub fn load_bytes(bytes: &[u8]) -> Result<LoadedImage, LoadError> {
             | machine::I386
             | machine::MIPS_R3000
             | machine::MIPS_R4000
+            | machine::SH3
+            | machine::SH4
     ) {
         return Err(LoadError::UnsupportedMachine(machine));
     }
@@ -326,7 +342,18 @@ pub fn load_bytes(bytes: &[u8]) -> Result<LoadedImage, LoadError> {
     let exports = collect_exports(&pe);
     let resources = collect_resources(bytes, &pe).unwrap_or_default();
 
+    let reloc_directory = pe
+        .header
+        .optional_header
+        .and_then(|h| {
+            h.data_directories
+                .get_base_relocation_table()
+                .map(|d| (d.virtual_address, d.size))
+        })
+        .filter(|(rva, size)| *rva != 0 && *size != 0);
+
     Ok(LoadedImage {
+        reloc_directory,
         source_path: String::new(),
         machine,
         subsystem: subsys,
@@ -616,6 +643,7 @@ mod tests {
             exports: IndexMap::new(),
             resources: vec![],
             managed_runtime: None,
+            reloc_directory: None,
         };
         assert_eq!(img.machine_name(), "ARM (legacy)");
         assert_eq!(img.entry_va(), 0x10000);
@@ -657,6 +685,7 @@ mod tests {
             exports: IndexMap::from([("vmMain".into(), 0x3050)]),
             resources: vec![],
             managed_runtime: None,
+            reloc_directory: None,
         };
 
         image.rebase(0x3000_0000).unwrap();

@@ -16,6 +16,7 @@ default = []
 audio-cpal = ["pocket-kernel/audio-cpal"]
 
 [dependencies]
+rmp3 = { version = "0.3.1", features = ["std"] }
 anyhow.workspace = true
 thiserror.workspace = true
 log.workspace = true

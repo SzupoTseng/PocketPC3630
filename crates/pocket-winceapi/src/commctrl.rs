@@ -33,15 +33,11 @@ pub fn register(d: &mut WinCeDispatcher) {
         "ImageList_SetBkColor",
         "_TrackMouseEvent",
     ] {
-        let handler = match f {
-            "ImageList_Create" => image_list_create,
-            "ImageList_Add" => image_list_add,
-            "ImageList_Destroy" => image_list_destroy,
-            "ImageList_GetImageCount" => image_list_get_image_count,
-            _ => ok,
-        };
-        d.register_handler(dll, f, handler);
+        d.register_handler(dll, f, ok);
     }
+    // The real image list calls replace the placeholders above.
+    crate::coredll::register_image_lists(d, dll);
+    crate::coredll::register_command_bars(d, dll);
 
     // Stub ordinals 1..=80 by default, then override the ones we do
     // model. The most-frequent culprits for "unimplemented call ->
@@ -62,6 +58,14 @@ pub fn register(d: &mut WinCeDispatcher) {
     d.register_handler(dll, "ord:2", ok);
     d.register_handler(dll, "ord:4", ok);
     d.register_handler(dll, "ord:5", ok);
+
+    // The Pocket PC 2000 command bar calls, identified from Pocket Slay's
+    // arguments: #3 (hInst, hwndParent, id) is CommandBar_Create, #8
+    // (hwndCB, hInst, idMenu, iButton) CommandBar_InsertMenubar, #9
+    // (hwndCB, iButton) CommandBar_GetMenu and #10 (hwndCB, flags, 0)
+    // CommandBar_AddAdornments. As plain successes they handed back 1 as
+    // both the bar's window and its menu.
+    crate::coredll::register_command_bar_ordinals(d, dll);
 
     // #17 is `CreateStatusWindowW` in the PPC2002 ordinal space.
     // PPC2002 Solitaire calls it as
@@ -129,28 +133,4 @@ fn ok(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     Ok(DispatchOutcome::ReturnedR0(1))
 }
 
-const IMAGE_LIST_BASE: u32 = 0xDEAD_2A00;
 
-fn image_list_create(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
-    let _cx = ctx.arg_u32(0)?;
-    let _cy = ctx.arg_u32(1)?;
-    let _flags = ctx.arg_u32(2)?;
-    let _initial = ctx.arg_u32(3)?;
-    let _grow = ctx.arg_u32(4)?;
-    Ok(DispatchOutcome::ReturnedR0(IMAGE_LIST_BASE))
-}
-
-fn image_list_add(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
-    let _list = ctx.arg_u32(0)?;
-    let _bitmap = ctx.arg_u32(1)?;
-    let _mask = ctx.arg_u32(2)?;
-    Ok(DispatchOutcome::ReturnedR0(0))
-}
-
-fn image_list_destroy(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
-    Ok(DispatchOutcome::ReturnedR0(1))
-}
-
-fn image_list_get_image_count(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
-    Ok(DispatchOutcome::ReturnedR0(8))
-}

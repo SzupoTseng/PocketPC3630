@@ -495,6 +495,21 @@ impl GdiState {
     }
 }
 
+/// An image list (`ImageList_Create`): equal-sized images kept side by
+/// side as RGB565, with a flag per pixel saying whether its mask makes it
+/// transparent.
+#[derive(Debug, Clone, Default)]
+pub struct ImageList {
+    pub cx: u32,
+    pub cy: u32,
+    /// `ILC_MASK` was given: images have a transparent part.
+    pub masked: bool,
+    /// Background colour as a COLORREF; `0xFFFF_FFFF` is `CLR_NONE`.
+    pub bk_color: u32,
+    /// One entry per image: `cx * cy` RGB565 pixels and transparency.
+    pub images: Vec<(Vec<u16>, Vec<bool>)>,
+}
+
 /// Borrow either the framebuffer or a memory bitmap as a writable
 /// surface.
 pub enum Surface<'a> {

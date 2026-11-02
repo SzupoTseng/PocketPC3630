@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111214">
+<title>PocketHLE</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  --bg: #f6f5f2; --surface: #ffffff; --ink: #1b1b1a; --dim: #6d6b66; --line: #e3e1db;
+  --accent: #2c6e9e; --accent-ink: #ffffff; --bad: #b3261e; --shadow: 0 1px 2px rgb(0 0 0 / 6%), 0 8px 24px rgb(0 0 0 / 6%);
+  --stage: #0d0e10; --pad: rgb(255 255 255 / 9%); --pad-press: rgb(255 255 255 / 22%); --pad-ink: rgb(255 255 255 / 70%);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111214; --surface: #1a1b1e; --ink: #ecebe7; --dim: #9a988f; --line: #2a2c30;
+    --accent: #7db7e0; --accent-ink: #0b1a26; --bad: #f2b8b5; --shadow: none;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+
+/* Library */
+main { max-width: 36rem; margin: 0 auto; padding: 40px 16px 32px; }
+header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+.primary {
+  background: var(--accent); color: var(--accent-ink); padding: 8px 16px; border-radius: 999px; font-weight: 500;
+}
+.list { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: visible; }
+.game { display: flex; align-items: center; gap: 14px; padding: 12px 8px 12px 14px; }
+.game + .game { border-top: 1px solid var(--line); }
+.play { flex: 1; display: flex; align-items: center; gap: 14px; text-align: left; min-width: 0; padding: 0; }
+.icon { width: 40px; height: 40px; border-radius: 9px; flex: none; object-fit: cover; image-rendering: pixelated; background: var(--line); }
+.letter { display: grid; place-items: center; font-weight: 600; color: var(--dim); }
+.name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.more { position: relative; }
+.more summary { list-style: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; color: var(--dim); cursor: pointer; font-size: 18px; }
+.more summary::-webkit-details-marker { display: none; }
+.more summary:hover { background: var(--line); }
+.menu {
+  position: absolute; right: 0; top: 40px; z-index: 5; min-width: 9.5rem; padding: 6px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+}
+.menu button { display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 8px; }
+.menu button:hover { background: var(--line); }
+.menu .danger { color: var(--bad); }
+.empty { padding: 40px 20px; text-align: center; color: var(--dim); }
+.note { color: var(--dim); font-size: 13px; margin: 16px 4px 0; }
+#status { min-height: 1.5em; margin: 12px 4px 0; font-size: 13px; color: var(--dim); white-space: pre-line; }
+#status.bad { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; color: var(--ink); }
+#status.bad::first-line { color: var(--bad); font-weight: 600; }
+.link { color: var(--accent); padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+dialog { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); padding: 0; max-width: min(34rem, calc(100vw - 32px)); box-shadow: 0 24px 64px rgb(0 0 0 / 30%); }
+dialog::backdrop { background: rgb(0 0 0 / 40%); }
+dialog article { padding: 20px 22px; max-height: 75vh; overflow: auto; font-size: 14px; }
+dialog h2 { font-size: 17px; margin: 0 0 12px; }
+dialog h3 { font-size: 14px; margin: 18px 0 6px; }
+dialog ul { margin: 0; padding-left: 1.2em; }
+dialog li { margin: 4px 0; }
+dialog code { font-size: 12.5px; background: var(--bg); padding: 1px 5px; border-radius: 5px; }
+dialog footer { display: flex; justify-content: flex-end; padding: 0 22px 18px; }
+#toast { position: fixed; left: 50%; top: 52px; transform: translateX(-50%); max-width: min(30rem, calc(100vw - 32px)); background: #26272b; color: #ecebe7; padding: 10px 14px; border-radius: 12px; font-size: 13px; box-shadow: 0 8px 24px rgb(0 0 0 / 40%); display: none; z-index: 10; }
+#status.bad { color: var(--bad); }
+
+/* Playing */
+#stage {
+  display: none; position: fixed; inset: 0; background: var(--stage); color: #d8d6d0;
+  flex-direction: column; align-items: center;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+body.playing main { display: none; }
+body.playing #stage { display: flex; }
+.bar { width: 100%; max-width: 40rem; display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font-size: 13px; }
+.bar button { color: #d8d6d0; padding: 6px 10px; border-radius: 8px; }
+.bar button:hover { background: rgb(255 255 255 / 8%); }
+#hud { color: #7f7d77; font-variant-numeric: tabular-nums; }
+.screen { flex: 1; min-height: 0; width: 100%; display: grid; place-items: center; padding: 0 8px; }
+canvas { display: block; touch-action: none; image-rendering: pixelated; background: #000; outline: none; max-width: 100%; max-height: 100%; height: 100%; }
+
+/* Touch controls, the same keys as the Android version's pad. */
+.pad { display: none; width: 100%; max-width: 26rem; justify-content: space-between; align-items: center; padding: 14px 20px 18px; touch-action: none; user-select: none; -webkit-user-select: none; }
+body.touch .pad { display: flex; }
+.dpad { display: grid; grid-template: repeat(3, 46px) / repeat(3, 46px); gap: 4px; }
+.key {
+  display: grid; place-items: center; background: var(--pad); color: var(--pad-ink); border-radius: 12px;
+  font-size: 13px; font-weight: 600; touch-action: none;
+}
+.key.down { background: var(--pad-press); }
+.dpad .up { grid-area: 1 / 2; } .dpad .left { grid-area: 2 / 1; } .dpad .right { grid-area: 2 / 3; } .dpad .downkey { grid-area: 3 / 2; }
+.buttons { display: grid; grid-template-columns: repeat(3, 42px); grid-template-rows: 30px 64px 42px; gap: 8px; align-items: center; justify-items: center; }
+.buttons .soft { grid-row: 1; width: 42px; height: 26px; border-radius: 13px; font-size: 11px; }
+.buttons .action { grid-row: 2; grid-column: 1 / 4; width: 64px; height: 64px; border-radius: 50%; }
+.buttons .abc { grid-row: 3; width: 42px; height: 42px; border-radius: 50%; }
+@media (orientation: landscape) and (max-height: 520px) {
+  body.touch #stage { flex-direction: row; flex-wrap: wrap; }
+  body.touch .bar { order: 0; max-width: none; }
+  body.touch .screen { order: 2; flex: 1; height: calc(100% - 44px); }
+  body.touch .pad { display: contents; }
+  body.touch .dpad { order: 1; align-self: center; margin-left: 16px; }
+  body.touch .buttons { order: 3; align-self: center; margin-right: 16px; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>PocketHLE</h1>
+    <button type="button" class="primary" id="pick">匯入遊戲</button>
+  </header>
+  <section class="list" id="games" aria-label="遊戲庫"></section>
+  <p class="note">遊戲與進度只存在這個瀏覽器。進度會自動保存；清除網站資料前請先下載存檔。有些遊戲要從遊戲內正常退出才會寫入進度。<button type="button" class="link" id="help-open">遊戲包格式</button></p>
+  <p id="status" role="status">載入中…</p>
+</main>
+
+<div id="stage">
+  <div class="bar">
+    <button type="button" id="leave">‹ 遊戲庫</button>
+    <span id="hud"></span>
+    <button type="button" id="save-now">下載存檔</button>
+  </div>
+  <div class="screen"><canvas id="screen" width="240" height="320" tabindex="0" aria-label="遊戲畫面"></canvas></div>
+  <div class="pad" aria-hidden="true">
+    <div class="dpad">
+      <div class="key up" data-vk="38">▲</div>
+      <div class="key left" data-vk="37">◀</div>
+      <div class="key right" data-vk="39">▶</div>
+      <div class="key downkey" data-vk="40">▼</div>
+    </div>
+    <div class="buttons">
+      <div class="key soft" data-vk="9">1</div>
+      <div class="key soft" data-vk="27" style="grid-column: 3">2</div>
+      <div class="key action" data-vk="13">●</div>
+      <div class="key abc" data-vk="17">A</div>
+      <div class="key abc" data-vk="32">B</div>
+      <div class="key abc" data-vk="16">C</div>
+    </div>
+  </div>
+</div>
+
+<dialog id="help">
+  <article>
+    <h2>遊戲包格式</h2>
+    <p>直接匯入從網路下載的檔案即可。看不懂的檔案，模擬器會依知識庫往裡面找出遊戲，絕不會執行下載的程式。</p>
+    <h3>可以匯入</h3>
+    <ul>
+      <li>Pocket PC 的 <code>.cab</code></li>
+      <li>最上層放一個 <code>.cab</code> 的 <code>.zip</code>，可以附加其他檔案（例如 <code>mfcce300.dll</code>）</li>
+      <li>遊戲安裝後資料夾的 <code>.zip</code>，例如 <code>quake/PocketQuake.exe</code></li>
+      <li>ARM 版的 <code>.exe</code>、<code>.rar</code></li>
+      <li>桌面安裝程式（<code>setup.exe</code>）或每種處理器各一個 CAB 的下載檔：會自動挑出 ARM 版</li>
+    </ul>
+    <h3>遊戲需要的系統檔案</h3>
+    <p>使用 MFC 的遊戲需要 Pocket PC 內建的 <code>mfcce300.dll</code>（有些還需要 <code>olece300.dll</code>），模擬器不附帶。請把你自己裝置上的副本放進 <code>.zip</code>，和 <code>.cab</code> 放在同一層。缺少時，開始遊戲前會提示。</p>
+    <h3>無法匯入</h3>
+    <ul>
+      <li>.NET Compact Framework 程式</li>
+      <li>使用浮點指令的 SH4 程式，以及 x86 版本</li>
+      <li>桌面版 Windows 遊戲與它的 <code>data1.cab</code></li>
+    </ul>
+    <h3>存檔</h3>
+    <p>存檔 <code>.zip</code> 包含遊戲的 <code>saves/</code> 資料夾與 <code>pockethle-registry.dat</code>，Windows、Android 與網頁版通用。</p>
+  </article>
+  <footer><button type="button" class="primary" id="help-close">知道了</button></footer>
+</dialog>
+<div id="toast" role="status"></div>
+
+<input type="file" id="file" accept=".zip,.cab,.rar,.exe,*/*" hidden>
+<input type="file" id="save-file" accept=".zip" hidden>
+<script src="pockethle.js"></script>
+<script>
+// The page pumps everything, as with FluffOS's WebAssembly driver: a tab cannot
+// block, so pocket_tick runs until the guest sleeps and says how long to wait.
+// Saves go through the same Rust code as the desktop and Android versions.
+const $ = (id) => document.getElementById(id);
+const AUDIO_FRAMES = 4096;
+const SAVE_EVERY_MS = 10000;
+const FRAMES_PER_PRESS = 3;
+const MAX_PRESS_MS = 1000;
+let M, running = false, syncing = false, syncAgain = false, frameMs = 33;
+
+function say(text, bad = false) {
+  $('status').textContent = text;
+  $('status').classList.toggle('bad', bad);
+}
+
+const lastError = () => M.UTF8ToString(M._pocket_last_error());
+
+// IndexedDB is the only thing that survives a reload; MEMFS is rebuilt from it.
+function syncFs(populate) {
+  return new Promise((resolve, reject) => {
+    if (syncing && !populate) { syncAgain = true; resolve(); return; }
+    syncing = true;
+    M.FS.syncfs(populate, (error) => {
+      syncing = false;
+      if (syncAgain) { syncAgain = false; syncFs(false); }
+      error ? reject(error) : resolve();
+    });
+  });
+}
+
+function withPath(path, action) {
+  const text = M.stringToNewUTF8(path);
+  try { return action(text); } finally { M._free(text); }
+}
+
+function gameId(index) { return M.UTF8ToString(M._pocket_game_id(index)); }
+
+function download(bytes, name) {
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }));
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+}
+
+function exportSave(index) {
+  const path = '/save-export.zip';
+  const count = withPath(path, (p) => M._pocket_save_export(index, p));
+  if (count < 0) { say(lastError(), true); return; }
+  if (count === 0) { M.FS.unlink(path); say('這個遊戲還沒有存檔。'); return; }
+  download(M.FS.readFile(path), `${gameId(index)}-save.zip`);
+  M.FS.unlink(path);
+  say(`已下載存檔（${count} 個檔案）。`);
+}
+
+async function importSave(index, file) {
+  const path = '/save-import.zip';
+  M.FS.writeFile(path, new Uint8Array(await file.arrayBuffer()));
+  const count = withPath(path, (p) => M._pocket_save_import(index, p));
+  M.FS.unlink(path);
+  if (count < 0) { say(lastError(), true); return; }
+  await syncFs(false);
+  say(`已匯入存檔（${count} 個檔案）。`);
+}
+
+function removeTree(dir) {
+  for (const name of M.FS.readdir(dir)) {
+    if (name === '.' || name === '..') continue;
+    const path = `${dir}/${name}`;
+    if (M.FS.isDir(M.FS.stat(path).mode)) removeTree(path); else M.FS.unlink(path);
+  }
+  M.FS.rmdir(dir);
+}
+
+function iconFor(index, name) {
+  try {
+    const bytes = M.FS.readFile(`/library/games/${gameId(index)}/icon.png`);
+    const img = document.createElement('img');
+    img.className = 'icon';
+    img.alt = '';
+    img.src = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
+    return img;
+  } catch {
+    const letter = document.createElement('div');
+    letter.className = 'icon letter';
+    letter.textContent = name.trim().charAt(0).toUpperCase();
+    return letter;
+  }
+}
+
+function menuItem(label, action, danger = false) {
+  const item = document.createElement('button');
+  item.type = 'button';
+  item.textContent = label;
+  if (danger) item.className = 'danger';
+  item.addEventListener('click', (event) => {
+    event.currentTarget.closest('details').open = false;
+    Promise.resolve().then(action).catch((error) => say(String(error.message ?? error), true));
+  });
+  return item;
+}
+
+let saveTarget = null;
+
+function listGames() {
+  const list = $('games');
+  list.replaceChildren();
+  const count = M._pocket_game_count();
+  if (count === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = '還沒有遊戲。匯入你擁有的遊戲包（.zip 或 .cab）就能開始。';
+    list.append(empty);
+    return;
+  }
+  for (let i = 0; i < count; i++) {
+    const name = M.UTF8ToString(M._pocket_game_name(i));
+    const row = document.createElement('div');
+    row.className = 'game';
+    const play = document.createElement('button');
+    play.type = 'button';
+    play.className = 'play';
+    const label = document.createElement('span');
+    label.className = 'name';
+    label.textContent = name;
+    play.append(iconFor(i, name), label);
+    play.addEventListener('click', () => start(i));
+    const more = document.createElement('details');
+    more.className = 'more';
+    const summary = document.createElement('summary');
+    summary.setAttribute('aria-label', `${name} 的選項`);
+    summary.textContent = '⋯';
+    const menu = document.createElement('div');
+    menu.className = 'menu';
+    menu.append(
+      menuItem('下載存檔', () => exportSave(i)),
+      menuItem('匯入存檔', () => { saveTarget = i; $('save-file').click(); }),
+      menuItem('重置存檔', async () => {
+        if (!confirm(`要清除「${name}」的全部進度嗎？未下載的存檔將無法復原。`)) return;
+        if (withPath('', () => M._pocket_save_reset(i)) < 0) { say(lastError(), true); return; }
+        await syncFs(false);
+        say('已清除進度。');
+      }, true),
+      menuItem('刪除遊戲', async () => {
+        if (!confirm(`要從這個瀏覽器刪除「${name}」與它的進度嗎？`)) return;
+        removeTree(`/library/games/${gameId(i)}`);
+        await syncFs(false);
+        location.reload();
+      }, true),
+    );
+    more.append(summary, menu);
+    row.append(play, more);
+    list.append(row);
+  }
+}
+document.addEventListener('click', (event) => {
+  for (const open of document.querySelectorAll('details.more[open]')) {
+    if (!open.contains(event.target)) open.open = false;
+  }
+});
+
+async function importFile(file) {
+  say(`正在匯入 ${file.name}…`);
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  // The library names a game after its file, so the file keeps its own name.
+  try { M.FS.mkdir('/import'); } catch { /* already there */ }
+  const path = `/import/${file.name.replace(/[\\/]/g, '_')}`;
+  M.FS.writeFile(path, new Uint8Array(await file.arrayBuffer()));
+  const result = withPath(path, (p) => M._pocket_import(p));
+  M.FS.unlink(path);
+  if (result !== 0) { say(lastError(), true); return; }
+  await syncFs(false);
+  listGames();
+  const note = M.UTF8ToString(M._pocket_import_note());
+  say(note ? `匯入完成：從下載檔取出遊戲（${note}）。` : '匯入完成。');
+}
+
+function startAudio() {
+  const Context = window.AudioContext || window.webkitAudioContext;
+  if (!Context) return;
+  const audio = new Context();
+  const node = audio.createScriptProcessor(AUDIO_FRAMES, 0, 2);
+  const buffer = M._malloc(AUDIO_FRAMES * 8);
+  node.onaudioprocess = (event) => {
+    M._pocket_audio(buffer, AUDIO_FRAMES, audio.sampleRate);
+    const mix = M.HEAPF32.subarray(buffer >> 2, (buffer >> 2) + AUDIO_FRAMES * 2);
+    const left = event.outputBuffer.getChannelData(0);
+    const right = event.outputBuffer.getChannelData(1);
+    for (let i = 0; i < AUDIO_FRAMES; i++) { left[i] = mix[i * 2]; right[i] = mix[i * 2 + 1]; }
+  };
+  node.connect(audio.destination);
+  audio.resume();
+}
+
+// A press shorter than a frame or two never registers: Pocket Quake samples its
+// keys once per frame, and a quick tap can start and end between samples. Slower
+// machines have longer frames, so the shortest press follows the frame rate.
+const pressedAt = new Map(), pendingUp = new Map();
+function keyUp(vk) {
+  clearTimeout(pendingUp.get(vk));
+  pendingUp.delete(vk);
+  pressedAt.delete(vk);
+  M._pocket_key(0, vk);
+}
+function press(vk) {
+  if (pendingUp.has(vk)) keyUp(vk);
+  pressedAt.set(vk, performance.now());
+  M._pocket_key(1, vk);
+}
+function release(vk) {
+  if (!pressedAt.has(vk)) return;
+  const held = performance.now() - pressedAt.get(vk);
+  const shortest = Math.min(MAX_PRESS_MS, frameMs * FRAMES_PER_PRESS);
+  if (held >= shortest) keyUp(vk);
+  else pendingUp.set(vk, setTimeout(() => keyUp(vk), shortest - held));
+}
+
+function attachInput(canvas, width, height) {
+  const at = (event) => {
+    const box = canvas.getBoundingClientRect();
+    return [
+      Math.floor((event.clientX - box.left) * width / box.width),
+      Math.floor((event.clientY - box.top) * height / box.height),
+    ];
+  };
+  let stylus = false;
+  canvas.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    canvas.focus();
+    canvas.setPointerCapture(event.pointerId);
+    stylus = true;
+    M._pocket_pointer(1, ...at(event));
+  });
+  canvas.addEventListener('pointermove', (event) => { if (stylus) M._pocket_pointer(0, ...at(event)); });
+  const lift = (event) => { if (!stylus) return; stylus = false; M._pocket_pointer(2, ...at(event)); };
+  canvas.addEventListener('pointerup', lift);
+  canvas.addEventListener('pointercancel', lift);
+
+  const ignored = (event) => event.ctrlKey || event.metaKey || event.altKey || event.keyCode >= 112;
+  window.addEventListener('keydown', (event) => {
+    if (ignored(event)) return;
+    event.preventDefault();
+    if (!event.repeat) press(event.keyCode);
+  });
+  window.addEventListener('keyup', (event) => {
+    if (ignored(event)) return;
+    event.preventDefault();
+    release(event.keyCode);
+  });
+
+  for (const key of document.querySelectorAll('.pad .key')) {
+    const vk = Number(key.dataset.vk);
+    key.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      key.setPointerCapture(event.pointerId);
+      key.classList.add('down');
+      navigator.vibrate?.(8);
+      press(vk);
+    });
+    const up = () => { if (!key.classList.contains('down')) return; key.classList.remove('down'); release(vk); };
+    key.addEventListener('pointerup', up);
+    key.addEventListener('pointercancel', up);
+  }
+}
+
+function start(index) {
+  if (running) return;
+  if (M._pocket_boot(index) !== 0) { say(lastError(), true); return; }
+  running = true;
+  const canvas = $('screen');
+  const [width, height] = [M._pocket_width(), M._pocket_height()];
+  canvas.width = width;
+  canvas.height = height;
+  canvas.style.aspectRatio = `${width} / ${height}`;
+  document.body.classList.add('playing');
+  canvas.focus();
+  attachInput(canvas, width, height);
+  startAudio();
+  const warning = M.UTF8ToString(M._pocket_boot_warning());
+  if (warning) toast(warning);
+  $('save-now').onclick = () => { syncFs(false).catch(console.error); exportSave(index); };
+
+  const context = canvas.getContext('2d');
+  const channel = new MessageChannel();
+  let serial = 0, frames = 0, shownAt = performance.now(), lastFrameAt = shownAt;
+  const pump = () => {
+    const delay = M._pocket_tick();
+    const current = M._pocket_frame_serial();
+    if (current !== serial) {
+      serial = current;
+      frames++;
+      const presented = performance.now();
+      frameMs += (Math.min(presented - lastFrameAt, MAX_PRESS_MS) - frameMs) / 8;
+      lastFrameAt = presented;
+      const pixels = new Uint8ClampedArray(M.HEAPU8.buffer, M._pocket_frame_ptr(), width * height * 4);
+      context.putImageData(new ImageData(pixels, width, height), 0, 0);
+    }
+    const now = performance.now();
+    if (now - shownAt >= 1000) {
+      $('hud').textContent = `${(frames * 1000 / (now - shownAt)).toFixed(0)} FPS`;
+      frames = 0;
+      shownAt = now;
+    }
+    if (delay < 0) {
+      running = false;
+      document.body.classList.remove('playing');
+      syncFs(false);
+      say(lastError() || '遊戲已結束。', Boolean(lastError()));
+      return;
+    }
+    // setTimeout(0) is clamped to 4 ms, which would cost a slow machine frames.
+    if (delay > 0) setTimeout(pump, delay); else channel.port2.postMessage(0);
+  };
+  channel.port1.onmessage = pump;
+  pump();
+  setInterval(() => { if (running) syncFs(false).catch(console.error); }, SAVE_EVERY_MS);
+}
+
+$('pick').addEventListener('click', () => $('file').click());
+$('help-open').addEventListener('click', () => $('help').showModal());
+$('help-close').addEventListener('click', () => $('help').close());
+
+function toast(text, ms = 9000) {
+  const box = $('toast');
+  box.textContent = text;
+  box.style.display = 'block';
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { box.style.display = 'none'; }, ms);
+}
+$('file').addEventListener('change', (event) => {
+  const [file] = event.target.files;
+  event.target.value = '';
+  if (file) importFile(file).catch((error) => say(String(error), true));
+});
+$('save-file').addEventListener('change', (event) => {
+  const [file] = event.target.files;
+  event.target.value = '';
+  if (file && saveTarget !== null) importSave(saveTarget, file).catch((error) => say(String(error), true));
+});
+$('leave').addEventListener('click', async () => {
+  await syncFs(false).catch(console.error);
+  location.reload();
+});
+// A closing tab gets no second chance, so save as soon as it is hidden.
+window.addEventListener('pagehide', () => { if (M) syncFs(false).catch(() => {}); });
+document.addEventListener('visibilitychange', () => { if (M && document.hidden) syncFs(false).catch(() => {}); });
+if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
+
+// Two tabs would each restore the same IndexedDB state and overwrite each other's
+// progress, so only one may play. The browser frees the lock when a tab goes away.
+function holdTabLock() {
+  if (!navigator.locks) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    navigator.locks.request('pockethle-library', { ifAvailable: true }, (lock) => {
+      resolve(Boolean(lock));
+      return lock ? new Promise(() => {}) : undefined;
+    }).catch(() => resolve(true));
+  });
+}
+
+(async () => {
+  if (!(await holdTabLock())) {
+    say('PocketHLE 已在另一個分頁開啟。請先關閉那個分頁再重新整理，以免進度互相覆蓋。', true);
+    $('pick').hidden = true;
+    return;
+  }
+  M = await PocketHLE();
+  M.FS.mkdir('/library');
+  let stored = true;
+  try {
+    M.FS.mount(M.FS.filesystems.IDBFS, {}, '/library');
+    await syncFs(true);
+    navigator.storage?.persist?.().catch(() => {});
+  } catch (error) {
+    // Some private-browsing modes have no IndexedDB. The game still plays.
+    console.warn('IndexedDB unavailable', error);
+    stored = false;
+  }
+  listGames();
+  say(stored ? '' : '這個瀏覽器無法保存資料：重新整理後遊戲與進度都會消失，請下載存檔備份。', !stored);
+  window.pocketReady = true;
+})().catch((error) => say(`無法載入模擬器：${error}`, true));
+</script>
+</body>
+</html>

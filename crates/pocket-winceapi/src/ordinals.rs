@@ -68,6 +68,27 @@ pub fn lookup(dll: &str, ordinal: u16) -> Option<String> {
         .and_then(|m| m.get(&ordinal).cloned())
 }
 
+/// SuperH builds of `coredll.dll` put their own compiler helpers on some
+/// of the ordinals the ARM table gives to `__rt_*` routines. Read from the
+/// SH3 FreeCell that ships with Pocket PC 2000: it computes
+/// `Random() % count` through ordinal 2006 and card ranks through 2005
+/// (`x % 13`) and 2001 (`x / 13`), each with the dividend in r4 and the
+/// divisor in r5 — the Hitachi `__divls` / `__modls` / `__modlu` pattern.
+/// Taking them as the ARM helpers divided the wrong way round, so the
+/// shuffle loop never ended.
+const SH_COREDLL: &[(u16, &str)] = &[(2001, "__divls"), (2005, "__modls"), (2006, "__modlu")];
+
+/// Look up `ordinal` for a program built for `machine` (a PE machine
+/// value). Only the SuperH helpers differ from the shared table.
+pub fn lookup_for_machine(machine: u16, dll: &str, ordinal: u16) -> Option<String> {
+    if matches!(machine, 0x01a2 | 0x01a3 | 0x01a6) && dll.eq_ignore_ascii_case("coredll.dll") {
+        if let Some((_, name)) = SH_COREDLL.iter().find(|(ord, _)| *ord == ordinal) {
+            return Some((*name).to_string());
+        }
+    }
+    lookup(dll, ordinal)
+}
+
 /// Number of ordinal entries for `dll` — used by tests.
 pub fn entry_count(dll: &str) -> usize {
     let key = dll.to_ascii_lowercase();
@@ -79,6 +100,13 @@ pub fn entry_count(dll: &str) -> usize {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn superh_division_helpers_have_their_own_ordinals() {
+        assert_eq!(super::lookup_for_machine(0x01a2, "COREDLL.dll", 2006).as_deref(), Some("__modlu"));
+        assert_eq!(super::lookup_for_machine(0x01c0, "COREDLL.dll", 2006).as_deref(), Some("__rt_sdiv10"));
+        assert_eq!(super::lookup_for_machine(0x01a2, "COREDLL.dll", 2008).as_deref(), Some("__rt_udiv"));
+    }
+
     use super::*;
 
     #[test]

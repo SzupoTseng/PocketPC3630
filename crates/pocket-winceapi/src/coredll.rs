@@ -109,6 +109,23 @@ pub fn register(d: &mut WinCeDispatcher) {
     d.register_constant(dll, "DisableThreadLibraryCalls", 1, one_returning);
 
     d.register_handler(dll, "DecompressImageIndirect", decompress_image_indirect);
+    // Reached through the real `mfcce300.dll` that EverQuest loads: CString
+    // parsing and pointer probes it uses during CWinApp start-up.
+    d.register_handler(dll, "wcsspn", wcsspn);
+    d.register_handler(dll, "DefDlgProcW", def_window_proc_w);
+    d.register_constant(dll, "GetTimeZoneInformation", 0, zero_returning);
+    d.register_handler(dll, "FileTimeToLocalFileTime", file_time_to_local_file_time);
+    d.register_handler(dll, "_fileno", crt_fileno);
+    d.register_handler(dll, "GetFileTime", get_file_time);
+    d.register_handler(dll, "iswctype", iswctype);
+    d.register_handler(dll, "wcscspn", wcscspn);
+    d.register_handler(dll, "wcstol", wcstol);
+    d.register_handler(dll, "wcstoul", wcstol);
+    d.register_handler(dll, "_wcsrev", wcsrev);
+    d.register_handler(dll, "EqualRect", equal_rect);
+    d.register_constant(dll, "IsBadReadPtr", 0, zero_returning);
+    d.register_constant(dll, "IsBadWritePtr", 0, zero_returning);
+    d.register_constant(dll, "FormatMessageW", 0, zero_returning);
     d.register_handler(dll, "#1", decompress_image_indirect);
     d.register_handler(dll, "_strupr", strupr);
     d.register_handler(dll, "_strlwr", strlwr);
@@ -375,6 +392,21 @@ pub fn register(d: &mut WinCeDispatcher) {
     d.register_handler(dll, "__rt_srem64", rt_srem64);
     d.register_handler(dll, "__rt_urem", rt_urem);
     d.register_handler(dll, "__rt_srem", rt_srem);
+    // SuperH helpers (see `ordinals::SH_COREDLL`): dividend first.
+    register_image_lists(d, dll);
+    d.register_handler(dll, "GetProcessIndexFromID", get_process_index_from_id);
+    // `wvsprintfW(out, fmt, va_list)` takes the same arguments as `vswprintf`.
+    d.register_handler(dll, "wvsprintfW", vswprintf);
+    d.register_handler(dll, "GetSystemDefaultLCID", en_us_lang_id);
+    d.register_handler(dll, "ExitThread", exit_thread);
+    d.register_handler(dll, "GetTextMetricsW", get_text_metrics_w);
+    d.register_handler(dll, "SendDlgItemMessageW", send_dlg_item_message_w);
+    d.register_handler(dll, "ShellExecuteEx", shell_execute_ex);
+    d.register_handler(dll, "ShellExecuteExW", shell_execute_ex);
+    register_shell_folders(d, dll);
+    d.register_handler(dll, "__divls", sh_divls);
+    d.register_handler(dll, "__modls", sh_modls);
+    d.register_handler(dll, "__modlu", sh_modlu);
 
     // ---- ANSI CRT helpers used by SDL-based ports ----
     d.register_handler(dll, "strtol", strtol_handler);
@@ -1118,7 +1150,7 @@ pub fn register(d: &mut WinCeDispatcher) {
             _ => RegistryValue::Binary(raw),
         };
         log::debug!("RegSetValueExW({path}, {name:?}) <- type={kind}");
-        ctx.kernel.registry.set_value(&path, &name, value);
+        ctx.kernel.registry.set_guest_value(&path, &name, value);
         Ok(DispatchOutcome::ReturnedR0(0))
     }
 
@@ -1135,7 +1167,7 @@ pub fn register(d: &mut WinCeDispatcher) {
         let Some(path) = ctx.kernel.registry.path_for(key) else {
             return Ok(DispatchOutcome::ReturnedR0(ERROR_NOT_FOUND));
         };
-        let removed = ctx.kernel.registry.delete_value(&path, &name);
+        let removed = ctx.kernel.registry.delete_guest_value(&path, &name);
         log::debug!("RegDeleteValueW({path}, {name:?}) -> removed={removed}");
         Ok(DispatchOutcome::ReturnedR0(if removed {
             0
@@ -1181,6 +1213,8 @@ pub fn register(d: &mut WinCeDispatcher) {
     d.register_handler(dll, "floorf", m_floorf);
     d.register_handler(dll, "ceil", m_ceil);
     d.register_handler(dll, "abs", m_abs_i32);
+    // `long` is 32 bits on Windows CE, so `labs` is `abs`.
+    d.register_handler(dll, "labs", m_abs_i32);
     d.register_handler(dll, "fabs", m_fabs);
     d.register_handler(dll, "atan2", m_atan2);
     d.register_handler(dll, "pow", m_pow);
@@ -2229,12 +2263,25 @@ fn sleep(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     if let Some(outcome) = wave_out_enter_callback(ctx, thunk_va)? {
         return Ok(outcome);
     }
-    let _ms = ctx.arg_u32(0)?;
+    let ms = ctx.arg_u32(0)?;
     if let Some(outcome) = park_worker(ctx, 0)? {
         return Ok(outcome);
     }
     if let Some(outcome) = resume_worker(ctx, 0)? {
         return Ok(outcome);
+    }
+    // EverQuest paces itself at 30 fps with GapiDraw's CGapiTimer, which sleeps
+    // until the next frame is due. Treating that as a yield ran the game at
+    // about 1,700 fps. Only titles loading real guest DLLs wait for real, so
+    // others keep their tuned timing. The cap bounds a stale long request.
+    if ms > 0 && !ctx.kernel.static_guest_links.is_empty() {
+        let ms = ms.min(100);
+        if ctx.kernel.cooperative_host {
+            // A browser tab must not block; the page waits and calls back.
+            ctx.kernel.host_yield_ms = Some(ms);
+        } else {
+            std::thread::sleep(std::time::Duration::from_millis(u64::from(ms)));
+        }
     }
     Ok(DispatchOutcome::ReturnedR0(0))
 }
@@ -2682,6 +2729,9 @@ fn complete_pending_module_load(
     ] {
         ctx.cpu.write_reg(reg, value)?;
     }
+    if attached {
+        bind_static_guest_links(ctx, pending.module_handle)?;
+    }
     let result = if attached { pending.module_handle } else { 0 };
     log::debug!(
         "LoadLibraryW DllMain returned {} for module 0x{:08x}",
@@ -2689,6 +2739,181 @@ fn complete_pending_module_load(
         pending.module_handle
     );
     Ok(Some(DispatchOutcome::ReturnedR0(result)))
+}
+
+/// Shared body of `wcsspn` / `wcscspn`: length of the prefix whose characters
+/// are all in (`want_member`) or all outside the set.
+fn wcs_span(ctx: &mut CallCtx<'_>, want_member: bool) -> Result<DispatchOutcome, KernelError> {
+    let text_p = ctx.arg_u32(0)?;
+    let set_p = ctx.arg_u32(1)?;
+    let text = read_wstr(ctx, text_p, 0x1_0000)?;
+    let set = read_wstr(ctx, set_p, 0x1000)?;
+    let span = text
+        .iter()
+        .take_while(|c| set.contains(c) == want_member)
+        .count();
+    Ok(DispatchOutcome::ReturnedR0(span as u32))
+}
+
+/// `int iswctype(wint_t, wctype_t)`, with the CRT's `_UPPER`..`_ALPHA` mask bits.
+/// MFC's `CString::TrimLeft` tests `_SPACE` through this, and a stub answering 0
+/// would make every character look like non-space.
+fn iswctype(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let code = ctx.arg_u32(0)?;
+    let mask = ctx.arg_u32(1)?;
+    let c = char::from_u32(code & 0xffff).unwrap_or('\0');
+    let mut class = 0u32;
+    for (bit, member) in [
+        (0x001, c.is_uppercase()),
+        (0x002, c.is_lowercase()),
+        (0x004, c.is_ascii_digit()),
+        (0x008, c.is_whitespace()),
+        (0x010, c.is_ascii_punctuation()),
+        (0x020, c.is_control()),
+        (0x040, c == ' '),
+        (0x080, c.is_ascii_hexdigit()),
+        (0x100, c.is_alphabetic()),
+    ] {
+        if member {
+            class |= bit;
+        }
+    }
+    Ok(DispatchOutcome::ReturnedR0(class & mask))
+}
+
+/// `FILE*` and `HANDLE` share one number space here. GapiDraw passes
+/// `_fileno(f)` straight to `GetFileSize` when sizing EverQuest's PNG files.
+fn crt_fileno(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(ctx.arg_u32(0)?))
+}
+
+/// MFC's `CFile::GetStatus` asks for timestamps nothing in EverQuest uses, so a
+/// fixed time (2002-11-01) is enough to satisfy it.
+fn get_file_time(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    const STAMP: u64 = 0x01C2_8133_0000_0000;
+    for index in 1..=3 {
+        let out = ctx.arg_u32(index)?;
+        if out != 0 {
+            ctx.cpu.write_mem(out, &STAMP.to_le_bytes())?;
+        }
+    }
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+/// The emulated device runs in UTC, so MFC's `CTime` conversion is a plain copy.
+fn file_time_to_local_file_time(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let from = ctx.arg_u32(0)?;
+    let to = ctx.arg_u32(1)?;
+    let time = ctx.cpu.read_mem(from, 8)?;
+    ctx.cpu.write_mem(to, &time)?;
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+fn wcsspn(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    wcs_span(ctx, true)
+}
+
+fn wcscspn(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    wcs_span(ctx, false)
+}
+
+fn wcstol(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let text_p = ctx.arg_u32(0)?;
+    let end_p = ctx.arg_u32(1)?;
+    let base = ctx.arg_u32(2)?;
+    let text = read_wstr(ctx, text_p, 256)?;
+    let digit = |c: u16| char::from_u32(u32::from(c)).and_then(|c| c.to_digit(36));
+    let mut i = text
+        .iter()
+        .take_while(|c| char::from_u32(u32::from(**c)).is_some_and(char::is_whitespace))
+        .count();
+    let negative = text.get(i) == Some(&u16::from(b'-'));
+    if negative || text.get(i) == Some(&u16::from(b'+')) {
+        i += 1;
+    }
+    let hex_prefix = text.get(i) == Some(&u16::from(b'0'))
+        && matches!(text.get(i + 1), Some(&c) if c == u16::from(b'x') || c == u16::from(b'X'));
+    let radix = match base {
+        0 if hex_prefix => 16,
+        0 if text.get(i) == Some(&u16::from(b'0')) => 8,
+        0 => 10,
+        other => other,
+    };
+    if radix == 16 && hex_prefix {
+        i += 2;
+    }
+    let mut value = 0u32;
+    while let Some(d) = text.get(i).copied().and_then(digit).filter(|d| *d < radix) {
+        value = value.wrapping_mul(radix).wrapping_add(d);
+        i += 1;
+    }
+    if end_p != 0 {
+        let end = text_p.wrapping_add(i as u32 * 2);
+        ctx.cpu.write_mem(end_p, &end.to_le_bytes())?;
+    }
+    let value = if negative { value.wrapping_neg() } else { value };
+    Ok(DispatchOutcome::ReturnedR0(value))
+}
+
+fn wcsrev(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let text_p = ctx.arg_u32(0)?;
+    let mut text = read_wstr(ctx, text_p, 0x1_0000)?;
+    text.reverse();
+    let bytes: Vec<u8> = text.iter().flat_map(|c| c.to_le_bytes()).collect();
+    ctx.cpu.write_mem(text_p, &bytes)?;
+    Ok(DispatchOutcome::ReturnedR0(text_p))
+}
+
+fn equal_rect(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let a = ctx.arg_u32(0)?;
+    let b = ctx.arg_u32(1)?;
+    let same = ctx.cpu.read_mem(a, 16)? == ctx.cpu.read_mem(b, 16)?;
+    Ok(DispatchOutcome::ReturnedR0(u32::from(same)))
+}
+
+/// Offer GapiDraw's hottest loops to a backend that can run it natively, but only
+/// if the bytes are exactly the ones they were written against.
+fn install_gapidraw_intrinsics(ctx: &mut CallCtx<'_>, module_handle: u32) {
+    let is_gapidraw = ctx
+        .kernel
+        .module_by_handle(module_handle)
+        .is_some_and(|module| module.name == "gd104.dll");
+    if !is_gapidraw {
+        return;
+    }
+    for routine in pocket_cpu::GD104_ROUTINES {
+        let expected: Vec<u8> = routine.code.iter().flat_map(|word| word.to_le_bytes()).collect();
+        let code = module_handle.wrapping_add(routine.code_rva);
+        if ctx.cpu.read_mem(code, expected.len() as u32).ok().as_deref() == Some(expected.as_slice()) {
+            ctx.cpu
+                .install_intrinsic(module_handle.wrapping_add(routine.entry_rva), routine.intrinsic);
+        }
+    }
+}
+
+/// Point the main image's IAT at a guest DLL that has just initialized.
+///
+/// EverQuest's MFC and GapiDraw imports only become callable here; a slot left
+/// on its thunk would be reported as an unimplemented call.
+fn bind_static_guest_links(ctx: &mut CallCtx<'_>, module_handle: u32) -> Result<(), KernelError> {
+    install_gapidraw_intrinsics(ctx, module_handle);
+    let Some(module) = ctx.kernel.module_by_handle(module_handle) else {
+        return Ok(());
+    };
+    let mut writes = Vec::new();
+    for link in &ctx.kernel.static_guest_links {
+        if link.module != module.name {
+            continue;
+        }
+        match module.exports.get(&link.export) {
+            Some(address) => writes.push((link.iat_va, *address)),
+            None => log::warn!("{} has no export {}", link.module, link.export),
+        }
+    }
+    for (iat_va, address) in writes {
+        ctx.cpu.write_mem(iat_va, &address.to_le_bytes())?;
+    }
+    Ok(())
 }
 
 fn begin_module_initialization(
@@ -3001,11 +3226,25 @@ fn map_loaded_module(
     request: &str,
     executable: bool,
 ) -> Result<Option<u32>, KernelError> {
-    let base = ctx.kernel.next_module_base;
-    if image.size_of_image > MODULE_REGION_STRIDE
-        || base
-            .checked_add(MODULE_REGION_STRIDE)
-            .is_none_or(|end| end > MODULE_REGION_END)
+    // A DLL recovered from a device ROM is linked for one fixed address and has
+    // no relocations. EverQuest's `mfcce300.dll` must come from the Pocket PC
+    // 2002+ ROM: the older redistributable numbers its ordinals differently.
+    let fixed_rom_module = executable
+        && image.reloc_directory.is_none()
+        && !image
+            .sections
+            .iter()
+            .any(|section| section.name.eq_ignore_ascii_case(".reloc"));
+    let base = if fixed_rom_module {
+        image.image_base
+    } else {
+        ctx.kernel.next_module_base
+    };
+    if !fixed_rom_module
+        && (image.size_of_image > MODULE_REGION_STRIDE
+            || base
+                .checked_add(MODULE_REGION_STRIDE)
+                .is_none_or(|end| end > MODULE_REGION_END))
     {
         log::warn!("LoadLibraryW({request:?}): module region exhausted");
         return Ok(None);
@@ -3019,6 +3258,26 @@ fn map_loaded_module(
         for import in &imports {
             let Some(address) = resolve_module_import(ctx.kernel, &import.dll, &import.binding)
             else {
+                // MFC imports 327 system functions but EverQuest calls few of
+                // them. An import we cannot answer gets a stub returning 0: a
+                // ROM IAT slot holds a stale value, so leaving it alone would
+                // jump to a low address. The name is logged for diagnosis.
+                if module_file_name(request) == "mfcce300.dll" {
+                    let stub = system_module_handle("coredll.dll")
+                        .and_then(|handle| ctx.kernel.dynamic_exports.get(&handle))
+                        .and_then(|exports| exports.get("IsBadReadPtr"))
+                        .copied()
+                        .unwrap_or(0);
+                    log::warn!(
+                        "{request}: import {}!{} answered by a zero stub",
+                        import.dll,
+                        import.binding.to_string_short()
+                    );
+                    if !patch_module_word(&mut image, import.iat_va, stub) {
+                        return Ok(None);
+                    }
+                    continue;
+                }
                 log::warn!(
                     "LoadLibraryW({request:?}): unresolved import {}!{}",
                     import.dll,
@@ -3053,7 +3312,9 @@ fn map_loaded_module(
         ctx.cpu
             .write_mem(base + section.virtual_address, &section.data)?;
     }
-    ctx.kernel.next_module_base = base + MODULE_REGION_STRIDE;
+    if !fixed_rom_module {
+        ctx.kernel.next_module_base = base + MODULE_REGION_STRIDE;
+    }
     let name = module_file_name(request);
     let exports = if executable {
         image
@@ -3120,15 +3381,24 @@ fn resolve_module_import(
     binding: &pocket_pe::ImportBinding,
 ) -> Option<u32> {
     let name = match binding {
+        // GapiDraw decodes every EverQuest PNG through `imgdecmp.dll!#1`. By
+        // ordinal alone this resolves to coredll's unrelated #1, so bind the
+        // function it actually is.
+        pocket_pe::ImportBinding::Ordinal(1) if module_file_name(dll) == "imgdecmp.dll" => {
+            "DecompressImageIndirect".to_string()
+        }
         pocket_pe::ImportBinding::Name(name) => name.clone(),
         pocket_pe::ImportBinding::Ordinal(ordinal) => format!("#{ordinal}"),
     };
     if let Some(handle) = system_module_handle(dll) {
         let exports = kernel.dynamic_exports.get(&handle)?;
+        // commctrl's table keys its ordinal handlers as `ord:N`.
+        let ord_key = name.strip_prefix('#').map(|n| format!("ord:{n}"));
         return exports
             .get(&name)
             .copied()
-            .or_else(|| exports.get(&name.to_ascii_lowercase()).copied());
+            .or_else(|| exports.get(&name.to_ascii_lowercase()).copied())
+            .or_else(|| ord_key.and_then(|key| exports.get(&key).copied()));
     }
     kernel
         .module_by_name(dll)
@@ -3137,7 +3407,9 @@ fn resolve_module_import(
 
 fn system_module_handle(dll: &str) -> Option<u32> {
     Some(match module_file_name(dll).as_str() {
-        "coredll.dll" => FAKE_MODULE_HANDLE,
+        // GapiDraw's `GD104.dll` imports `imgdecmp.dll!#1`, which coredll's
+        // table already answers with `DecompressImageIndirect`.
+        "coredll.dll" | "imgdecmp.dll" => FAKE_MODULE_HANDLE,
         "gx.dll" => 0x1000_0001,
         "commctrl.dll" => 0x1000_0002,
         "ddraw.dll" => 0x1000_0003,
@@ -6212,7 +6484,7 @@ fn set_file_pointer(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelErro
 
 // ---------- C-runtime file I/O ----------
 
-fn read_cstr_string(ctx: &mut CallCtx<'_>, p: u32, max: u32) -> Result<String, KernelError> {
+pub(crate) fn read_cstr_string(ctx: &mut CallCtx<'_>, p: u32, max: u32) -> Result<String, KernelError> {
     if p == 0 {
         return Ok(String::new());
     }
@@ -6656,6 +6928,28 @@ fn crt_fputws(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 // ---------- ARM compiler integer division helpers ----------
 
 /// `__rt_sdiv(int divisor in r0, int dividend in r1) -> {r0=quot, r1=rem}`
+/// SuperH `__divls(int dividend, int divisor)`. Division by zero gives 0,
+/// as the ARM helpers here do, rather than stopping the game.
+fn sh_divls(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let n = ctx.arg_u32(0)? as i32;
+    let d = ctx.arg_u32(1)? as i32;
+    Ok(DispatchOutcome::ReturnedR0(if d == 0 { 0 } else { n.wrapping_div(d) as u32 }))
+}
+
+/// SuperH `__modls(int dividend, int divisor)`.
+fn sh_modls(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let n = ctx.arg_u32(0)? as i32;
+    let d = ctx.arg_u32(1)? as i32;
+    Ok(DispatchOutcome::ReturnedR0(if d == 0 { 0 } else { n.wrapping_rem(d) as u32 }))
+}
+
+/// SuperH `__modlu(unsigned dividend, unsigned divisor)`.
+fn sh_modlu(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let n = ctx.arg_u32(0)?;
+    let d = ctx.arg_u32(1)?;
+    Ok(DispatchOutcome::ReturnedR0(if d == 0 { 0 } else { n % d }))
+}
+
 fn rt_sdiv(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let d = ctx.arg_u32(0)? as i32;
     let n = ctx.arg_u32(1)? as i32;
@@ -7947,6 +8241,17 @@ fn dispatch_message_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelEr
     if message == WM_QUIT {
         return Ok(DispatchOutcome::ReturnedR0(0));
     }
+    // EverQuest shows its MFC registration dialog before any main window
+    // exists. The synthetic pump still addresses the frame handle, which has
+    // no CWnd, and AfxCallWndProc faults on it. Send that traffic to the dialog.
+    let hwnd = if hwnd == FAKE_HWND
+        && !ctx.kernel.window_procs.contains_key(&FAKE_HWND)
+        && ctx.kernel.window_procs.contains_key(&FAKE_DIALOG_HWND)
+    {
+        FAKE_DIALOG_HWND
+    } else {
+        hwnd
+    };
     let timer_proc = message == WM_TIMER && lparam != 0;
     let (proc, callback_args) = if timer_proc {
         // Bubble Breaker (VGA/WVGA) registers a TIMERPROC; Windows CE's
@@ -8836,16 +9141,25 @@ fn advance_deadline(previous: u64, interval: u64, now: u64) -> u64 {
 /// this way — 240 dispatched messages, `frame_counter=0`).
 fn synthetic_message_if_due(ctx: &mut CallCtx<'_>) -> Option<(u32, u32, u32, u32)> {
     let now = monotonic_ms();
-    if synthetic_timer_is_deliverable(ctx) && now >= ctx.kernel.synthetic_timer_next_ms {
+    let timer_due =
+        synthetic_timer_is_deliverable(ctx) && now >= ctx.kernel.synthetic_timer_next_ms;
+    let paint_due = now >= ctx.kernel.synthetic_paint_next_ms;
+    if timer_goes_first(timer_due, paint_due, ctx.kernel.synthetic_timer_went_last) {
+        ctx.kernel.synthetic_timer_went_last = true;
         let hwnd = ctx.kernel.synthetic_timer_hwnd;
         let id = ctx.kernel.synthetic_timer_id;
         let timer_proc = ctx.kernel.synthetic_timer_proc;
         let interval = ctx.kernel.synthetic_timer_interval_ms.max(1) as u64;
         ctx.kernel.synthetic_timer_next_ms =
             advance_deadline(ctx.kernel.synthetic_timer_next_ms, interval, now);
+        bring_due_timer_forward(ctx.kernel);
         return Some((hwnd, WM_TIMER, id, timer_proc));
     }
-    if now >= ctx.kernel.synthetic_paint_next_ms {
+    if peek_paint_is_due(
+        now >= ctx.kernel.synthetic_paint_next_ms,
+        &mut ctx.kernel.synthetic_paint_peeked,
+    ) {
+        ctx.kernel.synthetic_timer_went_last = false;
         ctx.kernel.synthetic_paint_next_ms = advance_deadline(
             ctx.kernel.synthetic_paint_next_ms,
             SYNTHETIC_PAINT_INTERVAL_MS,
@@ -8854,6 +9168,55 @@ fn synthetic_message_if_due(ctx: &mut CallCtx<'_>) -> Option<(u32, u32, u32, u32
         return Some((FAKE_HWND, WM_PAINT, 0, 0));
     }
     None
+}
+
+/// Whether a due `WM_TIMER` goes before the paint pump.
+///
+/// Windows hands out a timer only when nothing else, painting included, is
+/// waiting. Pocket Slay's timer handler outlasts its 16 ms interval, so a timer
+/// was always due, it always went first, and the game never painted at all.
+/// When both are due they now take turns.
+fn timer_goes_first(timer_due: bool, paint_due: bool, timer_went_last: bool) -> bool {
+    timer_due && !(paint_due && timer_went_last)
+}
+
+/// Whether `PeekMessage` may answer with a synthetic paint.
+///
+/// A device only paints an invalid window, so a queue always drains. Pocket
+/// Quake's frame starts with `while (PeekMessage) { GetMessage; DispatchMessage; }`,
+/// and on a slow host its paint handler outlasts the paint interval: a paint was
+/// due again by the next peek, the loop never ended and the game froze on its
+/// first demo frame. So a paint is always followed by one empty answer.
+fn peek_paint_is_due(deadline_passed: bool, just_peeked: &mut bool) -> bool {
+    if *just_peeked || !deadline_passed {
+        *just_peeked = false;
+        return false;
+    }
+    *just_peeked = true;
+    true
+}
+
+#[cfg(test)]
+mod peek_paint_tests {
+    use super::{peek_paint_is_due, timer_goes_first};
+
+    #[test]
+    fn an_always_due_timer_does_not_starve_painting() {
+        assert!(timer_goes_first(true, true, false));
+        assert!(!timer_goes_first(true, true, true));
+        assert!(timer_goes_first(true, false, true));
+        assert!(!timer_goes_first(false, true, false));
+    }
+
+    #[test]
+    fn a_message_drain_loop_ends_even_when_paints_are_always_due() {
+        let mut peeked = false;
+        assert!(peek_paint_is_due(true, &mut peeked));
+        assert!(!peek_paint_is_due(true, &mut peeked));
+        assert!(peek_paint_is_due(true, &mut peeked));
+        assert!(!peek_paint_is_due(false, &mut peeked));
+        assert!(peek_paint_is_due(true, &mut peeked));
+    }
 }
 
 /// Pop the next message to deliver. Real user input from the host
@@ -8905,13 +9268,20 @@ fn next_message(ctx: &mut CallCtx<'_>) -> (u32, u32, u32, u32) {
 fn take_pending_input(ctx: &mut CallCtx<'_>) -> Option<InputEvent> {
     let ev = ctx.kernel.pending_input.pop_front()?;
     let queried = ctx.kernel.gapi_keys_queried;
+    let confirms_with_action = ctx
+        .kernel
+        .exe_file_name
+        .eq_ignore_ascii_case("PocketQuake.exe");
+    let remap = |vk: u16| {
+        if confirms_with_action && vk == pocket_kernel::gapi::VK_RETURN {
+            pocket_kernel::gapi::VK_ACTION
+        } else {
+            pocket_kernel::gapi::remap_host_key(vk, queried)
+        }
+    };
     let remapped = match ev {
-        InputEvent::KeyDown { vk } => InputEvent::KeyDown {
-            vk: pocket_kernel::gapi::remap_host_key(vk, queried),
-        },
-        InputEvent::KeyUp { vk } => InputEvent::KeyUp {
-            vk: pocket_kernel::gapi::remap_host_key(vk, queried),
-        },
+        InputEvent::KeyDown { vk } => InputEvent::KeyDown { vk: remap(vk) },
+        InputEvent::KeyUp { vk } => InputEvent::KeyUp { vk: remap(vk) },
         other => other,
     };
     if remapped != ev {
@@ -9888,6 +10258,22 @@ fn bit_blt_inner(
     // sprite case (a small rect out of a large bitmap) it reads just
     // the bytes that can reach the destination.
     let (full_w, full_h) = blit_source_dims(ctx, hdc_src);
+    // A source rectangle wholly outside a bitmap of known size copies
+    // nothing, as on a device. Pocket-G FreeCell's SH3 build draws its
+    // empty cells from row 164 of a card sheet only 164 rows tall (the
+    // ARM build's sheet has the extra row); falling through to the
+    // whole-surface path below drew the sheet's top-left card, an ace of
+    // hearts, in every empty cell.
+    if full_w != 0
+        && full_h != 0
+        && cx > 0
+        && cy > 0
+        && clamp_source_window(x1, y1, cx, cy, full_w, full_h).is_none()
+    {
+        ctx.kernel.bit_blt_src_scratch = scratch;
+        ctx.kernel.dib_decode_scratch = decode_scratch;
+        return Ok(());
+    }
     let (src_w, src_h, ok) = match clamp_source_window(x1, y1, cx, cy, full_w, full_h) {
         Some((sx0, sy0, cw, ch)) if cw < full_w as i32 || ch < full_h as i32 => (
             cw as u32,
@@ -9908,6 +10294,31 @@ fn bit_blt_inner(
 
     if hdc_dst == GDI_SCREEN_DC {
         adapt_panel_to_presentation(ctx, x, y, cx, cy);
+    }
+
+    // A monochrome source is coloured on the way: its black pixels take
+    // the destination's text colour and its white ones the background
+    // colour. Pocket Slay paints every territory this way, a 1-bit hexagon
+    // blitted after SetTextColor(black) / SetBkColor(player colour); copied
+    // as it was, the whole map came out white.
+    let mono_source = ctx
+        .kernel
+        .gdi
+        .dc(hdc_src)
+        .and_then(|d| d.selected_bitmap)
+        .and_then(|b| ctx.kernel.gdi.bitmap(b))
+        .is_some_and(|b| b.bpp == 1);
+    if ok && mono_source {
+        if let Some(dst) = ctx.kernel.gdi.dc(hdc_dst) {
+            let fg = colorref_to_rgb565(dst.text_color).to_le_bytes();
+            let bg = colorref_to_rgb565(dst.bk_color).to_le_bytes();
+            for px in scratch.chunks_exact_mut(2) {
+                let v = u16::from_le_bytes([px[0], px[1]]);
+                // Light pixels are the 1 bits.
+                let light = ((v >> 11) & 0x1f) + ((v >> 5) & 0x3f) / 2 + (v & 0x1f) >= 48;
+                px.copy_from_slice(if light { &bg } else { &fg });
+            }
+        }
     }
 
     if ok && src_w != 0 && src_h != 0 {
@@ -10793,6 +11204,11 @@ fn load_bitmap_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> 
         // already-RGB565-converted image on top.
         debug_assert_eq!(b.pixels.len(), pixels_565.bytes.len());
         b.pixels.copy_from_slice(&pixels_565.bytes);
+        // A 1-bit resource loads as a monochrome bitmap, which BitBlt
+        // colours with the destination's text and background colours.
+        if raw.len() >= 16 && u16::from_le_bytes([raw[14], raw[15]]) == 1 {
+            b.bpp = 1;
+        }
     }
     log::trace!(
         "LoadBitmapW(name={want_name:?}) -> handle 0x{handle:08x} ({}x{} from {} bytes)",
@@ -11794,6 +12210,7 @@ fn dialog_box_indirect_param_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome,
             log::debug!("DialogBoxIndirectParamW: no panel materialised, reporting cancelled");
             return Ok(DispatchOutcome::ReturnedR0(1));
         }
+        let opened_frame = monotonic_ms();
         ctx.kernel.modal_dialog = Some(ModalDialog {
             hwnd: FAKE_MODAL_HWND,
             owner_thread: ctx.kernel.current_thread,
@@ -11805,6 +12222,8 @@ fn dialog_box_indirect_param_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome,
             initialised: false,
             dispatched: None,
             spins: 0,
+            opened_frame,
+            redraw: false,
         });
         // Route `SendMessageW` / `DispatchMessageW` for this handle at
         // the DialogProc rather than the frame window's WndProc.
@@ -11834,6 +12253,35 @@ fn dialog_box_indirect_param_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome,
         ctx.cpu.write_reg(ArmReg::Lr, thunk_va)?;
         log::debug!("DialogBoxIndirectParamW -> WM_INITDIALOG at 0x{proc:08x}");
         return Ok(DispatchOutcome::JumpTo(proc));
+    }
+
+    // The modal loop still paints the window underneath, as Windows' own
+    // does. Pocket Slay moves its new-game dialog from the centre to the
+    // top-left in WM_INITDIALOG; the repaint this queues used to wait for
+    // the dialog to close, leaving a second copy of it on screen.
+    if ctx.kernel.current_thread == 0 && ctx.kernel.wnd_proc != 0 {
+        if let Some((hwnd, WM_PAINT, wparam, lparam)) = ctx.kernel.pending_message {
+            ctx.kernel.pending_message = None;
+            if let Some(d) = ctx.kernel.modal_dialog.as_mut() {
+                d.redraw = true;
+            }
+            let wnd_proc = ctx.kernel.wnd_proc;
+            let thunk_va = ctx.thunk.thunk_va;
+            ctx.cpu.write_reg(ArmReg::R0, hwnd)?;
+            ctx.cpu.write_reg(ArmReg::R1, WM_PAINT)?;
+            ctx.cpu.write_reg(ArmReg::R2, wparam)?;
+            ctx.cpu.write_reg(ArmReg::R3, lparam)?;
+            ctx.cpu.write_reg(ArmReg::Lr, thunk_va)?;
+            log::debug!("modal dialog: frame window WM_PAINT at 0x{wnd_proc:08x}");
+            return Ok(DispatchOutcome::JumpTo(wnd_proc));
+        }
+    }
+    if ctx.kernel.modal_dialog.as_ref().is_some_and(|d| d.redraw) {
+        if let Some(d) = ctx.kernel.modal_dialog.as_mut() {
+            d.redraw = false;
+        }
+        repaint_controls(ctx);
+        ctx.kernel.framebuffer.mark_dirty();
     }
 
     // Feed the dialog's controls every queued input event. It is modal,
@@ -11916,12 +12364,18 @@ fn dialog_box_indirect_param_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome,
     }
 
     // Still up. Bound the wait so a headless run cannot spin forever.
-    let spins = {
+    let (spins, opened_frame) = {
         let d = ctx.kernel.modal_dialog.as_mut().expect("still present");
         d.spins = d.spins.saturating_add(1);
-        d.spins
+        (d.spins, d.opened_frame)
     };
-    if spins >= MESSAGE_BOX_MAX_SPINS {
+    // Spins alone pass in a fraction of a second when nothing else runs
+    // between them, so a dialog also stays up for a while: Pocket Slay's
+    // new-game dialog was cancelled before a scripted tap on OK reached it.
+    let up_ms = monotonic_ms().saturating_sub(opened_frame);
+    if (spins >= MESSAGE_BOX_MAX_SPINS && up_ms >= MODAL_DIALOG_MIN_MS)
+        || spins >= MESSAGE_BOX_MAX_SPINS * 20
+    {
         log::debug!("DialogBoxIndirectParamW unanswered after {spins} spins, reporting cancelled");
         // IDCANCEL, the same answer dismissing the dialog would give.
         return finish_modal_dialog(ctx, 2);
@@ -11999,6 +12453,9 @@ fn end_dialog(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 /// frontends' frame rate it is several seconds of real waiting, far
 /// longer than a person needs to see the box and answer it.
 const MESSAGE_BOX_MAX_SPINS: u32 = 100_000;
+
+/// How long a modal dialog stays up at least before it answers itself.
+const MODAL_DIALOG_MIN_MS: u64 = 10_000;
 
 /// `MessageBoxW` — a real, modal message box.
 ///
@@ -12111,11 +12568,27 @@ fn set_timer(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let interval = ctx.arg_u32(2)?.max(1);
     let timer_proc = ctx.arg_u32(3)?;
     let final_id = if id == 0 { FAKE_TIMER_BASE } else { id };
+    // Keep the timer that was running. Pocket Slay runs two: #1 every
+    // 400 ms starts and plays the game, #2 every 100 ms animates. With one
+    // slot the second replaced the first, the game never started, and the
+    // board stayed black.
+    let k = &mut *ctx.kernel;
+    k.other_timers.retain(|t| !(t.0 == final_id && t.1 == hwnd));
+    if k.synthetic_timer_id != 0 && !(k.synthetic_timer_id == final_id && k.synthetic_timer_hwnd == hwnd) {
+        k.other_timers.push((
+            k.synthetic_timer_id,
+            k.synthetic_timer_hwnd,
+            k.synthetic_timer_proc,
+            k.synthetic_timer_interval_ms,
+            k.synthetic_timer_next_ms,
+        ));
+    }
     ctx.kernel.synthetic_timer_id = final_id;
     ctx.kernel.synthetic_timer_hwnd = hwnd;
     ctx.kernel.synthetic_timer_proc = timer_proc;
     ctx.kernel.synthetic_timer_interval_ms = interval;
     ctx.kernel.synthetic_timer_next_ms = monotonic_ms().saturating_add(interval as u64);
+    bring_due_timer_forward(ctx.kernel);
     log::debug!(
         "SetTimer(hwnd=0x{hwnd:08x}, id={id}, interval={interval}ms, proc=0x{timer_proc:08x}) -> {final_id}"
     );
@@ -12125,11 +12598,21 @@ fn set_timer(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 fn kill_timer(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let hwnd = ctx.arg_u32(0)?;
     let id = ctx.arg_u32(1)?;
+    ctx.kernel.other_timers.retain(|t| !(t.0 == id && t.1 == hwnd));
     if id == ctx.kernel.synthetic_timer_id && hwnd == ctx.kernel.synthetic_timer_hwnd {
         ctx.kernel.synthetic_timer_id = 0;
         ctx.kernel.synthetic_timer_hwnd = 0;
         ctx.kernel.synthetic_timer_proc = 0;
         ctx.kernel.synthetic_timer_next_ms = 0;
+        if !ctx.kernel.other_timers.is_empty() {
+            let (id, hwnd, proc_, interval, next) = ctx.kernel.other_timers.remove(0);
+            ctx.kernel.synthetic_timer_id = id;
+            ctx.kernel.synthetic_timer_hwnd = hwnd;
+            ctx.kernel.synthetic_timer_proc = proc_;
+            ctx.kernel.synthetic_timer_interval_ms = interval;
+            ctx.kernel.synthetic_timer_next_ms = next;
+            bring_due_timer_forward(ctx.kernel);
+        }
     }
     log::debug!("KillTimer(hwnd=0x{hwnd:08x}, id={id})");
     Ok(DispatchOutcome::ReturnedR0(1))
@@ -12347,7 +12830,10 @@ fn create_thread(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> 
     }
 
     let thread_index = ctx.kernel.threads.len();
-    let stack_top = 0x6200_0000u32.saturating_sub(thread_index as u32 * 0x0010_0000);
+    // Each stack maps 1 MiB plus 12 KiB of guard pages, so a 1 MiB stride made
+    // the second worker overlap the first. EverQuest's game thread plus FMOD's
+    // mixer are the first pair to hit it, and FSOUND_Init then fails.
+    let stack_top = 0x6200_0000u32.saturating_sub(thread_index as u32 * 0x0010_4000);
     let exit_va = THREAD_EXIT_TRAMPOLINE_BASE.saturating_sub(thread_index as u32 * 0x100);
     let resume_pc = ctx.cpu.read_reg(ArmReg::Lr)?;
     let mut saved_regs = [0u32; 17];
@@ -12501,14 +12987,24 @@ fn create_dib_section(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelEr
     let width = bi_width as u32;
     let bottom_up = bi_height > 0;
     let height = bi_height.unsigned_abs();
+    if !matches!(bi_bpp, 1 | 4 | 8 | 16 | 24 | 32) {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    // PocketSol's cards reach here with a nonsense size. A device fails the
+    // call; allocating it aborts the browser build, where 4 GiB cannot be asked for.
+    const LARGEST_DIB: u64 = 256 * 1024 * 1024;
+    let wide_stride = (u64::from(width) * u64::from(bi_bpp)).div_ceil(32) * 4;
+    if wide_stride * u64::from(height) > LARGEST_DIB {
+        log::warn!("CreateDIBSection refused {width}x{height} at {bi_bpp} bpp");
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
     let row_bytes = match bi_bpp {
         1 => width.div_ceil(8),
         4 => width.div_ceil(2),
         8 => width,
         16 => width * 2,
         24 => width * 3,
-        32 => width * 4,
-        _ => return Ok(DispatchOutcome::ReturnedR0(0)),
+        _ => width * 4,
     };
     let row_stride = (row_bytes + 3) & !3;
     let pixel_size = row_stride.saturating_mul(height);
@@ -12788,28 +13284,139 @@ fn draw_text_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let bk_color = colorref_to_rgb565(dc_meta.bk_color);
     let glyph_w = pocket_kernel::font::GLYPH_W;
     let glyph_h = pocket_kernel::font::GLYPH_H;
-    // DT_CENTER = 1, DT_VCENTER = 4, DT_SINGLELINE = 0x20.
+    // EverQuest's text boxes depend on all of these: it measures with
+    // DT_CALCRECT (which must not paint), then draws with DT_WORDBREAK, and its
+    // data files embed CR/LF line breaks.
+    const DT_CENTER: u32 = 0x1;
+    const DT_RIGHT: u32 = 0x2;
+    const DT_VCENTER: u32 = 0x4;
+    const DT_BOTTOM: u32 = 0x8;
+    const DT_WORDBREAK: u32 = 0x10;
+    const DT_SINGLELINE: u32 = 0x20;
+    const DT_CALCRECT: u32 = 0x400;
     let fmt = ctx.arg_u32(4).unwrap_or(0);
-    let pixel_w = chars.len() as i32 * glyph_w;
-    let x = if fmt & 0x1 != 0 {
-        rl + ((rr - rl) - pixel_w).max(0) / 2
+    let wrap_columns = if fmt & DT_WORDBREAK != 0 {
+        Some(((rr - rl) / glyph_w).max(1) as usize)
     } else {
-        rl
+        None
     };
-    let y = if fmt & 0x4 != 0 {
-        rt + ((rb - rt) - glyph_h).max(0) / 2
+    let lines = draw_text_lines(&chars, fmt & DT_SINGLELINE != 0, wrap_columns);
+    let text_h = lines.len() as i32 * glyph_h;
+    if fmt & DT_CALCRECT != 0 {
+        let widest = lines.iter().map(|line| line.len() as i32).max().unwrap_or(0) * glyph_w;
+        if rc_p != 0 {
+            ctx.cpu.write_mem(rc_p + 8, &(rl + widest).to_le_bytes())?;
+            ctx.cpu.write_mem(rc_p + 12, &(rt + text_h).to_le_bytes())?;
+        }
+        return Ok(DispatchOutcome::ReturnedR0(text_h as u32));
+    }
+    let top = if fmt & DT_BOTTOM != 0 {
+        rb - text_h
+    } else if fmt & DT_VCENTER != 0 {
+        rt + ((rb - rt) - text_h).max(0) / 2
     } else {
         rt
     };
     if let Some(mut surf) = surface_for_dc(ctx.kernel, hdc) {
-        if !dc_meta.bk_transparent {
-            surf.fill_rect(x, y, pixel_w, glyph_h, bk_color);
+        for (index, line) in lines.iter().enumerate() {
+            let pixel_w = line.len() as i32 * glyph_w;
+            let x = if fmt & DT_CENTER != 0 {
+                rl + ((rr - rl) - pixel_w).max(0) / 2
+            } else if fmt & DT_RIGHT != 0 {
+                rr - pixel_w
+            } else {
+                rl
+            };
+            let y = top + index as i32 * glyph_h;
+            if !dc_meta.bk_transparent {
+                surf.fill_rect(x, y, pixel_w, glyph_h, bk_color);
+            }
+            pocket_kernel::font::draw_str_u16(&mut surf, x, y, line, color);
         }
-        pocket_kernel::font::draw_str_u16(&mut surf, x, y, &chars, color);
         surf.mark_dirty();
     }
     sync_dst_dib_to_guest(ctx, hdc)?;
-    Ok(DispatchOutcome::ReturnedR0(glyph_h as u32))
+    Ok(DispatchOutcome::ReturnedR0(text_h as u32))
+}
+
+/// Split `DrawTextW` text into display lines: CR, LF and CRLF always break
+/// unless `single_line`, and `wrap_columns` breaks at the last space that fits.
+fn draw_text_lines(chars: &[u16], single_line: bool, wrap_columns: Option<usize>) -> Vec<Vec<u16>> {
+    const CR: u16 = 0x0D;
+    const LF: u16 = 0x0A;
+    const SPACE: u16 = 0x20;
+    let mut paragraphs: Vec<Vec<u16>> = vec![Vec::new()];
+    let mut previous = 0u16;
+    for &c in chars {
+        if c == CR || c == LF {
+            if !single_line && !(c == LF && previous == CR) {
+                paragraphs.push(Vec::new());
+            }
+        } else if let Some(last) = paragraphs.last_mut() {
+            last.push(c);
+        }
+        previous = c;
+    }
+    let Some(columns) = wrap_columns.filter(|_| !single_line) else {
+        return paragraphs;
+    };
+    let mut lines = Vec::new();
+    for paragraph in paragraphs {
+        let mut rest = paragraph.as_slice();
+        while rest.len() > columns {
+            let cut = rest[..=columns]
+                .iter()
+                .rposition(|c| *c == SPACE)
+                .filter(|at| *at > 0)
+                .unwrap_or(columns);
+            lines.push(rest[..cut].to_vec());
+            rest = &rest[cut..];
+            while rest.first() == Some(&SPACE) {
+                rest = &rest[1..];
+            }
+        }
+        lines.push(rest.to_vec());
+    }
+    lines
+}
+
+#[cfg(test)]
+mod draw_text_layout_tests {
+    use super::draw_text_lines;
+
+    fn wide(text: &str) -> Vec<u16> {
+        text.encode_utf16().collect()
+    }
+
+    fn narrow(lines: Vec<Vec<u16>>) -> Vec<String> {
+        lines.iter().map(|l| String::from_utf16_lossy(l)).collect()
+    }
+
+    /// EverQuest's character slots wrap this exact text inside a 20-column box.
+    #[test]
+    fn word_break_splits_at_the_last_space_that_fits() {
+        let lines = draw_text_lines(&wide("Tap here to create a character."), false, Some(20));
+        assert_eq!(narrow(lines), ["Tap here to create a", "character."]);
+    }
+
+    /// Its tutorial strings start with CRLF, which must not print as glyphs.
+    #[test]
+    fn crlf_breaks_once_and_never_reaches_the_font() {
+        let lines = draw_text_lines(&wide("\r\nTo move\nTap"), false, None);
+        assert_eq!(narrow(lines), ["", "To move", "Tap"]);
+    }
+
+    #[test]
+    fn single_line_drops_breaks_and_ignores_wrapping() {
+        let lines = draw_text_lines(&wide("a\r\nb c"), true, Some(1));
+        assert_eq!(narrow(lines), ["ab c"]);
+    }
+
+    #[test]
+    fn an_overlong_word_is_cut_at_the_column_limit() {
+        let lines = draw_text_lines(&wide("abcdef"), false, Some(4));
+        assert_eq!(narrow(lines), ["abcd", "ef"]);
+    }
 }
 
 /// `BOOL TextOutW(HDC, int x, int y, LPCWSTR text, int len)` — render a
@@ -13156,7 +13763,14 @@ fn sh_get_special_folder_path(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, 
     if path == 0 {
         return Ok(DispatchOutcome::ReturnedR0(0));
     }
-    let folder = match csidl {
+    let folder = special_folder(csidl);
+    write_wide_str(ctx.cpu, path, 260, folder)?;
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+/// The Windows Mobile location of special folder `csidl`.
+fn special_folder(csidl: u32) -> &'static str {
+    match csidl & 0xff {
         0x00 | 0x10 => "\\Windows\\Desktop", // DESKTOP / DESKTOPDIRECTORY
         0x02 => "\\Windows\\Start Menu\\Programs", // PROGRAMS
         0x08 => "\\Windows\\Recent",         // RECENT
@@ -13167,9 +13781,7 @@ fn sh_get_special_folder_path(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, 
         0x26 => "\\Program Files",           // PROGRAM_FILES
         0x27 => "\\My Documents\\My Pictures", // MYPICTURES
         _ => "\\My Documents",               // PERSONAL and friends
-    };
-    write_wide_str(ctx.cpu, path, 260, folder)?;
-    Ok(DispatchOutcome::ReturnedR0(1))
+    }
 }
 
 /// `HKL GetKeyboardLayout(DWORD)` / `HKL LoadKeyboardLayoutW(...)`.
@@ -16013,8 +16625,19 @@ fn get_foreground_window(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, Kern
     Ok(DispatchOutcome::ReturnedR0(FAKE_HWND))
 }
 
-fn get_parent(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
-    Ok(DispatchOutcome::ReturnedR0(FAKE_DESKTOP_HWND))
+fn get_parent(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    // A top-level window has no parent, and neither does the desktop.
+    // EverQuest's MFC climbs `GetParent` to its top-level frame and then sends
+    // that window WM_ACTIVATETOPLEVEL; answering the desktop made it message a
+    // handle with no CWnd, faulting in AfxCallWndProc. Walking until NULL also
+    // spun forever when the desktop reported itself.
+    let hwnd = ctx.arg_u32(0)?;
+    let parent = if hwnd == 0 || hwnd == FAKE_DESKTOP_HWND || hwnd == FAKE_HWND {
+        0
+    } else {
+        FAKE_DESKTOP_HWND
+    };
+    Ok(DispatchOutcome::ReturnedR0(parent))
 }
 
 /// `HWND GetWindow(HWND, UINT)` — for synthetic windows we have no
@@ -16557,6 +17180,9 @@ pub(crate) mod tests {
             next_module_handle: 0x1000_0001,
             modules: Vec::new(),
             pending_module_loads: Vec::new(),
+            static_guest_links: Vec::new(),
+            cooperative_host: false,
+            host_yield_ms: None,
             next_module_base: pocket_kernel::MODULE_REGION_BASE,
             module_search_dirs: Vec::new(),
             fb_mapped: false,
@@ -16566,10 +17192,15 @@ pub(crate) mod tests {
             mem_op_scratch: Vec::new(),
             mem_op_scratch_b: Vec::new(),
             bit_blt_src_scratch: Vec::new(),
+            image_lists: std::collections::HashMap::new(),
+            command_bar_menu: 0,
+            other_timers: Vec::new(),
             dib_sync_scratch: Vec::new(),
             dib_decode_scratch: Vec::new(),
             gx_last_pushed_counter: 0,
             gx_guest_signature: None,
+            gx_draw_open: false,
+            gx_held_shadow: Vec::new(),
             gles_strings: std::collections::HashMap::new(),
             synthetic_message_count: 0,
             synthetic_message_budget: 240,
@@ -16598,6 +17229,9 @@ pub(crate) mod tests {
             controls: Default::default(),
             pending_input: std::collections::VecDeque::new(),
             gapi_keys_queried: false,
+            exe_file_name: String::new(),
+            synthetic_paint_peeked: false,
+            synthetic_timer_went_last: false,
             pending_message: None,
             threads: Vec::new(),
             events: Default::default(),
@@ -16679,6 +17313,91 @@ pub(crate) mod tests {
         assert!(ctx.kernel.window_procs.is_empty());
         assert!(ctx.kernel.pending_startup.is_empty());
         assert!(!ctx.kernel.synthetic_create_sent);
+    }
+
+    #[test]
+    fn image_list_draws_the_chosen_image_with_its_mask_colour_see_through() {
+        const STACK: u32 = 0x20000;
+        const MAGENTA: u16 = 0xF81F; // RGB(255, 0, 255) in RGB565
+        let mut cpu = StubCpu::new();
+        cpu.map_region(STACK, 0x1000, Prot::READ | Prot::WRITE).unwrap();
+        cpu.write_reg(ArmReg::Sp, STACK).unwrap();
+        let mut kernel = fresh_kernel();
+        // An 8x4 strip: image 0 is red, image 1 is green with a magenta corner.
+        let strip = kernel.gdi.create_compatible_bitmap(8, 4);
+        {
+            let bm = kernel.gdi.bitmap_mut(strip).unwrap();
+            for y in 0..4u32 {
+                for x in 0..8u32 {
+                    let c: u16 = if x < 4 { 0xF800 } else if x == 4 && y == 0 { MAGENTA } else { 0x07E0 };
+                    let at = ((y * 8 + x) * 2) as usize;
+                    bm.pixels[at..at + 2].copy_from_slice(&c.to_le_bytes());
+                }
+            }
+        }
+        let target = kernel.gdi.create_compatible_bitmap(8, 8);
+        let dc = kernel.gdi.create_memory_dc();
+        kernel.gdi.select_into(dc, target);
+        kernel.gdi.bitmap_mut(target).unwrap().pixels.fill(0x11);
+        let thunk = dummy_thunk();
+        let mut ctx = CallCtx { cpu: &mut cpu, thunk: &thunk, kernel: &mut kernel };
+        let mut call = |ctx: &mut CallCtx<'_>, f: fn(&mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError>, args: &[u32]| {
+            for (i, a) in args.iter().enumerate() {
+                if i < 4 {
+                    ctx.cpu.write_reg([ArmReg::R0, ArmReg::R1, ArmReg::R2, ArmReg::R3][i], *a).unwrap();
+                } else {
+                    ctx.cpu.write_mem(STACK + 4 * (i as u32 - 4), &a.to_le_bytes()).unwrap();
+                }
+            }
+            match f(ctx).unwrap() {
+                DispatchOutcome::ReturnedR0(v) => v,
+                other => panic!("{other:?}"),
+            }
+        };
+        let list = call(&mut ctx, image_list_create, &[4, 4, ILC_MASK, 2, 0]);
+        assert_ne!(list, 0);
+        assert_eq!(call(&mut ctx, image_list_add_masked, &[list, strip, 0x00FF_00FF]), 0);
+        assert_eq!(call(&mut ctx, image_list_get_image_count, &[list]), 2);
+        assert_eq!(call(&mut ctx, image_list_draw, &[list, 1, dc, 2, 2, ILD_TRANSPARENT]), 1);
+        let px = |x: u32, y: u32| {
+            let p = &ctx.kernel.gdi.bitmap(target).unwrap().pixels;
+            let at = ((y * 8 + x) * 2) as usize;
+            u16::from_le_bytes([p[at], p[at + 1]])
+        };
+        assert_eq!(px(2, 2), 0x1111, "the magenta corner stays see-through");
+        assert_eq!(px(3, 2), 0x07E0);
+        assert_eq!(px(5, 5), 0x07E0);
+        assert_eq!(px(6, 6), 0x1111, "nothing is drawn outside the image");
+        assert_eq!(call(&mut ctx, image_list_destroy, &[list]), 1);
+    }
+
+    #[test]
+    fn a_monochrome_source_takes_the_destination_text_and_background_colours() {
+        let mut cpu = StubCpu::new();
+        let mut kernel = fresh_kernel();
+        // 2x1 monochrome bitmap: black, white.
+        let mono = kernel.gdi.create_compatible_bitmap(2, 1);
+        {
+            let bm = kernel.gdi.bitmap_mut(mono).unwrap();
+            bm.bpp = 1;
+            bm.pixels.copy_from_slice(&[0x00, 0x00, 0xFF, 0xFF]);
+        }
+        let src = kernel.gdi.create_memory_dc();
+        kernel.gdi.select_into(src, mono);
+        let target = kernel.gdi.create_compatible_bitmap(2, 1);
+        let dst = kernel.gdi.create_memory_dc();
+        kernel.gdi.select_into(dst, target);
+        {
+            let dc = kernel.gdi.dc_mut(dst).unwrap();
+            dc.text_color = 0x0000_00FF; // red
+            dc.bk_color = 0x0000_FF00; // green
+        }
+        let thunk = dummy_thunk();
+        let mut ctx = CallCtx { cpu: &mut cpu, thunk: &thunk, kernel: &mut kernel };
+        bit_blt_inner(&mut ctx, dst, 0, 0, 2, 1, src, 0, 0, pocket_kernel::gdi::rop3::SRCCOPY).unwrap();
+        let p = &ctx.kernel.gdi.bitmap(target).unwrap().pixels;
+        assert_eq!(u16::from_le_bytes([p[0], p[1]]), 0xF800, "black takes the text colour");
+        assert_eq!(u16::from_le_bytes([p[2], p[3]]), 0x07E0, "white takes the background colour");
     }
 
     #[test]
@@ -16940,6 +17659,8 @@ pub(crate) mod tests {
             initialised: true,
             dispatched: None,
             spins: 0,
+            opened_frame: 0,
+            redraw: false,
         });
         kernel.window_procs.insert(FAKE_MODAL_HWND, 0x3001);
         cpu.write_reg(ArmReg::Sp, 0x6200_0000).unwrap();
@@ -17015,6 +17736,8 @@ pub(crate) mod tests {
             initialised: true,
             dispatched: None,
             spins: 0,
+            opened_frame: 0,
+            redraw: false,
         });
         kernel.window_procs.insert(FAKE_MODAL_HWND, 0x3001);
         cpu.write_reg(ArmReg::Sp, 0x6000_0000).unwrap();
@@ -20504,4 +21227,713 @@ pub(crate) mod tests {
         assert_eq!(c.kernel.key_repeat_cursor, 0);
         assert!(c.kernel.key_repeat_next_ms.unwrap() >= monotonic_ms());
     }
+}
+
+// ---------- image lists ----------
+//
+// Pocket PC exports the ImageList family from coredll (ordinals 738-769)
+// as well as commctrl. Programs that keep their icons, tiles or sprites in
+// one draw them with `ImageList_Draw`; answering with fixed values left
+// those programs drawing nothing (Pocket Slay's board stayed black).
+
+/// First handle given to an image list.
+const IMAGE_LIST_HANDLE_BASE: u32 = 0xDEAD_2A00;
+const CLR_NONE: u32 = 0xFFFF_FFFF;
+const ILC_MASK: u32 = 0x0001;
+const ILD_TRANSPARENT: u32 = 0x0001;
+
+/// Read the RGB565 pixels of bitmap `hbm` through a temporary memory DC.
+fn image_list_read_bitmap(ctx: &mut CallCtx<'_>, hbm: u32) -> Option<(u32, u32, Vec<u16>)> {
+    ctx.kernel.gdi.bitmap(hbm)?;
+    let dc = ctx.kernel.gdi.create_memory_dc();
+    ctx.kernel.gdi.select_into(dc, hbm);
+    let mut scratch = Vec::new();
+    let mut decode = Vec::new();
+    let (w, h, ok) = read_blit_source(ctx, dc, &mut scratch, &mut decode);
+    ctx.kernel.gdi.delete(dc);
+    if !ok || w == 0 || h == 0 || scratch.len() < (w * h * 2) as usize {
+        return None;
+    }
+    let pixels = scratch
+        .chunks_exact(2)
+        .take((w * h) as usize)
+        .map(|b| u16::from_le_bytes([b[0], b[1]]))
+        .collect();
+    Some((w, h, pixels))
+}
+
+/// Cut `pixels` (`w` x `h`) into list-sized images. `transparent` says
+/// which source pixels are see-through.
+fn image_list_append(
+    list: &mut pocket_kernel::gdi::ImageList,
+    w: u32,
+    h: u32,
+    pixels: &[u16],
+    transparent: &dyn Fn(usize) -> bool,
+) -> u32 {
+    let first = list.images.len() as u32;
+    let (cx, cy) = (list.cx.max(1), list.cy.max(1));
+    for n in 0..(w / cx).max(1) {
+        let mut image = vec![0u16; (cx * cy) as usize];
+        let mut clear = vec![false; (cx * cy) as usize];
+        for y in 0..cy.min(h) {
+            for x in 0..cx {
+                let sx = n * cx + x;
+                if sx >= w {
+                    continue;
+                }
+                let at = (y * w + sx) as usize;
+                image[(y * cx + x) as usize] = pixels[at];
+                clear[(y * cx + x) as usize] = list.masked && transparent(at);
+            }
+        }
+        list.images.push((image, clear));
+    }
+    first
+}
+
+fn image_list_create(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let cx = ctx.arg_u32(0)?;
+    let cy = ctx.arg_u32(1)?;
+    let flags = ctx.arg_u32(2)?;
+    if cx == 0 || cy == 0 || cx > 4096 || cy > 4096 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let mut handle = IMAGE_LIST_HANDLE_BASE;
+    while ctx.kernel.image_lists.contains_key(&handle) {
+        handle += 4;
+    }
+    ctx.kernel.image_lists.insert(
+        handle,
+        pocket_kernel::gdi::ImageList {
+            cx,
+            cy,
+            masked: flags & ILC_MASK != 0,
+            bk_color: CLR_NONE,
+            images: Vec::new(),
+        },
+    );
+    Ok(DispatchOutcome::ReturnedR0(handle))
+}
+
+fn image_list_destroy(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let himl = ctx.arg_u32(0)?;
+    Ok(DispatchOutcome::ReturnedR0(u32::from(ctx.kernel.image_lists.remove(&himl).is_some())))
+}
+
+/// `ImageList_Add(himl, hbmImage, hbmMask)`: white mask pixels are transparent.
+fn image_list_add(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let himl = ctx.arg_u32(0)?;
+    let hbm = ctx.arg_u32(1)?;
+    let hmask = ctx.arg_u32(2)?;
+    if !ctx.kernel.image_lists.contains_key(&himl) {
+        return Ok(DispatchOutcome::ReturnedR0(u32::MAX));
+    }
+    let Some((w, h, pixels)) = image_list_read_bitmap(ctx, hbm) else {
+        return Ok(DispatchOutcome::ReturnedR0(u32::MAX));
+    };
+    let mask = if hmask != 0 { image_list_read_bitmap(ctx, hmask) } else { None };
+    let list = ctx.kernel.image_lists.get_mut(&himl).expect("checked above");
+    let first = image_list_append(list, w, h, &pixels, &|at| match &mask {
+        Some((mw, mh, m)) if *mw == w && *mh == h => m[at] != 0,
+        _ => false,
+    });
+    Ok(DispatchOutcome::ReturnedR0(first))
+}
+
+/// `ImageList_AddMasked(himl, hbmImage, crMask)`: pixels of `crMask` are transparent.
+fn image_list_add_masked(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let himl = ctx.arg_u32(0)?;
+    let hbm = ctx.arg_u32(1)?;
+    let key = colorref_to_rgb565(ctx.arg_u32(2)?);
+    if !ctx.kernel.image_lists.contains_key(&himl) {
+        return Ok(DispatchOutcome::ReturnedR0(u32::MAX));
+    }
+    let Some((w, h, pixels)) = image_list_read_bitmap(ctx, hbm) else {
+        return Ok(DispatchOutcome::ReturnedR0(u32::MAX));
+    };
+    let list = ctx.kernel.image_lists.get_mut(&himl).expect("checked above");
+    list.masked = true;
+    let first = image_list_append(list, w, h, &pixels, &|at| pixels[at] == key);
+    Ok(DispatchOutcome::ReturnedR0(first))
+}
+
+/// Draw image `i` of `himl` at `(x, y)` of `hdc`.
+fn image_list_draw_at(
+    ctx: &mut CallCtx<'_>,
+    himl: u32,
+    i: u32,
+    hdc: u32,
+    x: i32,
+    y: i32,
+    bk: Option<u32>,
+    style: u32,
+) -> Result<bool, KernelError> {
+    let Some(list) = ctx.kernel.image_lists.get(&himl) else { return Ok(false) };
+    let Some((image, clear)) = list.images.get(i as usize) else { return Ok(false) };
+    let (cx, cy) = (list.cx as i32, list.cy as i32);
+    let bk = bk.unwrap_or(list.bk_color);
+    let see_through = list.masked && (style & ILD_TRANSPARENT != 0 || bk == CLR_NONE);
+    let fill = (bk != CLR_NONE).then(|| colorref_to_rgb565(bk));
+    let (image, clear) = (image.clone(), clear.clone());
+    if let Some(mut surface) = surface_for_dc(ctx.kernel, hdc) {
+        for row in 0..cy {
+            for col in 0..cx {
+                let at = (row * cx + col) as usize;
+                if clear[at] {
+                    if see_through {
+                        continue;
+                    }
+                    surface.put_pixel(x + col, y + row, fill.unwrap_or(image[at]));
+                } else {
+                    surface.put_pixel(x + col, y + row, image[at]);
+                }
+            }
+        }
+        surface.mark_dirty();
+    } else {
+        return Ok(false);
+    }
+    sync_dst_dib_to_guest(ctx, hdc)?;
+    if hdc == GDI_SCREEN_DC {
+        ctx.kernel.framebuffer.mark_dirty();
+    }
+    Ok(true)
+}
+
+/// `ImageList_Draw(himl, i, hdcDst, x, y, fStyle)`.
+fn image_list_draw(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let himl = ctx.arg_u32(0)?;
+    let i = ctx.arg_u32(1)?;
+    let hdc = ctx.arg_u32(2)?;
+    let x = ctx.arg_u32(3)? as i32;
+    let y = ctx.arg_u32(4)? as i32;
+    let style = ctx.arg_u32(5)?;
+    let ok = image_list_draw_at(ctx, himl, i, hdc, x, y, None, style)?;
+    Ok(DispatchOutcome::ReturnedR0(u32::from(ok)))
+}
+
+/// `ImageList_DrawEx(himl, i, hdcDst, x, y, dx, dy, rgbBk, rgbFg, fStyle)`.
+fn image_list_draw_ex(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    const CLR_DEFAULT: u32 = 0xFF00_0000;
+    let himl = ctx.arg_u32(0)?;
+    let i = ctx.arg_u32(1)?;
+    let hdc = ctx.arg_u32(2)?;
+    let x = ctx.arg_u32(3)? as i32;
+    let y = ctx.arg_u32(4)? as i32;
+    let bk = ctx.arg_u32(7)?;
+    let style = ctx.arg_u32(9)?;
+    let bk = (bk != CLR_DEFAULT).then_some(bk);
+    let ok = image_list_draw_at(ctx, himl, i, hdc, x, y, bk, style)?;
+    Ok(DispatchOutcome::ReturnedR0(u32::from(ok)))
+}
+
+fn image_list_get_image_count(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let himl = ctx.arg_u32(0)?;
+    let n = ctx.kernel.image_lists.get(&himl).map_or(0, |l| l.images.len() as u32);
+    Ok(DispatchOutcome::ReturnedR0(n))
+}
+
+/// `ImageList_GetIconSize(himl, int *cx, int *cy)`.
+fn image_list_get_icon_size(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let himl = ctx.arg_u32(0)?;
+    let pcx = ctx.arg_u32(1)?;
+    let pcy = ctx.arg_u32(2)?;
+    let Some((cx, cy)) = ctx.kernel.image_lists.get(&himl).map(|l| (l.cx, l.cy)) else {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    };
+    if pcx != 0 {
+        ctx.cpu.write_mem(pcx, &cx.to_le_bytes())?;
+    }
+    if pcy != 0 {
+        ctx.cpu.write_mem(pcy, &cy.to_le_bytes())?;
+    }
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+/// `ImageList_SetIconSize(himl, cx, cy)`: also removes every image.
+fn image_list_set_icon_size(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let himl = ctx.arg_u32(0)?;
+    let cx = ctx.arg_u32(1)?;
+    let cy = ctx.arg_u32(2)?;
+    let Some(list) = ctx.kernel.image_lists.get_mut(&himl) else {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    };
+    list.cx = cx.clamp(1, 4096);
+    list.cy = cy.clamp(1, 4096);
+    list.images.clear();
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+/// `ImageList_SetBkColor(himl, clrBk)`: returns the previous colour.
+fn image_list_set_bk_color(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let himl = ctx.arg_u32(0)?;
+    let color = ctx.arg_u32(1)?;
+    let Some(list) = ctx.kernel.image_lists.get_mut(&himl) else {
+        return Ok(DispatchOutcome::ReturnedR0(CLR_NONE));
+    };
+    let previous = std::mem::replace(&mut list.bk_color, color);
+    Ok(DispatchOutcome::ReturnedR0(previous))
+}
+
+fn image_list_get_bk_color(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let himl = ctx.arg_u32(0)?;
+    let color = ctx.kernel.image_lists.get(&himl).map_or(CLR_NONE, |l| l.bk_color);
+    Ok(DispatchOutcome::ReturnedR0(color))
+}
+
+/// `ImageList_Remove(himl, i)`; `i == -1` removes all.
+fn image_list_remove(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let himl = ctx.arg_u32(0)?;
+    let i = ctx.arg_u32(1)?;
+    let Some(list) = ctx.kernel.image_lists.get_mut(&himl) else {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    };
+    if i == u32::MAX {
+        list.images.clear();
+    } else if (i as usize) < list.images.len() {
+        list.images.remove(i as usize);
+    } else {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+/// `ImageList_Replace(himl, i, hbmImage, hbmMask)`.
+fn image_list_replace(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let himl = ctx.arg_u32(0)?;
+    let i = ctx.arg_u32(1)? as usize;
+    let hbm = ctx.arg_u32(2)?;
+    let hmask = ctx.arg_u32(3)?;
+    let Some((w, h, pixels)) = image_list_read_bitmap(ctx, hbm) else {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    };
+    let mask = if hmask != 0 { image_list_read_bitmap(ctx, hmask) } else { None };
+    let Some(list) = ctx.kernel.image_lists.get_mut(&himl) else {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    };
+    if i >= list.images.len() {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let mut scratch = pocket_kernel::gdi::ImageList { images: Vec::new(), ..list.clone() };
+    image_list_append(&mut scratch, w.min(list.cx), h, &pixels, &|at| match &mask {
+        Some((mw, mh, m)) if *mw == w && *mh == h => m[at] != 0,
+        _ => false,
+    });
+    if let Some(image) = scratch.images.into_iter().next() {
+        list.images[i] = image;
+    }
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+/// `ImageList_LoadImage(hi, lpbmp, cx, cGrow, crMask, uType, uFlags)`
+/// for bitmaps: load the resource, then add it masked by `crMask`.
+fn image_list_load_image(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    const IMAGE_BITMAP: u32 = 0;
+    let cx = ctx.arg_u32(2)?;
+    let mask_color = ctx.arg_u32(4)?;
+    let kind = ctx.arg_u32(5)?;
+    if kind != IMAGE_BITMAP || cx == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let hbm = match load_bitmap_w(ctx)? {
+        DispatchOutcome::ReturnedR0(h) if h != 0 => h,
+        _ => return Ok(DispatchOutcome::ReturnedR0(0)),
+    };
+    let Some((w, h, pixels)) = image_list_read_bitmap(ctx, hbm) else {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    };
+    let mut handle = IMAGE_LIST_HANDLE_BASE;
+    while ctx.kernel.image_lists.contains_key(&handle) {
+        handle += 4;
+    }
+    let masked = mask_color != CLR_NONE;
+    let key = colorref_to_rgb565(mask_color);
+    let mut list = pocket_kernel::gdi::ImageList { cx, cy: h, masked, bk_color: CLR_NONE, images: Vec::new() };
+    image_list_append(&mut list, w, h, &pixels, &|at| pixels[at] == key);
+    ctx.kernel.image_lists.insert(handle, list);
+    Ok(DispatchOutcome::ReturnedR0(handle))
+}
+
+/// Register the image list calls under `dll`.
+pub(crate) fn register_image_lists(d: &mut WinCeDispatcher, dll: &str) {
+    d.register_handler(dll, "ImageList_Create", image_list_create);
+    d.register_handler(dll, "ImageList_Destroy", image_list_destroy);
+    d.register_handler(dll, "ImageList_Add", image_list_add);
+    d.register_handler(dll, "ImageList_AddMasked", image_list_add_masked);
+    d.register_handler(dll, "ImageList_Draw", image_list_draw);
+    d.register_handler(dll, "ImageList_DrawEx", image_list_draw_ex);
+    d.register_handler(dll, "ImageList_GetImageCount", image_list_get_image_count);
+    d.register_handler(dll, "ImageList_GetIconSize", image_list_get_icon_size);
+    d.register_handler(dll, "ImageList_SetIconSize", image_list_set_icon_size);
+    d.register_handler(dll, "ImageList_SetBkColor", image_list_set_bk_color);
+    d.register_handler(dll, "ImageList_GetBkColor", image_list_get_bk_color);
+    d.register_handler(dll, "ImageList_Remove", image_list_remove);
+    d.register_handler(dll, "ImageList_Replace", image_list_replace);
+    d.register_handler(dll, "ImageList_LoadImage", image_list_load_image);
+}
+
+/// `GetProcessIndexFromID(hProc)`: the slot a process runs in. The game
+/// is the only process, and slot 0 belongs to the kernel, so it is 1.
+fn get_process_index_from_id(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+/// `ExitThread(code)`. A worker thread ends as if its function returned:
+/// control goes to the exit trampoline the thread was started with, which
+/// resumes whoever was running before it. On the main thread it ends the
+/// program, as on a device where the main thread's exit ends the process.
+fn exit_thread(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let current = ctx.kernel.current_thread;
+    if current == 0 {
+        log::info!("ExitThread on the main thread; ending the program");
+        return Ok(DispatchOutcome::Halt);
+    }
+    match ctx.kernel.threads.get(current - 1) {
+        Some(thread) => Ok(DispatchOutcome::JumpTo(thread.exit_va)),
+        None => Ok(DispatchOutcome::Halt),
+    }
+}
+
+// ---------- command bars (Handheld PC / Pocket PC 2000 menus) ----------
+//
+// Programs written for Handheld PCs and early Pocket PCs build their menu
+// and toolbar with the commctrl `CommandBar_*` calls. Nothing is drawn for
+// it (as with the aygshell menu bar), but every call has to succeed and
+// hand back usable values: these programs stopped at start because
+// `CommandBar_Create` returned no window and `CommandBar_Height` gave 0.
+
+/// The window handle given to every command bar and command band.
+pub const FAKE_COMMANDBAR_HWND: u32 = 0xDEAD_0B02;
+/// Height of a Windows CE command bar, in pixels.
+const COMMANDBAR_HEIGHT: u32 = 26;
+
+fn command_bar_create(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(FAKE_COMMANDBAR_HWND))
+}
+
+fn command_bar_height(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(COMMANDBAR_HEIGHT))
+}
+
+/// `CommandBar_InsertMenubar(hwndCB, hInst, idMenu, iButton)` and the
+/// `Ex` form that takes a name: load the menu so `CommandBar_GetMenu`
+/// returns a menu the program can check and enable items in.
+fn command_bar_insert_menubar(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let hinst = ctx.arg_u32(1)?;
+    let menu = ctx.arg_u32(2)?;
+    ctx.cpu.write_reg(ArmReg::R0, hinst)?;
+    ctx.cpu.write_reg(ArmReg::R1, menu)?;
+    if let DispatchOutcome::ReturnedR0(h) = load_menu_w(ctx)? {
+        ctx.kernel.command_bar_menu = h;
+    }
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+fn command_bar_get_menu(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    if ctx.kernel.command_bar_menu == 0 {
+        if let DispatchOutcome::ReturnedR0(h) = load_menu_w(ctx)? {
+            ctx.kernel.command_bar_menu = h;
+        }
+    }
+    Ok(DispatchOutcome::ReturnedR0(ctx.kernel.command_bar_menu))
+}
+
+/// `CommandBar_AddBitmap` returns the index of the first image added.
+fn command_bar_add_bitmap(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(0))
+}
+
+fn command_bar_true(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+fn command_bar_false(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(0))
+}
+
+pub(crate) fn register_command_bar_ordinals(d: &mut WinCeDispatcher, dll: &str) {
+    d.register_handler(dll, "ord:3", command_bar_create);
+    d.register_handler(dll, "ord:8", command_bar_insert_menubar);
+    d.register_handler(dll, "ord:9", command_bar_get_menu);
+    d.register_handler(dll, "ord:10", command_bar_true);
+}
+
+pub(crate) fn register_command_bars(d: &mut WinCeDispatcher, dll: &str) {
+    for name in ["CommandBar_Create", "CommandBands_Create", "CommandBands_GetCommandBar"] {
+        d.register_handler(dll, name, command_bar_create);
+    }
+    d.register_handler(dll, "CommandBar_Height", command_bar_height);
+    d.register_handler(dll, "CommandBar_InsertMenubar", command_bar_insert_menubar);
+    d.register_handler(dll, "CommandBar_InsertMenubarEx", command_bar_insert_menubar);
+    d.register_handler(dll, "CommandBar_GetMenu", command_bar_get_menu);
+    d.register_handler(dll, "CommandBar_AddBitmap", command_bar_add_bitmap);
+    for name in [
+        "CommandBar_AddAdornments",
+        "CommandBands_AddAdornments",
+        "CommandBands_AddBands",
+        "CommandBar_AddButtons",
+        "CommandBar_InsertButton",
+        "CommandBar_AddToolTips",
+        "CommandBar_Show",
+        "CommandBar_IsVisible",
+        "CommandBar_DrawMenuBar",
+        "CommandBar_Destroy",
+        "CommandBands_Show",
+    ] {
+        d.register_handler(dll, name, command_bar_true);
+    }
+    d.register_handler(dll, "IsCommandBarMessage", command_bar_false);
+    d.register_handler(dll, "CommandBar_GetItemWindow", command_bar_false);
+}
+
+/// `GetTextMetricsW(hdc, TEXTMETRICW*)` for the built-in fixed font, the
+/// same one `GetTextExtentPoint32W` measures with.
+fn get_text_metrics_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let tm = ctx.arg_u32(1)?;
+    if tm == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let h = pocket_kernel::font::GLYPH_H;
+    let w = pocket_kernel::font::GLYPH_W;
+    let mut out = Vec::with_capacity(60);
+    for v in [h, h - 1, 1, 0, 0, w, w, 400, 0, 96, 96] {
+        out.extend_from_slice(&v.to_le_bytes());
+    }
+    for c in [0x20u16, 0xFF, 0x3F, 0x20] {
+        out.extend_from_slice(&c.to_le_bytes());
+    }
+    // italic, underlined, struck out, FIXED_PITCH | FF_MODERN, ANSI_CHARSET
+    out.extend_from_slice(&[0, 0, 0, 0x30, 0, 0, 0, 0]);
+    ctx.cpu.write_mem(tm, &out[..60])?;
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+/// `SendDlgItemMessageW(hDlg, id, msg, wParam, lParam)` is
+/// `SendMessageW(GetDlgItem(hDlg, id), msg, wParam, lParam)`.
+fn send_dlg_item_message_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let dialog = ctx.arg_u32(0)?;
+    let id = ctx.arg_u32(1)?;
+    let message = ctx.arg_u32(2)?;
+    let wparam = ctx.arg_u32(3)?;
+    let lparam = ctx.arg_u32(4)?;
+    ctx.cpu.write_reg(ArmReg::R0, dialog)?;
+    ctx.cpu.write_reg(ArmReg::R1, id)?;
+    let DispatchOutcome::ReturnedR0(item) = get_dlg_item(ctx)? else {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    };
+    if item == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    for (reg, value) in [(ArmReg::R0, item), (ArmReg::R1, message), (ArmReg::R2, wparam), (ArmReg::R3, lparam)] {
+        ctx.cpu.write_reg(reg, value)?;
+    }
+    send_message_w(ctx)
+}
+
+/// `ShellExecuteEx(SHELLEXECUTEINFO*)`: there is no other program to
+/// start, so report success without starting anything. Programs use it
+/// to open their help or a web page, which is not worth stopping for.
+fn shell_execute_ex(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let info = ctx.arg_u32(0)?;
+    if info == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let file = ctx.cpu.read_u32_le(info + 16).unwrap_or(0);
+    if file != 0 {
+        if let Ok(name) = read_wstr(ctx, file, 260) {
+            log::info!("ShellExecuteEx({}) not started", String::from_utf16_lossy(&name));
+        }
+    }
+    ctx.cpu.write_mem(info + 32, &33u32.to_le_bytes())?; // hInstApp > 32: success
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+// ---------- shell folders (ceshell.dll) ----------
+//
+// `SHGetSpecialFolderLocation` hands out an item id list that the caller
+// turns into a path with `SHGetPathFromIDList` and frees through the shell
+// allocator from `SHGetMalloc`. The item id list here is a heap block
+// holding a tag and the folder id; the allocator is a COM object whose
+// methods are the `PocketHLE_IMalloc_*` calls below.
+
+const PIDL_TAG: u32 = 0x4C44_4950; // "PIDL"
+const IMALLOC_METHODS: [&str; 9] = [
+    "PocketHLE_IMalloc_QueryInterface",
+    "PocketHLE_IMalloc_AddRef",
+    "PocketHLE_IMalloc_Release",
+    "PocketHLE_IMalloc_Alloc",
+    "PocketHLE_IMalloc_Realloc",
+    "PocketHLE_IMalloc_Free",
+    "PocketHLE_IMalloc_GetSize",
+    "PocketHLE_IMalloc_DidAlloc",
+    "PocketHLE_IMalloc_HeapMinimize",
+];
+
+fn sh_get_special_folder_location(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    const E_FAIL: u32 = 0x8000_4005;
+    let csidl = ctx.arg_u32(1)?;
+    let out = ctx.arg_u32(2)?;
+    if out == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(E_FAIL));
+    }
+    let Some(pidl) = ctx.kernel.heap.alloc(8) else {
+        return Ok(DispatchOutcome::ReturnedR0(E_FAIL));
+    };
+    ctx.cpu.write_mem(pidl, &PIDL_TAG.to_le_bytes())?;
+    ctx.cpu.write_mem(pidl + 4, &csidl.to_le_bytes())?;
+    ctx.cpu.write_mem(out, &pidl.to_le_bytes())?;
+    Ok(DispatchOutcome::ReturnedR0(0))
+}
+
+fn sh_get_path_from_id_list(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let pidl = ctx.arg_u32(0)?;
+    let path = ctx.arg_u32(1)?;
+    if pidl == 0 || path == 0 || ctx.cpu.read_u32_le(pidl).ok() != Some(PIDL_TAG) {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let csidl = ctx.cpu.read_u32_le(pidl + 4)?;
+    write_wide_str(ctx.cpu, path, 260, special_folder(csidl))?;
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+fn sh_get_malloc(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    const E_OUTOFMEMORY: u32 = 0x8007_000E;
+    let out = ctx.arg_u32(0)?;
+    if out == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(E_OUTOFMEMORY));
+    }
+    let addresses: Vec<u32> = IMALLOC_METHODS
+        .iter()
+        .map(|name| {
+            ctx.kernel
+                .dynamic_exports
+                .values()
+                .find_map(|m| m.get(*name).copied())
+                .unwrap_or(0)
+        })
+        .collect();
+    if addresses.contains(&0) {
+        log::warn!("SHGetMalloc: allocator methods have no entry points");
+        return Ok(DispatchOutcome::ReturnedR0(E_OUTOFMEMORY));
+    }
+    let (Some(table), Some(object)) = (ctx.kernel.heap.alloc(4 * 9), ctx.kernel.heap.alloc(4)) else {
+        return Ok(DispatchOutcome::ReturnedR0(E_OUTOFMEMORY));
+    };
+    for (i, address) in addresses.iter().enumerate() {
+        ctx.cpu.write_mem(table + 4 * i as u32, &address.to_le_bytes())?;
+    }
+    ctx.cpu.write_mem(object, &table.to_le_bytes())?;
+    ctx.cpu.write_mem(out, &object.to_le_bytes())?;
+    Ok(DispatchOutcome::ReturnedR0(0))
+}
+
+fn imalloc_no_interface(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(0x8000_4002)) // E_NOINTERFACE
+}
+
+fn imalloc_one(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+fn imalloc_alloc(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let size = ctx.arg_u32(1)?;
+    Ok(DispatchOutcome::ReturnedR0(ctx.kernel.heap.alloc(size).unwrap_or(0)))
+}
+
+fn imalloc_realloc(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let old = ctx.arg_u32(1)?;
+    let size = ctx.arg_u32(2)?;
+    if size == 0 {
+        ctx.kernel.heap.free(old);
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let Some(new) = ctx.kernel.heap.alloc(size) else {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    };
+    if old != 0 {
+        let keep = ctx.kernel.heap.msize(old).unwrap_or(0).min(size);
+        if keep != 0 {
+            let bytes = ctx.cpu.read_mem(old, keep)?;
+            ctx.cpu.write_mem(new, &bytes)?;
+        }
+        ctx.kernel.heap.free(old);
+    }
+    Ok(DispatchOutcome::ReturnedR0(new))
+}
+
+fn imalloc_free(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let block = ctx.arg_u32(1)?;
+    ctx.kernel.heap.free(block);
+    Ok(DispatchOutcome::ReturnedR0(0))
+}
+
+fn imalloc_get_size(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let block = ctx.arg_u32(1)?;
+    Ok(DispatchOutcome::ReturnedR0(ctx.kernel.heap.msize(block).unwrap_or(u32::MAX)))
+}
+
+fn imalloc_did_alloc(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let block = ctx.arg_u32(1)?;
+    Ok(DispatchOutcome::ReturnedR0(u32::from(ctx.kernel.heap.msize(block).is_some())))
+}
+
+fn imalloc_heap_minimize(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(0))
+}
+
+/// Register the shell folder calls under `dll` and (once, under
+/// coredll) the allocator methods, so they get entry points.
+pub(crate) fn register_shell_folders(d: &mut WinCeDispatcher, dll: &str) {
+    d.register_handler(dll, "SHGetSpecialFolderLocation", sh_get_special_folder_location);
+    d.register_handler(dll, "SHGetPathFromIDList", sh_get_path_from_id_list);
+    d.register_handler(dll, "SHGetPathFromIDListW", sh_get_path_from_id_list);
+    d.register_handler(dll, "SHGetMalloc", sh_get_malloc);
+    if dll.eq_ignore_ascii_case("coredll.dll") {
+        let methods: [fn(&mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError>; 9] = [
+            imalloc_no_interface,
+            imalloc_one,
+            imalloc_one,
+            imalloc_alloc,
+            imalloc_realloc,
+            imalloc_free,
+            imalloc_get_size,
+            imalloc_did_alloc,
+            imalloc_heap_minimize,
+        ];
+        for (name, method) in IMALLOC_METHODS.iter().zip(methods) {
+            d.register_handler(dll, name, method);
+        }
+    }
+}
+
+/// Put the timer that is due first into the `synthetic_timer_*` slot the
+/// message pump reads, moving the one there to `other_timers`.
+fn bring_due_timer_forward(k: &mut pocket_kernel::KernelState) {
+    let Some((at, _)) = k
+        .other_timers
+        .iter()
+        .enumerate()
+        .min_by_key(|(_, t)| t.4)
+    else {
+        return;
+    };
+    if k.synthetic_timer_id != 0 && k.other_timers[at].4 >= k.synthetic_timer_next_ms {
+        return;
+    }
+    let (id, hwnd, proc_, interval, next) = k.other_timers.remove(at);
+    if k.synthetic_timer_id != 0 {
+        k.other_timers.push((
+            k.synthetic_timer_id,
+            k.synthetic_timer_hwnd,
+            k.synthetic_timer_proc,
+            k.synthetic_timer_interval_ms,
+            k.synthetic_timer_next_ms,
+        ));
+    }
+    k.synthetic_timer_id = id;
+    k.synthetic_timer_hwnd = hwnd;
+    k.synthetic_timer_proc = proc_;
+    k.synthetic_timer_interval_ms = interval;
+    k.synthetic_timer_next_ms = next;
 }

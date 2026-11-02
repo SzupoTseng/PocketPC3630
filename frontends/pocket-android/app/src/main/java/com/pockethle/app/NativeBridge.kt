@@ -22,6 +22,9 @@ object NativeBridge {
 
     @JvmStatic external fun banner(): String
 
+    /** The CPU backend compiled into the native library. */
+    @JvmStatic external fun backendName(): String
+
     /** Returns a JSON array of [GameEntry]. */
     @JvmStatic external fun listGames(libraryRoot: String): String
 
@@ -33,6 +36,13 @@ object NativeBridge {
     @JvmStatic external fun importRar(libraryRoot: String, rarPath: String): String
     /** Imports a standalone ARM Pocket PC executable. */
     @JvmStatic external fun importExe(libraryRoot: String, exePath: String): String
+
+    /**
+     * `export`, `import` or `reset` a game's progress as the save zip shared with
+     * the desktop and browser versions. Returns `{"ok":true,"count":N}` or
+     * `{"ok":false,"error":...}`.
+     */
+    @JvmStatic external fun saveAction(libraryRoot: String, id: String, action: String, zipPath: String): String
 
     /** Returns `{"ok":true}` on success or `{"ok":false,"error":...}`. */
     @JvmStatic external fun removeGame(libraryRoot: String, id: String): String

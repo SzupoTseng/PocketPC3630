@@ -2936,6 +2936,7 @@ version = "0.3.2"
 dependencies = [
  "anyhow",
  "directories",
+ "flate2",
  "log",
  "newtua-nsis",
  "png 0.17.16",
@@ -2962,6 +2963,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pocket-wasm"
+version = "0.3.2"
+dependencies = [
+ "anyhow",
+ "log",
+ "pocket-core",
+ "pocket-library",
+]
+
+[[package]]
 name = "pocket-winceapi"
 version = "0.3.2"
 dependencies = [
@@ -2974,6 +2985,7 @@ dependencies = [
  "pocket-gles",
  "pocket-kernel",
  "pocket-pe",
+ "rmp3",
  "serde",
  "serde_json",
  "tempfile",

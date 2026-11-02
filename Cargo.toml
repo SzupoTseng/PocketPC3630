@@ -12,6 +12,7 @@ members = [
     "frontends/pocket-cli",
     "frontends/pocket-desktop",
     "frontends/pocket-android-jni",
+    "frontends/pocket-wasm",
 ]
 
 [workspace.package]

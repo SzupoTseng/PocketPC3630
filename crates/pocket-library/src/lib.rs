@@ -32,7 +32,10 @@ use rars::ArchiveReader;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub mod import_kb;
+pub mod import_problem;
 pub mod keybindings;
+pub mod save_archive;
 pub mod save_data;
 
 pub use keybindings::{GuestButton, KeyBinding, KeyBindings};
@@ -71,6 +74,33 @@ pub enum LibraryError {
 
 fn default_schema_version() -> u32 {
     1
+}
+
+/// `setup.exe -> game.arm.cab (opened the zip, cut out a cabinet)`, for the
+/// note shown after an import that had to look inside a download.
+fn describe_steps(source: &str, steps: &[import_kb::Step], taken: &str) -> String {
+    let words: Vec<&str> = steps
+        .iter()
+        .map(|step| match step.action {
+            import_kb::Action::OpenZip => "opened the zip",
+            import_kb::Action::CarveCab => "took out a cabinet",
+            import_kb::Action::CarveZip => "took out a zip",
+            import_kb::Action::ClearCabChecksums => "ignored the cabinet's checksums",
+            import_kb::Action::ExpandSzdd => "expanded a compressed file",
+            import_kb::Action::ExtractResources => "took out the installer's resources",
+            import_kb::Action::InflateZlib => "inflated compressed data",
+        })
+        .collect();
+    format!("{source} -> {taken} ({})", words.join(", "))
+}
+
+fn kb_steps_for(kb: &import_kb::KnowledgeBase, path: &Path) -> Vec<import_kb::Step> {
+    let print = fs::read(path).map(|b| import_kb::fingerprint(&b)).unwrap_or_default();
+    kb.known
+        .iter()
+        .find(|known| known.fingerprint == print)
+        .map(|known| known.steps.clone())
+        .unwrap_or_default()
 }
 
 /// One installed game entry. Stored both inline in `library.json`
@@ -544,6 +574,10 @@ pub struct Library {
     root: PathBuf,
     library: LibraryFile,
     config: LauncherConfig,
+    /// How the last import found its game when the download was not a package,
+    /// such as which cabinet was taken out of an installer. Frontends show it so
+    /// a player knows what was installed.
+    last_import_note: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -593,6 +627,7 @@ impl Library {
             root,
             library,
             config,
+            last_import_note: None,
         };
         this.migrate_legacy_entries();
         Ok(this)
@@ -619,6 +654,23 @@ impl Library {
     /// launches see the migrated values. Migration is silent when
     /// no changes are needed.
     fn migrate_legacy_entries(&mut self) {
+        // Names read before CAB strings were decoded as Latin-1 kept a
+        // replacement character where a sign such as (R) stood.
+        let mut renamed = false;
+        for game in &mut self.library.games {
+            if game.display_name.contains('\u{FFFD}') {
+                game.display_name = game
+                    .display_name
+                    .replace('\u{FFFD}', "")
+                    .split_whitespace()
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                renamed = true;
+            }
+        }
+        if renamed {
+            let _ = self.save();
+        }
         let mut library_changed = false;
         for game in self.library.games.iter_mut() {
             let mut migrated = false;
@@ -1091,6 +1143,9 @@ impl Library {
     /// ARM PE32 inside the archive is picked as the entry point.
     pub fn import_zip(&mut self, zip_path: impl AsRef<Path>) -> Result<&GameEntry, LibraryError> {
         let zip_path = zip_path.as_ref();
+        if let Some(id) = self.import_cab_package(zip_path)? {
+            return self.get(&id).ok_or(LibraryError::NoExecutable);
+        }
         let source_name = zip_path
             .file_name()
             .map(|s| s.to_string_lossy().to_string())
@@ -1148,15 +1203,24 @@ impl Library {
             .cloned()
             .collect();
         if !nested_cabs.is_empty() {
+            // Publishers ship one cabinet per processor side by side.
             let main_cab = nested_cabs
                 .iter()
-                .find(|path| {
+                .filter(|path| {
                     let stem = path
                         .file_stem()
                         .and_then(|s| s.to_str())
                         .unwrap_or_default()
                         .to_ascii_lowercase();
                     !stem.contains("res") && !stem.contains("resource")
+                })
+                .min_by_key(|path| {
+                    (
+                        cab_name_processor_rank(
+                            &path.file_name().unwrap_or_default().to_string_lossy(),
+                        ),
+                        (*path).clone(),
+                    )
                 })
                 .cloned()
                 .unwrap_or_else(|| nested_cabs[0].clone());
@@ -1183,7 +1247,7 @@ impl Library {
         // libraries are skipped: a resource-only DLL can easily be the
         // largest PE in the archive — it is where the artwork lives —
         // and it has no entry point to start.
-        let mut best: Option<(PathBuf, u64)> = None;
+        let mut best: Option<(PathBuf, (bool, u64))> = None;
         for path in &written {
             let Ok(meta) = fs::metadata(path) else {
                 continue;
@@ -1194,8 +1258,11 @@ impl Library {
             if !is_guest_exe(path) {
                 continue;
             }
-            if best.as_ref().map(|(_, sz)| *sz).unwrap_or(0) < meta.len() {
-                best = Some((path.clone(), meta.len()));
+            // Pocket Slay's zip holds ARM, MIPS and SH3 builds, and its MIPS
+            // build is the largest. Most backends only run ARM.
+            let rank = (is_arm_machine(path), meta.len());
+            if best.as_ref().is_none_or(|(_, current)| *current < rank) {
+                best = Some((path.clone(), rank));
             }
         }
         let (exe_abs, _) = best.ok_or(LibraryError::NoExecutable)?;
@@ -1234,6 +1301,61 @@ impl Library {
         };
 
         self.commit_entry(&id, entry)
+    }
+
+    /// Import a game package: a ZIP with one `.cab` at its root plus extra files.
+    ///
+    /// EverQuest's cabinet does not ship `mfcce300.dll`, which lives in device
+    /// ROM. A package lets a player add it while the cabinet still supplies the
+    /// install path and registry values. The extra files land beside the game,
+    /// replacing any with the same name. Returns `None` for an ordinary ZIP.
+    fn import_cab_package(&mut self, zip_path: &Path) -> Result<Option<String>, LibraryError> {
+        let file = fs::File::open(zip_path)?;
+        let Ok(mut archive) = zip::ZipArchive::new(file) else {
+            return Ok(None);
+        };
+        let names: Vec<String> = archive.file_names().map(str::to_string).collect();
+        let is_root_cab = |n: &String| !n.contains('/') && n.to_ascii_lowercase().ends_with(".cab");
+        if names.iter().filter(|n| is_root_cab(n)).count() != 1
+            || names.iter().any(|n| n.contains('/') && !n.ends_with('/'))
+        {
+            return Ok(None);
+        }
+        let temp = self.root.join(".package-import");
+        fs::create_dir_all(&temp)?;
+        let mut extras = Vec::new();
+        let mut cab = None;
+        for name in &names {
+            let safe = Path::new(name).file_name().map(PathBuf::from);
+            let Some(leaf) = safe.filter(|_| !name.ends_with('/')) else {
+                continue;
+            };
+            let out = temp.join(&leaf);
+            let mut entry = archive
+                .by_name(name)
+                .map_err(|error| std::io::Error::other(error.to_string()))?;
+            std::io::copy(&mut entry, &mut fs::File::create(&out)?)?;
+            if is_root_cab(name) {
+                cab = Some(out);
+            } else {
+                extras.push((leaf, out));
+            }
+        }
+        let result = (|| {
+            let cab = cab.ok_or(LibraryError::NoExecutable)?;
+            let id = self.import_cab(&cab)?.id.clone();
+            let exe = self
+                .get(&id)
+                .map(|entry| self.root.join("games").join(&entry.id).join(&entry.executable))
+                .ok_or(LibraryError::NoExecutable)?;
+            let target = exe.parent().ok_or(LibraryError::NoExecutable)?;
+            for (leaf, source) in &extras {
+                fs::copy(source, target.join(leaf))?;
+            }
+            Ok::<String, LibraryError>(id)
+        })();
+        let _ = fs::remove_dir_all(&temp);
+        result.map(Some)
     }
 
     /// Import a RAR archive containing a Pocket PC game.
@@ -1331,8 +1453,120 @@ impl Library {
     /// PE32 executable. This is the entry point the launcher UI and
     /// the CLI's `import` subcommand both use, so a game imported from
     /// a script behaves exactly like one added through the GUI.
+    /// See [`Library::import_any`]: set when the last import had to look inside
+    /// the download, cleared otherwise.
+    pub fn last_import_note(&self) -> Option<&str> {
+        self.last_import_note.as_deref()
+    }
+
     pub fn import_any(&mut self, path: impl AsRef<Path>) -> Result<&GameEntry, LibraryError> {
         let path = path.as_ref();
+        self.last_import_note = None;
+        let id = match self.import_direct(path) {
+            Ok(entry) => entry.id.clone(),
+            Err(error) => return self.import_with_knowledge(path, error),
+        };
+        self.get(&id).ok_or(LibraryError::NotFound(id))
+    }
+
+    /// Import a download that did not import as it is, by looking inside it as
+    /// the import knowledge base says (see [`import_kb`]). Fails with the
+    /// original error when nothing inside imports either.
+    fn import_with_knowledge(
+        &mut self,
+        path: &Path,
+        error: LibraryError,
+    ) -> Result<&GameEntry, LibraryError> {
+        let kb = import_kb::KnowledgeBase::load(&self.root);
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        // A crash or a closed tab can leave an earlier attempt's files behind.
+        if let Ok(entries) = fs::read_dir(self.root.join("games")) {
+            for entry in entries.flatten() {
+                if entry.file_name().to_string_lossy().starts_with(".explore-") {
+                    let _ = fs::remove_dir_all(entry.path());
+                }
+            }
+        }
+        let work = self.root.join("games").join(format!(".explore-{stamp}"));
+        // A download seen before goes straight to its game.
+        if let Some((target, libraries)) = import_kb::replay(&kb, path, &work) {
+            if let Ok(entry) = self.import_direct(&target) {
+                let id = entry.id.clone();
+                self.copy_libraries(&id, &libraries);
+                let source = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+                let taken = target.file_name().unwrap_or_default().to_string_lossy().into_owned();
+                let steps = kb_steps_for(&kb, path);
+                self.last_import_note = Some(describe_steps(&source, &steps, &taken));
+                let _ = fs::remove_dir_all(&work);
+                return self.get(&id).ok_or(LibraryError::NotFound(id));
+            }
+        }
+        let found = import_kb::explore(&kb, path, &work);
+        let mut imported = None;
+        for candidate in &found.candidates {
+            if let Ok(entry) = self.import_direct(&candidate.path) {
+                imported = Some((entry.id.clone(), candidate.clone()));
+                break;
+            }
+        }
+        if let Some((id, candidate)) = &imported {
+            self.copy_libraries(id, &found.libraries);
+            let source = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+            let taken = candidate.path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+            log::info!("imported {source} through {:?} ({taken})", candidate.chain);
+            self.last_import_note = Some(describe_steps(&source, &candidate.chain, &taken));
+            if let Ok(bytes) = fs::read(path) {
+                // Remember this exact download, and when no rule knew its kind,
+                // a rule for others like it.
+                let known = import_kb::Known {
+                    fingerprint: import_kb::fingerprint(&bytes),
+                    name: source.clone(),
+                    steps: candidate.chain.clone(),
+                };
+                let _ = import_kb::learn_known(&self.root, known);
+                if let (false, Some(first)) = (found.guided, candidate.chain.first()) {
+                    let _ = import_kb::learn(&self.root, import_kb::rule_for(&source, &bytes, first.action));
+                }
+            }
+        }
+        let _ = fs::remove_dir_all(&work);
+        match imported {
+            Some((id, _)) => self.get(&id).ok_or(LibraryError::NotFound(id)),
+            None => Err(error),
+        }
+    }
+
+    /// Put Pocket PC libraries found in a download beside the game, unless the
+    /// game already has a file of that name.
+    fn copy_libraries(&self, id: &str, libraries: &[PathBuf]) {
+        let extracted = self.root.join("games").join(id).join("extracted");
+        for library in libraries {
+            if let Some(name) = library.file_name() {
+                let target = extracted.join(name);
+                if !target.exists() {
+                    let _ = fs::copy(library, target);
+                }
+            }
+        }
+    }
+
+    /// Import `path` as what its extension says it is.
+    fn import_direct(&mut self, path: &Path) -> Result<&GameEntry, LibraryError> {
+        // The contents decide first: a download saved without its extension,
+        // or with the wrong one, still imports as what it is.
+        let mut head = [0u8; 4];
+        let read = fs::File::open(path)
+            .and_then(|mut file| std::io::Read::read(&mut file, &mut head))
+            .unwrap_or(0);
+        match &head[..read] {
+            b"MSCF" => return self.import_cab(path),
+            [b'P', b'K', 3, 4] => return self.import_zip(path),
+            b"Rar!" => return self.import_rar(path),
+            _ => {}
+        }
         let ext = path
             .extension()
             .and_then(|e| e.to_str())
@@ -1841,6 +2075,10 @@ const IMAGE_FILE_MACHINE_THUMB: u16 = 0x01c2;
 const IMAGE_FILE_MACHINE_ARMNT: u16 = 0x01c4;
 const IMAGE_FILE_MACHINE_MIPS_R3000: u16 = 0x0162;
 const IMAGE_FILE_MACHINE_MIPS_R4000: u16 = 0x0166;
+// SuperH: the HP Jornada 54x's SH-3, its DSP variant, and the SH-4.
+const IMAGE_FILE_MACHINE_SH3: u16 = 0x01a2;
+const IMAGE_FILE_MACHINE_SH3DSP: u16 = 0x01a3;
+const IMAGE_FILE_MACHINE_SH4: u16 = 0x01a6;
 
 fn is_nsis_installer(path: &Path) -> bool {
     let Ok(data) = fs::read(path) else {
@@ -1857,6 +2095,9 @@ fn is_supported_guest_machine(machine: u16) -> bool {
             | IMAGE_FILE_MACHINE_ARMNT
             | IMAGE_FILE_MACHINE_MIPS_R3000
             | IMAGE_FILE_MACHINE_MIPS_R4000
+            | IMAGE_FILE_MACHINE_SH3
+            | IMAGE_FILE_MACHINE_SH3DSP
+            | IMAGE_FILE_MACHINE_SH4
     )
 }
 
@@ -1921,6 +2162,14 @@ fn sniff_pe(path: &Path) -> std::io::Result<Option<PeSniff>> {
 /// Returns `Ok(false)` for non-PE / short / non-ARM files so the
 /// caller can scan a whole directory without having to discriminate
 /// between "isn't an ARM PE" and "actually failed I/O".
+/// IMAGE_FILE_MACHINE_ARM, _THUMB and _ARMNT.
+fn is_arm_machine(path: &Path) -> bool {
+    sniff_pe(path)
+        .ok()
+        .flatten()
+        .is_some_and(|pe| matches!(pe.machine, 0x1C0 | 0x1C2 | 0x1C4))
+}
+
 fn is_arm_pe(path: &Path) -> std::io::Result<bool> {
     Ok(sniff_pe(path)?.is_some_and(PeSniff::is_supported_guest))
 }
@@ -1932,6 +2181,21 @@ fn is_arm_pe(path: &Path) -> std::io::Result<bool> {
 /// 132 KiB of card artwork with zero exports) looks exactly like a
 /// game to a size-ranked scan, so every entry-point search has to
 /// filter on this rather than on the file extension.
+/// How much a cabinet's file name suggests it is for an ARM device; lower is
+/// better. Names follow `<app>.<processor>.cab`, with SDK processor numbers such
+/// as 2577 (StrongARM) and 4000 (MIPS).
+fn cab_name_processor_rank(name: &str) -> u8 {
+    let name = name.to_ascii_lowercase();
+    let has = |words: &[&str]| words.iter().any(|word| name.contains(word));
+    if has(&["arm", "2577", "1824", ".sa."]) {
+        0
+    } else if has(&["mips", "sh3", "sh 3", "sh4", "4000", "10003", "x86"]) {
+        2
+    } else {
+        1
+    }
+}
+
 fn is_guest_exe(path: &Path) -> bool {
     sniff_pe(path)
         .ok()
@@ -2175,6 +2439,33 @@ fn guess_screen(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_cabinet_for_an_arm_device_is_preferred() {
+        for arm in ["ptaipei.arm.CAB", "x.PPC_2577.cab", "psol.sa.CAB", "Fpower.Arm 1100 (4K).CAB"] {
+            assert_eq!(super::cab_name_processor_rank(arm), 0, "{arm}");
+        }
+        for other in ["a.mips.CAB", "x.PPC_4000.cab", "Fpower.SH 3 (1K).CAB", "a.sh3.cab"] {
+            assert_eq!(super::cab_name_processor_rank(other), 2, "{other}");
+        }
+        assert_eq!(super::cab_name_processor_rank("game.cab"), 1);
+    }
+
+    /// A ZIP holding folders is an ordinary game, not a CAB package.
+    #[test]
+    fn a_zip_with_folders_is_not_a_cab_package() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("game.zip");
+        let mut zip = zip::ZipWriter::new(fs::File::create(&path).unwrap());
+        zip.start_file("a.cab", zip::write::FileOptions::default()).unwrap();
+        zip.write_all(b"not a cabinet").unwrap();
+        zip.start_file("data/b.bin", zip::write::FileOptions::default()).unwrap();
+        zip.write_all(b"x").unwrap();
+        zip.finish().unwrap();
+        let mut library = Library::open(dir.path().join("library")).unwrap();
+        assert!(library.import_cab_package(&path).unwrap().is_none());
+    }
+
     use super::*;
     use std::path::PathBuf;
 

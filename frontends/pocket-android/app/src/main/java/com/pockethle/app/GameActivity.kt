@@ -203,7 +203,7 @@ class GameActivity : AppCompatActivity() {
         }
         session = handle
         startAudio(handle)
-        status.text = "Backend: Unicorn (ARM)\nRunning…"
+        status.text = "Backend: ${NativeBridge.backendName()}\nRunning…"
         // The spinner gets hidden the moment the first frame arrives.
         mainHandler.postDelayed(pollTick, POLL_INTERVAL_MS)
     }

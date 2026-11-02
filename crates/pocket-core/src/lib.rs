@@ -18,7 +18,7 @@ use anyhow::{Context, Result};
 
 use pocket_cpu::{stub::StubCpu, Cpu};
 use pocket_kernel::{run_main_loop, run_main_loop_with_hook, FrameHook, Process};
-use pocket_winceapi::{resolve_ordinal, WinCeDispatcher};
+use pocket_winceapi::{resolve_ordinal_for_machine, WinCeDispatcher};
 
 pub use pocket_cab as cab;
 pub use pocket_cpu as cpu;
@@ -39,6 +39,38 @@ pub struct Emulator {
 }
 
 impl Emulator {
+    /// A build with the portable interpreter, the only backend that works
+    /// where Unicorn's generated code cannot run, such as WebAssembly.
+    pub fn with_interp_cpu() -> Self {
+        let mut emulator = Self::with_stub_cpu();
+        emulator.cpu = Box::new(pocket_cpu::interp::InterpCpu::new());
+        emulator
+    }
+
+    /// The portable interpreter for `arch`: ARM, or MIPS for the Pocket PC
+    /// 2000 builds made for machines such as the Casio Cassiopeia.
+    pub fn with_interp_cpu_for_arch(arch: pocket_cpu::Arch) -> Self {
+        let mut emulator = Self::with_stub_cpu();
+        emulator.cpu = Box::new(pocket_cpu::interp::InterpCpu::new_for(arch));
+        emulator
+    }
+
+    /// The processor an executable was built for, from its PE header, or
+    /// `None` when it is not one PocketHLE runs.
+    pub fn arch_of_executable(path: impl AsRef<Path>) -> Option<pocket_cpu::Arch> {
+        let bytes = std::fs::read(path).ok()?;
+        let pe = u32::from_le_bytes(bytes.get(0x3C..0x40)?.try_into().ok()?) as usize;
+        let machine = u16::from_le_bytes(bytes.get(pe + 4..pe + 6)?.try_into().ok()?);
+        match machine {
+            pocket_pe::machine::MIPS_R3000 | pocket_pe::machine::MIPS_R4000 => {
+                Some(pocket_cpu::Arch::Mips)
+            }
+            0x01C0 | 0x01C2 | 0x01C4 => Some(pocket_cpu::Arch::Arm),
+            0x01A2 | 0x01A3 | 0x01A6 => Some(pocket_cpu::Arch::Sh),
+            _ => None,
+        }
+    }
+
     pub fn with_stub_cpu() -> Self {
         Self {
             cpu: Box::new(StubCpu::new()),
@@ -85,15 +117,24 @@ impl Emulator {
     /// Load and map a PE file into the emulator. Existing process
     /// state is replaced.
     pub fn load_pe(&mut self, path: impl AsRef<Path>) -> Result<&Process> {
+        let exe_file_name = path
+            .as_ref()
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_default();
         let image = pe::load_file(path).context("loading PE")?;
+        let machine = image.machine;
         let process = Process::map_into(
             image,
             self.cpu.as_mut(),
-            &|dll, ord| resolve_ordinal(dll, ord),
+            &|dll, ord| resolve_ordinal_for_machine(machine, dll, ord),
             &self.dispatcher,
         )
         .context("mapping image into CPU")?;
         self.process = Some(process);
+        if let Some(process) = self.process.as_mut() {
+            process.state.exe_file_name = exe_file_name;
+        }
         // A frontend that sized the screen before loading gets its
         // request honoured here rather than silently dropped.
         if let Some((w, h)) = self.requested_screen {
@@ -218,6 +259,15 @@ impl Emulator {
     /// the asset name. Reporting a generic placeholder therefore breaks
     /// them, so frontends pass the path the installer would have used
     /// on a real device.
+    /// DLLs the loaded game needs that nothing provides. See
+    /// [`kernel::Process::missing_libraries`].
+    pub fn missing_libraries(&self) -> Vec<String> {
+        self.process
+            .as_ref()
+            .map(|p| p.missing_libraries.clone())
+            .unwrap_or_default()
+    }
+
     pub fn set_module_path(&mut self, path: impl Into<String>) {
         let path = path.into();
         if let Some(p) = self.process.as_mut() {

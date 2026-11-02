@@ -63,7 +63,6 @@ impl Default for GuestFormat {
 }
 
 #[derive(Debug)]
-#[cfg(feature = "audio-cpal")]
 struct AudioVoice {
     samples: Vec<i16>,
     format: GuestFormat,
@@ -143,7 +142,6 @@ struct Shared {
     /// resumes.
     paused: bool,
     /// Independent sound-effect voices mixed over the waveOut stream.
-    #[cfg(feature = "audio-cpal")]
     voices: Vec<AudioVoice>,
     /// Optional WAV tap so headless runs can verify that a game
     /// really produces sound on a machine with no audio hardware.
@@ -168,7 +166,6 @@ impl Shared {
             virtual_cursor: 0,
             virtual_tick: None,
             paused: false,
-            #[cfg(feature = "audio-cpal")]
             voices: Vec::new(),
             capture: None,
         }
@@ -246,21 +243,17 @@ impl Shared {
         self.consumed = 0;
         self.virtual_cursor = 0;
         self.virtual_tick = None;
-        #[cfg(feature = "audio-cpal")]
         self.voices.clear();
     }
 
-    #[cfg(feature = "audio-cpal")]
     fn stop_voices(&mut self) {
         self.voices.clear();
     }
 
-    #[cfg(feature = "audio-cpal")]
     fn stop_voice_group(&mut self, group: u32) {
         self.voices.retain(|v| v.group != group);
     }
 
-    #[cfg(feature = "audio-cpal")]
     fn add_voice(&mut self, samples: Vec<i16>, format: GuestFormat, params: VoiceParams) {
         if samples.is_empty() {
             return;
@@ -278,7 +271,6 @@ impl Shared {
         });
     }
 
-    #[cfg(feature = "audio-cpal")]
     fn render_frames(&mut self, output: &mut [f32], output_rate: u32, output_channels: u16) {
         let channels = output_channels.max(1) as usize;
         let frames = output.len() / channels;
@@ -526,39 +518,26 @@ impl AudioEngine {
         format: GuestFormat,
         params: VoiceParams,
     ) -> usize {
-        #[cfg(feature = "audio-cpal")]
-        {
-            if let Ok(mut s) = self.shared.lock() {
-                s.add_voice(samples.to_vec(), format, params);
-                samples.len()
-            } else {
-                0
-            }
-        }
-        #[cfg(not(feature = "audio-cpal"))]
-        {
-            let _ = (format, params);
-            self.push_samples(samples)
+        if let Ok(mut s) = self.shared.lock() {
+            s.add_voice(samples.to_vec(), format, params);
+            samples.len()
+        } else {
+            0
         }
     }
 
     pub fn stop_voices(&self) {
-        #[cfg(feature = "audio-cpal")]
         if let Ok(mut s) = self.shared.lock() {
             s.stop_voices();
         }
     }
 
     /// Stop only the voices tagged with `group`, leaving every other
-    /// voice playing. Without the `audio-cpal` feature there are no
-    /// voices to stop and this does nothing.
+    /// voice playing.
     pub fn stop_voice_group(&self, group: u32) {
-        #[cfg(feature = "audio-cpal")]
         if let Ok(mut s) = self.shared.lock() {
             s.stop_voice_group(group);
         }
-        #[cfg(not(feature = "audio-cpal"))]
-        let _ = group;
     }
 
     /// Convenience for unsigned 8-bit PCM (the format `PlaySound` and
@@ -749,6 +728,19 @@ impl AudioTap {
     /// Move up to `dst.len()` queued samples out of the ring into `dst`,
     /// returning how many were written. Never blocks: a starved host
     /// gets a short read and should pad the rest with silence.
+    /// Mix the waveOut stream and every voice into interleaved floats.
+    ///
+    /// EverQuest's FMOD effects are voices that overlap each other, so hosts
+    /// without cpal (Android, the browser) must pull a mix: draining the raw
+    /// ring would miss them, and queueing them would play them one by one.
+    pub fn render_mix(&self, output: &mut [f32], output_rate: u32, output_channels: u16) {
+        output.fill(0.0);
+        if let Ok(mut s) = self.shared.lock() {
+            s.device_active = true;
+            s.render_frames(output, output_rate, output_channels);
+        }
+    }
+
     pub fn drain_into(&self, dst: &mut [i16]) -> usize {
         let Ok(mut s) = self.shared.lock() else {
             return 0;

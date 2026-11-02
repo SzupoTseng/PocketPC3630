@@ -109,6 +109,7 @@ impl UnicornCpu {
         let (uc_arch, mode) = match arch {
             Arch::Arm => (UcArch::ARM, Mode::LITTLE_ENDIAN),
             Arch::Mips => (UcArch::MIPS, Mode::MIPS32 | Mode::LITTLE_ENDIAN),
+            Arch::Sh => return Err(CpuError::Unsupported("SuperH: use the interpreter")),
         };
         let mut uc = Unicorn::new(uc_arch, mode)
             .map_err(|e| CpuError::Backend(format!("Unicorn::new failed: {e:?}")))?;
@@ -461,7 +462,7 @@ impl Cpu for UnicornCpu {
             return Ok(self.mips_status);
         }
         let value = match self.arch {
-            Arch::Arm => self.uc.reg_read(map_arm_reg(reg)),
+            Arch::Arm | Arch::Sh => self.uc.reg_read(map_arm_reg(reg)),
             Arch::Mips => self.uc.reg_read(map_mips_reg(reg)),
         };
         value
@@ -475,7 +476,7 @@ impl Cpu for UnicornCpu {
             return Ok(());
         }
         let result = match self.arch {
-            Arch::Arm => self.uc.reg_write(map_arm_reg(reg), value as u64),
+            Arch::Arm | Arch::Sh => self.uc.reg_write(map_arm_reg(reg), value as u64),
             Arch::Mips => self.uc.reg_write(map_mips_reg(reg), value as u64),
         };
         result.map_err(|e| CpuError::Backend(format!("reg_write: {e:?}")))

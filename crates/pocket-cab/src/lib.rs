@@ -217,12 +217,16 @@ impl<'a> Cursor<'a> {
     }
 }
 
-/// Strings in this format are ASCII with a trailing NUL. Trim at the
-/// first NUL and replace anything non-UTF-8 rather than rejecting the
-/// whole cabinet.
+/// Strings in this format end in a NUL and are meant to be ASCII, but
+/// publishers wrote Windows code-page text: EverQuest's name has a `0xAE` (R)
+/// sign. Valid UTF-8 stays as it is; anything else is read as Latin-1, which
+/// agrees with those code pages on the signs titles use.
 fn decode_ascii(raw: &[u8]) -> String {
     let end = raw.iter().position(|&b| b == 0).unwrap_or(raw.len());
-    String::from_utf8_lossy(&raw[..end]).into_owned()
+    match std::str::from_utf8(&raw[..end]) {
+        Ok(text) => text.to_string(),
+        Err(_) => raw[..end].iter().map(|&b| char::from(b)).collect(),
+    }
 }
 
 /// The fixed-size header is exactly 100 bytes and begins with `MSCE`.
@@ -1472,6 +1476,12 @@ fn attribute(tag: &str, attr: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_code_page_name_keeps_its_sign() {
+        assert_eq!(super::decode_ascii(b"EverQuest\xAE for PPC\0x"), "EverQuest\u{AE} for PPC");
+        assert_eq!(super::decode_ascii(b"plain\0"), "plain");
+    }
+
     use super::*;
 
     #[test]

@@ -176,11 +176,13 @@ fn gx_begin_draw(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> 
         }
         ctx.kernel.gx_last_pushed_counter = ctx.kernel.framebuffer.frame_counter;
     }
+    ctx.kernel.gx_draw_open = true;
     log::trace!("GXBeginDraw() -> 0x{:08x}", SYNTHETIC_FB_BASE);
     Ok(DispatchOutcome::ReturnedR0(SYNTHETIC_FB_BASE))
 }
 
 fn gx_end_draw(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    ctx.kernel.gx_draw_open = false;
     if !ctx.kernel.fb_mapped {
         return Ok(DispatchOutcome::ReturnedR0(1));
     }
@@ -356,6 +358,9 @@ pub(crate) mod tests {
             next_module_handle: 0x1000_0001,
             modules: Vec::new(),
             pending_module_loads: Vec::new(),
+            static_guest_links: Vec::new(),
+            cooperative_host: false,
+            host_yield_ms: None,
             next_module_base: pocket_kernel::MODULE_REGION_BASE,
             module_search_dirs: Vec::new(),
             fb_mapped: false,
@@ -365,10 +370,15 @@ pub(crate) mod tests {
             mem_op_scratch: Vec::new(),
             mem_op_scratch_b: Vec::new(),
             bit_blt_src_scratch: Vec::new(),
+            image_lists: std::collections::HashMap::new(),
+            command_bar_menu: 0,
+            other_timers: Vec::new(),
             dib_sync_scratch: Vec::new(),
             dib_decode_scratch: Vec::new(),
             gx_last_pushed_counter: 0,
             gx_guest_signature: None,
+            gx_draw_open: false,
+            gx_held_shadow: Vec::new(),
             gles_strings: std::collections::HashMap::new(),
             synthetic_message_count: 0,
             synthetic_message_budget: 240,
@@ -397,6 +407,9 @@ pub(crate) mod tests {
             controls: Default::default(),
             pending_input: std::collections::VecDeque::new(),
             gapi_keys_queried: false,
+            exe_file_name: String::new(),
+            synthetic_paint_peeked: false,
+            synthetic_timer_went_last: false,
             pending_message: None,
             threads: Vec::new(),
             events: Default::default(),

@@ -29,6 +29,7 @@ pub mod dlgtemplate;
 pub mod game_dlls;
 pub mod gles;
 pub mod gx;
+pub mod fmod;
 pub mod hss;
 pub mod ole32;
 pub mod ordinals;
@@ -44,6 +45,12 @@ use pocket_pe::ImportBinding;
 /// Convert an ordinal-only import to a friendly name where possible.
 pub fn resolve_ordinal(dll: &str, ordinal: u16) -> Option<String> {
     ordinals::lookup(dll, ordinal)
+}
+
+/// Like [`resolve_ordinal`], for a program built for PE `machine`: some
+/// ordinals name different helpers on other processors.
+pub fn resolve_ordinal_for_machine(machine: u16, dll: &str, ordinal: u16) -> Option<String> {
+    ordinals::lookup_for_machine(machine, dll, ordinal)
 }
 
 /// A third-party library we deliberately do not emulate.
@@ -209,9 +216,11 @@ impl WinCeDispatcher {
         ddraw::register(&mut d);
         aygshell::register(&mut d);
         commctrl::register(&mut d);
+        coredll::register_shell_folders(&mut d, "ceshell.dll");
         game_dlls::register(&mut d);
         gles::register(&mut d);
         gx::register(&mut d);
+        fmod::register(&mut d);
         hss::register(&mut d);
         ole32::register(&mut d);
         ws2::register(&mut d);

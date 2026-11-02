@@ -542,9 +542,51 @@ impl ChildWindow {
     }
 
     fn render_static(&self, surf: &mut Surface<'_>) {
-        let ty = self.y + ((self.h - font::GLYPH_H) / 2).max(0);
-        self.draw_caption(surf, self.x, ty, self.x + self.w);
+        let lines = wrap_static_text(&self.text, self.w, self.h);
+        if lines.len() <= 1 {
+            let ty = self.y + ((self.h - font::GLYPH_H) / 2).max(0);
+            self.draw_caption(surf, self.x, ty, self.x + self.w);
+            return;
+        }
+        // Text with line breaks, or too long for one line of a control
+        // tall enough for more, is laid out from the top as Windows does.
+        // Pocket Slay's "See:\r\n www.windowsgames.co.uk ..." showed its
+        // line breaks as '?' on a single clipped line.
+        let color = if self.enabled { Self::TEXT } else { Self::SHADOW };
+        for (i, line) in lines.iter().enumerate() {
+            let y = self.y + i as i32 * font::GLYPH_H;
+            if y + font::GLYPH_H > self.y + self.h {
+                break;
+            }
+            draw_clipped(surf, self.x, y, line, color, self.x + self.w);
+        }
     }
+}
+
+/// Break a static control's text at its line breaks and, when the
+/// control has room for more than one line, wrap it at spaces to fit `w`.
+fn wrap_static_text(text: &str, w: i32, h: i32) -> Vec<String> {
+    let per_line = (w / font::GLYPH_W).max(1) as usize;
+    let room_for_lines = h / font::GLYPH_H >= 2;
+    if !text.contains('\n') && (!room_for_lines || text.chars().count() <= per_line) {
+        return vec![text.to_string()];
+    }
+    let mut lines = Vec::new();
+    for raw in text.split('\n') {
+        let raw = raw.trim_end_matches('\r');
+        let mut line = String::new();
+        for word in raw.split(' ') {
+            let candidate = if line.is_empty() { word.to_string() } else { format!("{line} {word}") };
+            if candidate.chars().count() > per_line && !line.is_empty() && room_for_lines {
+                lines.push(std::mem::take(&mut line));
+                line = word.to_string();
+            } else {
+                line = candidate;
+            }
+        }
+        lines.push(line);
+    }
+    lines
 }
 
 /// Draw `text` but stop before `right`, so a caption never bleeds out

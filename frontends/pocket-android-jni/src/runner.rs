@@ -54,6 +54,10 @@ use pocket_core::kernel::{FrameAction, FrameHook, InputEvent, KernelState};
 use pocket_core::Emulator;
 use pocket_library::{is_gizmondo_game, CpuBackendPref, GameEntry, Library};
 
+/// Output format of the audio mix handed to Android's `AudioTrack`.
+const MIX_RATE: u32 = 44_100;
+const MIX_CHANNELS: u16 = 2;
+
 const FRAME_PUSH_INTERVAL: Duration = Duration::from_millis(16);
 
 /// UNO's 480×800 framebuffer expands to 1.5 MB per RGBA snapshot. Sending
@@ -156,22 +160,26 @@ impl Session {
     /// Copy up to `dst.len()` interleaved 16-bit samples out of the
     /// guest's mixer queue.
     pub fn poll_audio(&self, dst: &mut [i16]) -> usize {
-        let guard = match self.state.audio.lock() {
-            Ok(g) => g,
-            Err(_) => return 0,
+        let Ok(guard) = self.state.audio.lock() else {
+            return 0;
         };
-        guard.as_ref().map_or(0, |tap| tap.drain_into(dst))
+        let Some(tap) = guard.as_ref() else {
+            return 0;
+        };
+        let mut mix = vec![0f32; dst.len()];
+        tap.render_mix(&mut mix, MIX_RATE, MIX_CHANNELS);
+        for (out, sample) in dst.iter_mut().zip(&mix) {
+            *out = (sample.clamp(-1.0, 1.0) * 32767.0) as i16;
+        }
+        dst.len()
     }
 
     /// `(sample_rate, channels)` the guest opened its output with.
     pub fn audio_format(&self) -> Option<(u32, u16)> {
+        // The mix has a fixed output format. A title using only voices, such as
+        // EverQuest's FMOD effects, never announces a guest format at all.
         let guard = self.state.audio.lock().ok()?;
-        let tap = guard.as_ref()?;
-        if !tap.format_ready() {
-            return None;
-        }
-        let fmt = tap.guest_format();
-        Some((fmt.sample_rate, fmt.channels))
+        guard.as_ref().map(|_| (MIX_RATE, MIX_CHANNELS))
     }
 
     pub fn send_input(&self, cmd: InputCommand) {
@@ -409,6 +417,10 @@ fn run_game_to_completion(
 
 #[cfg(feature = "unicorn")]
 fn build_unicorn_for_machine(machine: u16) -> anyhow::Result<Emulator> {
+    // Unicorn has no SuperH: SH3 builds (HP Jornada 54x) run on the interpreter.
+    if matches!(machine, pocket_core::pe::machine::SH3 | pocket_core::pe::machine::SH4) {
+        return Ok(Emulator::with_interp_cpu_for_arch(pocket_core::cpu::Arch::Sh));
+    }
     if matches!(
         machine,
         pocket_core::pe::machine::MIPS_R3000 | pocket_core::pe::machine::MIPS_R4000
@@ -420,10 +432,19 @@ fn build_unicorn_for_machine(machine: u16) -> anyhow::Result<Emulator> {
 }
 
 #[cfg(not(feature = "unicorn"))]
-fn build_unicorn_for_machine(_machine: u16) -> anyhow::Result<Emulator> {
-    Err(anyhow::anyhow!(
-        "binary was not compiled with the `unicorn` feature"
-    ))
+fn build_unicorn_for_machine(machine: u16) -> anyhow::Result<Emulator> {
+    if matches!(machine, pocket_core::pe::machine::SH3 | pocket_core::pe::machine::SH4) {
+        return Ok(Emulator::with_interp_cpu_for_arch(pocket_core::cpu::Arch::Sh));
+    }
+    // Without Unicorn the portable interpreter runs both ARM games and the
+    // MIPS builds of Pocket PC 2000 titles.
+    if matches!(
+        machine,
+        pocket_core::pe::machine::MIPS_R3000 | pocket_core::pe::machine::MIPS_R4000
+    ) {
+        return Ok(Emulator::with_interp_cpu_for_arch(pocket_core::cpu::Arch::Mips));
+    }
+    Ok(Emulator::with_interp_cpu())
 }
 
 pub(crate) fn push_frame(state: &Arc<SessionState>, frame: FrameSnapshot) {

@@ -1,0 +1,407 @@
+{
+  "comment": "PocketHLE import knowledge base, layered on top of the cases compiled into the importer (download zips, self-extracting archives, installers that hold cabinets). Known lists exact downloads and the steps that take their game out. Rules say how to get a Pocket PC game out of a download that does not import as it is; ranking says which of several builds to take; problems explain what still fails. A file named import_kb.json in the library root is read too: its entries go first, and games that only imported after exploring add a learned rule there. See docs/PACKAGE_FORMAT.md.",
+  "known": [],
+  "rules": [],
+  "ranking": {
+    "comment": "Scores add up over a candidate's path and its executable. Candidates are tried best first; one at -150 or below is never imported, so builds for other processors (-100) are only taken when no ARM build is there.",
+    "name": [
+      {
+        "has": "arm",
+        "score": 40
+      },
+      {
+        "has": "2577",
+        "score": 40
+      },
+      {
+        "has": "strongarm",
+        "score": 40
+      },
+      {
+        "has": ".sa.",
+        "score": 35
+      },
+      {
+        "has": "xscale",
+        "score": 35
+      },
+      {
+        "has": "1824",
+        "score": 30
+      },
+      {
+        "has": "pxa",
+        "score": 30
+      },
+      {
+        "has": "sa1100",
+        "score": 35
+      },
+      {
+        "has": "sa1110",
+        "score": 35
+      },
+      {
+        "has": "s3c24",
+        "score": 30
+      },
+      {
+        "has": "omap",
+        "score": 30
+      },
+      {
+        "has": "armv4",
+        "score": 10
+      },
+      {
+        "has": "vr41",
+        "score": -60
+      },
+      {
+        "has": "superh",
+        "score": -100
+      },
+      {
+        "has": "pocketpc",
+        "score": 10
+      },
+      {
+        "has": "ppc",
+        "score": 8
+      },
+      {
+        "has": "wm5",
+        "score": 5
+      },
+      {
+        "has": "res",
+        "score": -5
+      },
+      {
+        "has": "mips",
+        "score": -60
+      },
+      {
+        "has": "_4000",
+        "score": -60
+      },
+      {
+        "has": "sh3",
+        "score": -100
+      },
+      {
+        "has": "sh 3",
+        "score": -100
+      },
+      {
+        "has": "sh4",
+        "score": -100
+      },
+      {
+        "has": "10003",
+        "score": -100
+      },
+      {
+        "has": "x86",
+        "score": -200
+      },
+      {
+        "has": "hpc",
+        "score": -30
+      },
+      {
+        "has": "smartphone",
+        "score": -20
+      },
+      {
+        "has": "_sys",
+        "score": -200
+      },
+      {
+        "has": "_user",
+        "score": -200
+      },
+      {
+        "has": "data1.cab",
+        "score": -200
+      }
+    ],
+    "machine": {
+      "arm": 60,
+      "mips": -60,
+      "sh": -100,
+      "x86": -200
+    },
+    "kind": {
+      "cab": 20,
+      "exe": 0
+    },
+    "tiny_exe": {
+      "below": 16384,
+      "score": -100
+    }
+  },
+  "problems": [
+    {
+      "id": "dotnet",
+      "match": [
+        ".net compact framework",
+        "managed pe"
+      ],
+      "title": {
+        "en": "This is a .NET Compact Framework program, which PocketHLE cannot run.",
+        "zh-Hant": "這是 .NET Compact Framework 程式，PocketHLE 目前無法執行。"
+      },
+      "hint": {
+        "en": "Look for a native ARM version of this program.",
+        "zh-Hant": "請改找這個程式的原生 ARM 版本。"
+      }
+    },
+    {
+      "id": "other-processor",
+      "match": [
+        "unsupported instruction",
+        "floating-point instruction"
+      ],
+      "title": {
+        "en": "The game uses an instruction PocketHLE does not handle yet.",
+        "zh-Hant": "遊戲用到 PocketHLE 尚未支援的指令。"
+      },
+      "hint": {
+        "en": "MIPS16 code in MIPS builds and floating-point instructions in SH4 builds are not supported yet; try the ARM build if there is one. Otherwise please report it with the details below.",
+        "zh-Hant": "目前還不支援 MIPS 版的 MIPS16 壓縮指令，以及 SH4 版的浮點指令，請改用 ARM 版（如果有）。否則歡迎附上下方的技術細節回報。"
+      }
+    },
+    {
+      "id": "missing-rom-library",
+      "when_missing": [
+        "mfcce",
+        "olece"
+      ],
+      "title": {
+        "en": "The game needs a file that comes with the Pocket PC itself.",
+        "zh-Hant": "遊戲需要 Pocket PC 系統內建的檔案。"
+      },
+      "hint": {
+        "en": "Missing: {missing}. Put your own copy in the package next to the .cab.",
+        "zh-Hant": "缺少：{missing}。請把你自己的副本放進遊戲包，和 .cab 放在同一層。"
+      }
+    },
+    {
+      "id": "missing-library",
+      "when_missing": [
+        ""
+      ],
+      "title": {
+        "en": "The game needs a file that is not in the package.",
+        "zh-Hant": "遊戲需要的檔案不在遊戲包裡。"
+      },
+      "hint": {
+        "en": "Missing: {missing}. Put it in the package next to the .cab or the game's .exe.",
+        "zh-Hant": "缺少：{missing}。請把它放進遊戲包，和 .cab 或遊戲的 .exe 放在同一層。"
+      }
+    },
+    {
+      "id": "unsupported-processor",
+      "match": [
+        "unsupported machine: 0x01a"
+      ],
+      "title": {
+        "en": "This build is for a SuperH processor PocketHLE does not run (such as SH-3E or SH-5).",
+        "zh-Hant": "這是給 PocketHLE 不支援的 SuperH 處理器（例如 SH-3E、SH-5）的版本。"
+      },
+      "hint": {
+        "en": "Import the ARM, MIPS or SH3 build instead. PocketHLE runs ARM (StrongARM, XScale/PXA, Samsung S3C, TI OMAP), MIPS (Casio Cassiopeia) and SH3 (HP Jornada 54x) builds.",
+        "zh-Hant": "請改匯入 ARM、MIPS 或 SH3 版。PocketHLE 可執行 ARM（StrongARM、XScale/PXA、Samsung S3C、TI OMAP）、MIPS（Casio Cassiopeia）與 SH3（HP Jornada 54x）版本。"
+      }
+    },
+    {
+      "id": "desktop-program-image",
+      "match": [
+        "unsupported machine: 0x8664",
+        "unsupported machine: 0x014c",
+        "executes arm and mips wince images only",
+        "executes native arm/mips wince images only"
+      ],
+      "title": {
+        "en": "This is a desktop Windows program, not a Pocket PC one.",
+        "zh-Hant": "這是 Windows 桌面程式，不是 Pocket PC 程式。"
+      },
+      "hint": {
+        "en": "Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.",
+        "zh-Hant": "不要執行它。如果是安裝程式，請用 7-Zip 打開，取出 ARM 版的 .cab 再匯入。"
+      }
+    },
+    {
+      "id": "not-a-cab",
+      "match": [
+        "invalid file signature"
+      ],
+      "title": {
+        "en": "This is not a Pocket PC CAB, or it is damaged.",
+        "zh-Hant": "這不是 Pocket PC 的 CAB，或檔案已損毀。"
+      },
+      "hint": {
+        "en": "Download it again. A desktop installer's data1.cab cannot be used; look for the CAB named for ARM, StrongARM, PPC_2577 or Pocket PC.",
+        "zh-Hant": "請重新下載。桌面安裝程式的 data1.cab 無法使用，請改找檔名含 ARM、StrongARM、PPC_2577 或 Pocket PC 的 CAB。"
+      }
+    },
+    {
+      "id": "desktop-program",
+      "match": [
+        "notarmpe",
+        "contains no pocket pc cab"
+      ],
+      "title": {
+        "en": "This is a desktop Windows program, and no Pocket PC game could be taken out of it.",
+        "zh-Hant": "這是 Windows 桌面程式，而且無法從中取出 Pocket PC 遊戲。"
+      },
+      "hint": {
+        "en": "Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.",
+        "zh-Hant": "不要執行它。如果是安裝程式，請用 7-Zip 打開，取出 ARM 版的 .cab 再匯入。"
+      }
+    },
+    {
+      "id": "support-library",
+      "match": [
+        "isLibrary",
+        "support library"
+      ],
+      "title": {
+        "en": "This is a support library (DLL), not the game.",
+        "zh-Hant": "這是支援程式庫（DLL），不是遊戲本體。"
+      },
+      "hint": {
+        "en": "Import the game's .exe or its .cab; DLLs beside it are found automatically.",
+        "zh-Hant": "請匯入遊戲的 .exe 或 .cab，同資料夾的 DLL 會自動載入。"
+      }
+    },
+    {
+      "id": "no-game",
+      "match": [
+        "noexecutable",
+        "does not contain any arm"
+      ],
+      "title": {
+        "en": "No Pocket PC program was found in it.",
+        "zh-Hant": "裡面找不到 Pocket PC 程式。"
+      },
+      "hint": {
+        "en": "A package needs a Pocket PC .cab, or a folder with the game's ARM .exe. See the package format.",
+        "zh-Hant": "遊戲包需要一個 Pocket PC 的 .cab，或含有遊戲 ARM .exe 的資料夾。請參考打包格式。"
+      }
+    },
+    {
+      "id": "no-space",
+      "match": [
+        "no space",
+        "quota",
+        "storagefull",
+        "storage full"
+      ],
+      "title": {
+        "en": "There is not enough storage space.",
+        "zh-Hant": "儲存空間不足。"
+      },
+      "hint": {
+        "en": "Remove games you no longer play, then try again.",
+        "zh-Hant": "請刪除不再遊玩的遊戲後再試一次。"
+      }
+    },
+    {
+      "id": "damaged-archive",
+      "match": [
+        "zip error",
+        "rar error",
+        "invalid zip",
+        "checksum",
+        "cab parse error",
+        "unexpected end"
+      ],
+      "title": {
+        "en": "The archive is damaged or cannot be read.",
+        "zh-Hant": "壓縮檔已損毀或無法讀取。"
+      },
+      "hint": {
+        "en": "Download it again, or open it with 7-Zip and repack the files as a plain ZIP.",
+        "zh-Hant": "請重新下載；或用 7-Zip 解開後，重新壓成一般的 ZIP。"
+      }
+    },
+    {
+      "id": "unusable-name",
+      "match": [
+        "invalid game id"
+      ],
+      "title": {
+        "en": "The file name cannot be used to name the game.",
+        "zh-Hant": "無法用這個檔名替遊戲命名。"
+      },
+      "hint": {
+        "en": "Rename the file to include letters or numbers, then import it again.",
+        "zh-Hant": "請把檔名改成含英文字母或數字，再匯入一次。"
+      }
+    },
+    {
+      "id": "damaged-executable",
+      "match": [
+        "pe error",
+        "loading pe",
+        "mapping image"
+      ],
+      "title": {
+        "en": "The game's program file cannot be loaded.",
+        "zh-Hant": "遊戲的程式檔無法載入。"
+      },
+      "hint": {
+        "en": "The program inside may be damaged or packed. Try another copy of the game.",
+        "zh-Hant": "裡面的程式可能已損毀或被加殼，請換一份遊戲檔再試。"
+      }
+    },
+    {
+      "id": "crashed",
+      "match": [
+        "unmapped",
+        "exception",
+        "cpu error"
+      ],
+      "title": {
+        "en": "The game stopped on something the emulator cannot do yet.",
+        "zh-Hant": "遊戲用到模擬器尚未支援的功能而停止。"
+      },
+      "hint": {
+        "en": "This game is not supported yet. Please report it with the details below.",
+        "zh-Hant": "這個遊戲目前尚未支援。歡迎附上下方的技術細節回報。"
+      }
+    },
+    {
+      "id": "read-failed",
+      "match": [
+        "io error",
+        "not found",
+        "permission"
+      ],
+      "title": {
+        "en": "The file could not be read.",
+        "zh-Hant": "無法讀取檔案。"
+      },
+      "hint": {
+        "en": "Check that the file still exists and can be opened, then try again.",
+        "zh-Hant": "請確認檔案還在且可以開啟，再試一次。"
+      }
+    },
+    {
+      "id": "unknown",
+      "match": [
+        ""
+      ],
+      "title": {
+        "en": "Something went wrong.",
+        "zh-Hant": "發生錯誤。"
+      },
+      "hint": {
+        "en": "Try again. If it keeps happening, report it with the details below.",
+        "zh-Hant": "請再試一次；如果持續發生，請附上下方的技術細節回報。"
+      }
+    }
+  ]
+}

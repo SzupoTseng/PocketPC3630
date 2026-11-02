@@ -187,6 +187,10 @@ pub const ARM_BX_LR: [u8; 4] = [0x1e, 0xff, 0x2f, 0xe1];
 /// Windows CE's ARM debugger breakpoint instruction.
 pub const WINCE_BREAKPOINT: u32 = 0xe600_0010;
 
+/// `rts; nop; nop; nop` in SuperH little-endian mode: the return and its delay
+/// slot, padded to the eight bytes of a thunk.
+pub const SH_RTS: [u8; 8] = [0x0b, 0x00, 0x09, 0x00, 0x09, 0x00, 0x09, 0x00];
+
 /// `jr ra; nop` in MIPS32 little-endian mode.
 pub const MIPS_JR_RA: [u8; 8] = [0x08, 0x00, 0xe0, 0x03, 0x00, 0x00, 0x00, 0x00];
 
@@ -203,6 +207,7 @@ fn return_stub_bytes(arch: Arch) -> [u8; 8] {
             ARM_BX_LR[3],
         ],
         Arch::Mips => MIPS_JR_RA,
+        Arch::Sh => SH_RTS,
     }
 }
 
@@ -512,6 +517,11 @@ pub struct ModalDialog {
     /// Re-dispatch counter, bounding a headless run the same way
     /// [`KernelState::message_box_spins`] does.
     pub spins: u32,
+    /// Host clock (ms) when the dialog came up.
+    pub opened_frame: u64,
+    /// The frame window was just repainted underneath; draw the dialog
+    /// over it again on the next pass.
+    pub redraw: bool,
 }
 
 /// A commctrl status bar created via `CreateStatusWindow{A,W}`.
@@ -756,6 +766,87 @@ impl Dispatcher for NullDispatcher {
     }
 }
 
+/// One import of the main image that must be re-pointed at a real guest DLL.
+///
+/// EverQuest for the Pocket PC imports 195 `mfcce300.dll` ordinals and 31
+/// GapiDraw C++ methods from `GD104.dll`. Neither can be answered by a thunk:
+/// MFC exposes data such as `CWinApp::messageMap`, and GapiDraw's objects are
+/// laid out by its own constructors. The IAT slot is rewritten with the real
+/// export once `DllMain` has run.
+#[derive(Debug, Clone)]
+pub struct StaticGuestLink {
+    /// Lower-cased module file name, with the `.dll` suffix.
+    pub module: String,
+    /// Export key, in the form [`LoadedModule::exports`] uses (`#644` or a name).
+    pub export: String,
+    /// Guest address of the IAT slot to rewrite.
+    pub iat_va: u32,
+}
+
+/// API calls a [`KernelState::cooperative_host`] run may make before returning.
+const COOPERATIVE_SLICE_LIMIT: u64 = 4_000;
+
+/// Guest page holding the bootstrap that loads static guest DLLs before entry.
+pub const GUEST_BOOT_STUB_VA: u32 = MODULE_REGION_BASE - 0x1_0000;
+
+/// Assemble the ARM bootstrap: `LoadLibraryW` each module, then enter the game.
+///
+/// The WinMain registers and exit-trampoline `LR` required by the CE loader
+/// contract are saved around the calls, so entry still sees them unchanged.
+fn guest_boot_stub(base: u32, modules: &[String], load_library: u32, entry: u32) -> Vec<u8> {
+    const MOV_LR_PC: u32 = 0xE1A0_E00F;
+    const MOV_PC_R12: u32 = 0xE1A0_F00C;
+    const PUSH_ARGS: u32 = 0xE92D_400F;
+    const POP_ARGS: u32 = 0xE8BD_400F;
+    let code_words = 3 + modules.len() as u32 * 4;
+    let pool = base + code_words * 4;
+    let literal_count = modules.len() as u32 + 2;
+    let mut strings = pool + literal_count * 4;
+    let mut literals = vec![load_library, entry];
+    let mut text = Vec::new();
+    for name in modules {
+        literals.push(strings);
+        let wide: Vec<u8> = name
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .flat_map(u16::to_le_bytes)
+            .collect();
+        strings += wide.len() as u32;
+        text.extend(wide);
+    }
+    // `LDR Rd, [PC, #imm]`, where the ARM PC reads as the instruction + 8.
+    let load = |rd: u32, word_index: u32, literal: u32| -> u32 {
+        let target = pool + literal * 4;
+        let pc = base + word_index * 4 + 8;
+        0xE59F_0000 | (rd << 12) | (target - pc)
+    };
+    let mut words = vec![PUSH_ARGS];
+    for index in 0..modules.len() as u32 {
+        let at = words.len() as u32;
+        words.push(load(0, at, index + 2));
+        words.push(load(12, at + 1, 0));
+        words.push(MOV_LR_PC);
+        words.push(MOV_PC_R12);
+    }
+    words.push(POP_ARGS);
+    words.push(load(15, words.len() as u32, 1));
+    let mut out: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
+    out.extend(literals.iter().flat_map(|w| w.to_le_bytes()));
+    out.extend(text);
+    out
+}
+
+fn guest_dll_on_disk(dirs: &[PathBuf], module: &str) -> bool {
+    dirs.iter().any(|dir| {
+        std::fs::read_dir(dir).is_ok_and(|entries| {
+            entries.flatten().any(|entry| {
+                entry.file_name().to_string_lossy().eq_ignore_ascii_case(module)
+                    && entry.path().is_file()
+            })
+        })
+    })
+}
+
 /// A DLL the guest pulled in at runtime with `LoadLibraryW`.
 ///
 /// Modules with exports are relocated, have their system imports bound to
@@ -838,6 +929,8 @@ pub struct KernelState {
     /// nonsense like `\\Programdata.pak`. Frontends set this to the
     /// install path the CAB would have used on a device.
     pub module_path: String,
+    /// File name of the loaded image, whatever guest path a frontend reports.
+    pub exe_file_name: String,
     /// Software-rendered display the GDI/GAPI handlers paint into.
     pub framebuffer: Framebuffer,
     /// Tracked GDI objects (DCs, bitmaps, brushes, pens, fonts).
@@ -859,6 +952,13 @@ pub struct KernelState {
     pub modules: Vec<LoadedModule>,
     /// Nested `LoadLibraryW` calls waiting for guest `DllMain` to return.
     pub pending_module_loads: Vec<PendingModuleLoad>,
+    /// Main-image imports to rebind once their guest DLL has initialized.
+    pub static_guest_links: Vec<StaticGuestLink>,
+    /// The host cannot block, as in a browser tab: the run loop returns to it
+    /// instead of sleeping, and is called again to continue.
+    pub cooperative_host: bool,
+    /// Milliseconds the guest asked to sleep, for a [`Self::cooperative_host`].
+    pub host_yield_ms: Option<u32>,
     /// Base address the next `LoadLibraryW` will map at. Starts at
     /// [`MODULE_REGION_BASE`] and walks up by [`MODULE_REGION_STRIDE`].
     pub next_module_base: u32,
@@ -904,6 +1004,10 @@ pub struct KernelState {
     /// used to clone the entire 150 KiB framebuffer every time the
     /// game `BitBlt`-ed *from* the screen surface.
     pub bit_blt_src_scratch: Vec<u8>,
+    /// Image lists made by `ImageList_Create`, by handle.
+    pub image_lists: std::collections::HashMap<u32, gdi::ImageList>,
+    /// Menu shown in the command bar (`CommandBar_InsertMenubar`), 0 if none.
+    pub command_bar_menu: u32,
     /// Reusable scratch buffer for the host -> guest DIB section
     /// pixel encode at the end of every BitBlt to a memory DC.
     /// Sized to `dib_row_stride * height` of the bitmap being
@@ -921,6 +1025,12 @@ pub struct KernelState {
     pub gx_last_pushed_counter: u64,
     /// Signature of sampled guest framebuffer rows from the last sync.
     pub gx_guest_signature: Option<u64>,
+    /// Between `GXBeginDraw` and `GXEndDraw`. Pocket Quake calls `GXBeginDraw`
+    /// once at startup and writes through that pointer for the rest of the game.
+    pub gx_draw_open: bool,
+    /// The guest mapping as of the last sync, to tell what a game holding the
+    /// display open wrote from what GDI painted. See [`sync_guest_framebuffer`].
+    pub gx_held_shadow: Vec<u8>,
     /// Guest addresses of the strings `glGetString` / `eglQueryString`
     /// have handed out, keyed by the string itself. GL promises the
     /// returned pointer stays valid for the life of the context, and
@@ -935,6 +1045,11 @@ pub struct KernelState {
     /// Maximum synthetic frame messages to inject. `0` means
     /// unlimited.
     pub synthetic_message_budget: u64,
+    /// The last `PeekMessage` answered with a synthetic paint. See
+    /// `peek_paint_is_due` in the message pump.
+    pub synthetic_paint_peeked: bool,
+    /// The last synthetic message was a `WM_TIMER`; see `timer_goes_first`.
+    pub synthetic_timer_went_last: bool,
     /// Address of the guest's last-registered window procedure. Set
     /// by `RegisterClassW`, used by `DispatchMessageW` to trampoline
     /// into guest-side WM_PAINT / WM_KEYDOWN handlers.
@@ -990,6 +1105,10 @@ pub struct KernelState {
     /// Timer interval and host-clock deadline used by the synthetic message pump.
     pub synthetic_timer_interval_ms: u32,
     pub synthetic_timer_next_ms: u64,
+    /// Every other timer the guest has running, as
+    /// `(id, hwnd, timer_proc, interval_ms, next_ms)`. The `synthetic_timer_*`
+    /// fields always hold the timer due first; the rest wait here.
+    pub other_timers: Vec<(u32, u32, u32, u32, u64)>,
     /// Host-clock deadline for the next synthetic paint message.
     pub synthetic_paint_next_ms: u64,
     /// `true` once the synthetic message pump has delivered
@@ -1793,12 +1912,20 @@ mod dynamic_export_tests {
 }
 
 pub struct Process {
+    /// Where to continue after the run loop returned to a cooperative host.
+    pub resume_pc: Option<u32>,
+    /// Where to start instead of the image entry when guest DLLs must load first.
+    pub guest_boot_entry: Option<u32>,
     pub image: LoadedImage,
     pub thunks: Vec<Thunk>,
     pub thunk_by_va: HashMap<u32, usize>,
     pub stack_top: u32,
     pub stack_size: u32,
     pub state: KernelState,
+    /// DLLs the image imports that neither PocketHLE emulates nor the game
+    /// folder supplies. Calls into them hit zero stubs, so a game missing one
+    /// usually crashes early; frontends warn before starting it.
+    pub missing_libraries: Vec<String>,
 }
 
 impl Process {
@@ -1831,6 +1958,8 @@ impl Process {
                 | pocket_pe::machine::ARMNT
                 | pocket_pe::machine::MIPS_R3000
                 | pocket_pe::machine::MIPS_R4000
+                | pocket_pe::machine::SH3
+                | pocket_pe::machine::SH4
         ) {
             return Err(KernelError::Loader(format!(
                 "unsupported executable machine 0x{:04x}; PocketHLE's CPU backend executes ARM and MIPS WinCE images only",
@@ -1949,7 +2078,9 @@ impl Process {
                 _ => None,
             };
             let native =
-                if image.machine == machine::MIPS_R3000 || image.machine == machine::MIPS_R4000 {
+                if !is_arm_machine(image.machine)
+                    || !cpu.supports_native_thunks()
+                {
                     None
                 } else {
                     native_name.and_then(|n| native_thunks::native_thunk_for(&imp.dll, n))
@@ -2065,9 +2196,7 @@ impl Process {
         )?;
         cpu.write_reg(ArmReg::Sp, stack_top - 16)?;
         cpu.write_reg(ArmReg::Lr, PROCESS_EXIT_TRAMPOLINE_VA)?;
-        if image.machine != machine::MIPS_R3000
-            && image.machine != machine::MIPS_R4000
-            && image_uses_thumb_entry(cpu, &image)?
+        if is_arm_machine(image.machine) && image_uses_thumb_entry(cpu, &image)?
         {
             let cpsr = cpu.read_reg(ArmReg::Cpsr)? | (1 << 5);
             cpu.write_reg(ArmReg::Cpsr, cpsr)?;
@@ -2183,12 +2312,92 @@ impl Process {
         // the directory we loaded the EXE from is the natural search path
         // for `LoadLibraryW`. For a CAB/ZIP run that directory *is* the
         // extraction root, so this covers both cases.
-        let module_search_dirs: Vec<PathBuf> = Path::new(&image.source_path)
+        let mut module_search_dirs: Vec<PathBuf> = Path::new(&image.source_path)
             .parent()
             .filter(|p| !p.as_os_str().is_empty())
             .map(|p| vec![p.to_path_buf()])
             .unwrap_or_default();
+        // `mfcce300.dll` lives in the device ROM, not in EverQuest's cabinet,
+        // and PocketHLE ships no Microsoft binaries, so the user points this
+        // at a folder holding their own copy.
+        if let Some(extra) = std::env::var_os("POCKETHLE_GUEST_DLL_DIR") {
+            module_search_dirs.push(PathBuf::from(extra));
+        }
+        // Gated on the MFC import so titles that already run on HLE handlers
+        // keep them. EverQuest's own `fmodce.dll` runs for real on top of the
+        // emulated waveOut, which gives it sound; any DLL with Rust handlers
+        // stays emulated.
+        let needs_mfc = image.machine == machine::ARM
+            && image
+                .imports
+                .iter()
+                .any(|imp| imp.dll.eq_ignore_ascii_case("mfcce300.dll"));
+        let mut missing_libraries: Vec<String> = Vec::new();
+        for imp in &image.imports {
+            let module = imp.dll.to_ascii_lowercase();
+            if dispatcher.dynamic_names(&module).is_empty()
+                && !guest_dll_on_disk(&module_search_dirs, &module)
+                && !missing_libraries.contains(&module)
+            {
+                missing_libraries.push(module);
+            }
+        }
+        let mut static_guest_links = Vec::new();
+        let mut guest_boot_entry = None;
+        if needs_mfc {
+            let mut modules: Vec<String> = Vec::new();
+            for imp in &image.imports {
+                let module = imp.dll.to_ascii_lowercase();
+                if !dispatcher.dynamic_names(&module).is_empty()
+                    || !guest_dll_on_disk(&module_search_dirs, &module)
+                {
+                    continue;
+                }
+                static_guest_links.push(StaticGuestLink {
+                    module: module.clone(),
+                    export: match &imp.binding {
+                        ImportBinding::Name(name) => name.clone(),
+                        ImportBinding::Ordinal(ordinal) => format!("#{ordinal}"),
+                    },
+                    iat_va: imp.iat_va,
+                });
+                if !modules.contains(&module) {
+                    modules.push(module);
+                }
+            }
+            let load_library = dynamic_exports
+                .get(&PROCESS_INSTANCE_HANDLE)
+                .and_then(|exports| exports.get("LoadLibraryW"))
+                .copied();
+            if let (false, Some(load_library)) = (modules.is_empty(), load_library) {
+                let stub = guest_boot_stub(
+                    GUEST_BOOT_STUB_VA,
+                    &modules,
+                    load_library,
+                    image.entry_va() & !1,
+                );
+                cpu.map_region(
+                    GUEST_BOOT_STUB_VA,
+                    pocket_cpu::round_up_to_page(stub.len() as u32),
+                    Prot::READ | Prot::EXEC,
+                )?;
+                cpu.write_mem(GUEST_BOOT_STUB_VA, &stub)?;
+                guest_boot_entry = Some(GUEST_BOOT_STUB_VA);
+                log::info!("static guest DLLs to load before entry: {modules:?}");
+            }
+        }
+        let mut registry = crate::registry::Registry::with_device_defaults();
+        // Kept beside the game so its saved characters stay listed; see
+        // `Registry::attach_file`.
+        if needs_mfc {
+            if let Some(dir) = module_search_dirs.first() {
+                registry.attach_file(dir.join("pockethle-registry.dat"));
+            }
+        }
         Ok(Process {
+            missing_libraries,
+            resume_pc: None,
+            guest_boot_entry,
             image,
             thunks,
             thunk_by_va,
@@ -2200,6 +2409,7 @@ impl Process {
                 winsock: winsock::WinsockState::default(),
                 file_views: HashMap::new(),
                 module_path: DEFAULT_MODULE_PATH.to_string(),
+                exe_file_name: String::new(),
                 framebuffer: Framebuffer::default(),
                 gdi: GdiState::new(),
                 resources,
@@ -2211,6 +2421,9 @@ impl Process {
                 next_module_handle: 0x1000_0001,
                 modules: Vec::new(),
                 pending_module_loads: Vec::new(),
+                static_guest_links,
+                cooperative_host: false,
+                host_yield_ms: None,
                 next_module_base: MODULE_REGION_BASE,
                 module_search_dirs,
                 fb_mapped: false,
@@ -2220,13 +2433,20 @@ impl Process {
                 mem_op_scratch: Vec::new(),
                 mem_op_scratch_b: Vec::new(),
                 bit_blt_src_scratch: Vec::new(),
+                image_lists: std::collections::HashMap::new(),
+                command_bar_menu: 0,
+                other_timers: Vec::new(),
                 dib_sync_scratch: Vec::new(),
                 dib_decode_scratch: Vec::new(),
                 gx_last_pushed_counter: 0,
                 gx_guest_signature: None,
+                gx_draw_open: false,
+                gx_held_shadow: Vec::new(),
                 gles_strings: HashMap::new(),
                 synthetic_message_count: 0,
                 synthetic_message_budget: 240,
+                synthetic_paint_peeked: false,
+                synthetic_timer_went_last: false,
                 wnd_proc: 0,
                 window_class_procs: HashMap::new(),
                 window_background: None,
@@ -2235,7 +2455,7 @@ impl Process {
                 find_handles: HashMap::new(),
                 next_find_handle: 0,
                 pending_startup: std::collections::VecDeque::new(),
-                registry: crate::registry::Registry::with_device_defaults(),
+                registry,
                 cedb: crate::cedb::DatabaseStore::default(),
                 window_procs: HashMap::new(),
                 window_userdata: HashMap::new(),
@@ -2350,10 +2570,24 @@ impl<F: FnMut(&mut KernelState) -> FrameAction> FrameHook for F {
     }
 }
 
-fn sync_guest_framebuffer(cpu: &mut dyn Cpu, state: &mut KernelState) {
-    if !state.fb_mapped || state.framebuffer.frame_counter != state.gx_last_pushed_counter {
-        return;
+/// Copy into `host` the pixels the guest changed since `shadow`. Everything else
+/// in `host` stays, because GDI painted it. Returns whether a pixel moved.
+fn merge_direct_writes(guest: &[u8], shadow: &[u8], host: &mut [u8]) -> bool {
+    let mut changed = false;
+    for ((guest, shadow), host) in guest
+        .chunks_exact(2)
+        .zip(shadow.chunks_exact(2))
+        .zip(host.chunks_exact_mut(2))
+    {
+        if guest != shadow && guest != &*host {
+            host.copy_from_slice(guest);
+            changed = true;
+        }
     }
+    changed
+}
+
+fn read_guest_framebuffer(cpu: &mut dyn Cpu, state: &mut KernelState) -> bool {
     let pitch = state.guest_fb_pitch.max(state.framebuffer.stride_bytes()) as usize;
     let row_bytes = state.framebuffer.stride_bytes() as usize;
     let len = state.framebuffer.pixels.len();
@@ -2365,7 +2599,7 @@ fn sync_guest_framebuffer(cpu: &mut dyn Cpu, state: &mut KernelState) {
             cpu.read_mem_into(SYNTHETIC_FRAMEBUFFER_BASE, &mut state.gx_readback_scratch)
         {
             log::warn!("unable to read the GAPI framebuffer: {error}");
-            return;
+            return false;
         }
     } else {
         for row in 0..state.framebuffer.height as usize {
@@ -2375,9 +2609,58 @@ fn sync_guest_framebuffer(cpu: &mut dyn Cpu, state: &mut KernelState) {
                 cpu.read_mem_into(src, &mut state.gx_readback_scratch[dst..dst + row_bytes])
             {
                 log::warn!("unable to read the GAPI framebuffer row: {error}");
-                return;
+                return false;
             }
         }
+    }
+    true
+}
+
+/// A device has one screen; here GDI paints the host copy and GAPI the guest
+/// mapping. Pocket Quake uses both every frame: GDI for its button panels and a
+/// `GXBeginDraw` pointer, held forever, for the 3D view. It never calls GAPI
+/// again, so nothing else would ever join the two.
+fn merge_held_display(cpu: &mut dyn Cpu, state: &mut KernelState) {
+    if !read_guest_framebuffer(cpu, state) {
+        return;
+    }
+    if state.gx_held_shadow.len() == state.gx_readback_scratch.len() {
+        merge_direct_writes(
+            &state.gx_readback_scratch,
+            &state.gx_held_shadow,
+            &mut state.framebuffer.pixels,
+        );
+    }
+    state.framebuffer.mark_dirty();
+    let pitch = state.guest_fb_pitch.max(state.framebuffer.stride_bytes()) as usize;
+    let row_bytes = state.framebuffer.stride_bytes() as usize;
+    for row in 0..state.framebuffer.height as usize {
+        let src = row * row_bytes;
+        let dst = SYNTHETIC_FRAMEBUFFER_BASE + (row * pitch) as u32;
+        if let Err(error) = cpu.write_mem(dst, &state.framebuffer.pixels[src..src + row_bytes]) {
+            log::warn!("unable to update the GAPI framebuffer: {error}");
+            return;
+        }
+    }
+    state.gx_held_shadow.clone_from(&state.framebuffer.pixels);
+    state.gx_last_pushed_counter = state.framebuffer.frame_counter;
+}
+
+fn sync_guest_framebuffer(cpu: &mut dyn Cpu, state: &mut KernelState) {
+    if !state.fb_mapped {
+        return;
+    }
+    if state.framebuffer.frame_counter != state.gx_last_pushed_counter {
+        if state.gx_draw_open {
+            merge_held_display(cpu, state);
+        }
+        return;
+    }
+    if !read_guest_framebuffer(cpu, state) {
+        return;
+    }
+    if state.gx_draw_open {
+        state.gx_held_shadow.clone_from(&state.gx_readback_scratch);
     }
     if state.gx_readback_scratch != state.framebuffer.pixels {
         state
@@ -2411,8 +2694,14 @@ pub fn run_main_loop(
 
 /// Same as [`run_main_loop`], but also calls `frame_hook` between
 /// each slice so the host-side window can repaint and pump events.
+/// ARM in any of its PE flavours, as opposed to MIPS or SuperH, which have no
+/// Thumb entry points and no native ARM thunks.
+fn is_arm_machine(m: u16) -> bool {
+    matches!(m, machine::ARM | machine::THUMB | machine::ARMNT)
+}
+
 fn image_uses_thumb_entry(cpu: &mut dyn Cpu, image: &LoadedImage) -> Result<bool, KernelError> {
-    if image.machine == machine::MIPS_R3000 || image.machine == machine::MIPS_R4000 {
+    if !is_arm_machine(image.machine) {
         return Ok(false);
     }
     if image.machine != machine::THUMB && image.machine != machine::ARMNT {
@@ -2460,7 +2749,9 @@ pub fn run_main_loop_with_hook(
             if detected_thumb_mode { "Thumb" } else { "ARM" }
         );
     }
+    let resuming = process.resume_pc.take();
     let mut pc = match std::env::var("POCKETHLE_OVERRIDE_ENTRY") {
+        _ if resuming.is_some() => resuming.unwrap_or(0),
         Ok(v) => {
             let parsed = if let Some(stripped) = v.strip_prefix("0x") {
                 u32::from_str_radix(stripped, 16)
@@ -2471,6 +2762,7 @@ pub fn run_main_loop_with_hook(
             log::info!("POCKETHLE_OVERRIDE_ENTRY=0x{parsed:08x}");
             parsed
         }
+        Err(_) if process.guest_boot_entry.is_some() => process.guest_boot_entry.unwrap_or(0),
         Err(_) => {
             let entry = process.image.entry_va() & !1;
             if thumb_mode {
@@ -2503,6 +2795,15 @@ pub fn run_main_loop_with_hook(
     loop {
         if max_slices != 0 && slice >= max_slices {
             break;
+        }
+        // A browser tab must get control back to draw and to deliver input:
+        // when the guest sleeps, and at the latest after a bounded run of API
+        // calls for a guest that never does.
+        if process.state.cooperative_host
+            && (process.state.host_yield_ms.is_some() || slice >= COOPERATIVE_SLICE_LIMIT)
+        {
+            process.resume_pc = Some(pc);
+            return Ok(());
         }
         slice = slice.saturating_add(1);
         prof.count_slice();
@@ -2819,6 +3120,14 @@ pub fn run_main_loop_with_hook(
                 }
                 _ => PRESENT_POLL_INTERVAL,
             };
+            // EverQuest's MFC dialogs change nothing on screen until tapped, and
+            // the hook is also how a frontend collects input. A slow poll here
+            // swallowed whole clicks on its registration dialog.
+            let poll_interval = if process.state.static_guest_links.is_empty() {
+                poll_interval
+            } else {
+                poll_interval.min(Duration::from_millis(8))
+            };
             let due = counter != last_presented_frame
                 || last_present.is_none_or(|then| now.duration_since(then) >= poll_interval);
             if due {
@@ -2858,6 +3167,18 @@ pub fn run_main_loop_with_hook(
 }
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_held_display_keeps_both_gdi_and_guest_pixels() {
+        // Pixel 0: untouched. 1: GDI only. 2: guest only. 3: both, guest wins
+        // because it is the newer write as far as anyone can tell.
+        let shadow = [0u8, 0, 0, 0, 0, 0, 0, 0];
+        let guest = [0u8, 0, 0, 0, 7, 7, 8, 8];
+        let mut host = [0u8, 0, 5, 5, 0, 0, 6, 6];
+        assert!(super::merge_direct_writes(&guest, &shadow, &mut host));
+        assert_eq!(host, [0, 0, 5, 5, 7, 7, 8, 8]);
+        assert!(!super::merge_direct_writes(&guest, &guest, &mut host));
+    }
+
     use super::*;
     use pocket_cpu::stub::StubCpu;
     use pocket_pe::{LoadedImage, LoadedSection};
@@ -3067,6 +3388,7 @@ mod tests {
             exports: IndexMap::new(),
             resources: vec![],
             managed_runtime: None,
+            reloc_directory: None,
         }
     }
 
@@ -3120,6 +3442,7 @@ mod tests {
             exports: IndexMap::new(),
             resources: vec![],
             managed_runtime: None,
+            reloc_directory: None,
         };
         let mut cpu = StubCpu::new();
         let p = Process::map_into(img, &mut cpu, &|_, _| None, &NullDispatcher).unwrap();
@@ -3154,4 +3477,36 @@ pub struct MsgQueue {
 pub struct SemaphoreObject {
     pub count: u32,
     pub max_count: u32,
+}
+
+#[cfg(test)]
+mod guest_boot_stub_tests {
+    use super::guest_boot_stub;
+
+    fn word(bytes: &[u8], index: usize) -> u32 {
+        u32::from_le_bytes(bytes[index * 4..index * 4 + 4].try_into().unwrap())
+    }
+
+    /// EverQuest needs `mfcce300.dll` initialized before its CRT runs, with
+    /// the CE loader's WinMain registers still intact at the real entry.
+    #[test]
+    fn stub_loads_each_module_then_restores_args_and_enters() {
+        let base = 0x2FFF_0000;
+        let modules = vec!["a.dll".to_string()];
+        let stub = guest_boot_stub(base, &modules, 0x0AAA_0000, 0x0001_0040);
+        assert_eq!(word(&stub, 0), 0xE92D_400F);
+        assert_eq!(word(&stub, 3), 0xE1A0_E00F);
+        assert_eq!(word(&stub, 4), 0xE1A0_F00C);
+        assert_eq!(word(&stub, 5), 0xE8BD_400F);
+        // Code is 7 words, so the pool starts at word 7.
+        assert_eq!(word(&stub, 7), 0x0AAA_0000);
+        assert_eq!(word(&stub, 8), 0x0001_0040);
+        // `LDR PC, [PC, #imm]` at word 6 must read the entry literal at word 8.
+        assert_eq!(word(&stub, 6), 0xE59F_F000 | (8 * 4 - (6 * 4 + 8)));
+        // `LDR R0` at word 1 must read the name pointer at word 9.
+        assert_eq!(word(&stub, 1), 0xE59F_0000 | (9 * 4 - (4 + 8)));
+        let name = base + 10 * 4;
+        assert_eq!(word(&stub, 9), name);
+        assert_eq!(&stub[40..42], &[b'a', 0]);
+    }
 }

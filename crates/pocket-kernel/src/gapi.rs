@@ -31,6 +31,10 @@ pub const VK_START: u16 = 0xD4;
 /// `VK_RETURN` — what a host keyboard sends for "confirm", and what
 /// Smartphone builds call `VK_TACTION`.
 pub const VK_RETURN: u16 = 0x0D;
+/// `VK_ACTION`, the centre of a Pocket PC's direction pad. Pocket Quake confirms
+/// its menus with this key and ignores `VK_RETURN`, which on a device only
+/// follows it as an echo.
+pub const VK_ACTION: u16 = 0x86;
 
 /// Size of a `GXKeyList` as declared in the PPC2003 SDK's `gx.h`:
 /// eight `{SHORT vkXxx; POINT ptXxx;}` entries, each padded to 12

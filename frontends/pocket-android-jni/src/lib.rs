@@ -45,6 +45,17 @@ use serde::Serialize;
 
 use crate::runner::{InputCommand, Session};
 
+/// Which CPU backend this library was built with, for the in-game status line.
+/// A build without the `unicorn` feature runs everything on the interpreter.
+#[no_mangle]
+pub extern "system" fn Java_com_pockethle_app_NativeBridge_backendName<'local>(
+    env: JNIEnv<'local>,
+    _class: JClass<'local>,
+) -> jstring {
+    let name = if cfg!(feature = "unicorn") { "Unicorn (ARM)" } else { "ARM interpreter" };
+    new_jstring(&env, name.to_string())
+}
+
 #[no_mangle]
 pub extern "system" fn Java_com_pockethle_app_NativeBridge_banner<'local>(
     env: JNIEnv<'local>,
@@ -105,15 +116,9 @@ pub extern "system" fn Java_com_pockethle_app_NativeBridge_importCab<'local>(
         Some(p) => p,
         None => return new_jstring(&env, error_json("missing cab path")),
     };
-    let result = (|| -> anyhow::Result<String> {
-        let mut lib = Library::open(&root)?;
-        let entry = lib.import_cab(&cab)?;
-        Ok(serde_json::to_string(&entry)?)
-    })();
-    match result {
-        Ok(j) => new_jstring(&env, j),
-        Err(e) => new_jstring(&env, error_json(&format!("importCab: {e:#}"))),
-    }
+    // Every kind of download goes through the knowledge base, which can take a
+    // game out of an installer; a failure comes back explained.
+    new_jstring(&env, import_reply(&root, &cab))
 }
 
 #[no_mangle]
@@ -132,15 +137,9 @@ pub extern "system" fn Java_com_pockethle_app_NativeBridge_importZip<'local>(
         Some(p) => p,
         None => return new_jstring(&env, error_json("missing zip path")),
     };
-    let result = (|| -> anyhow::Result<String> {
-        let mut lib = Library::open(&root)?;
-        let entry = lib.import_zip(&zip)?;
-        Ok(serde_json::to_string(&entry)?)
-    })();
-    match result {
-        Ok(j) => new_jstring(&env, j),
-        Err(e) => new_jstring(&env, error_json(&format!("importZip: {e:#}"))),
-    }
+    // Every kind of download goes through the knowledge base, which can take a
+    // game out of an installer; a failure comes back explained.
+    new_jstring(&env, import_reply(&root, &zip))
 }
 
 #[no_mangle]
@@ -159,15 +158,9 @@ pub extern "system" fn Java_com_pockethle_app_NativeBridge_importRar<'local>(
         Some(p) => p,
         None => return new_jstring(&env, error_json("missing rar path")),
     };
-    let result = (|| -> anyhow::Result<String> {
-        let mut lib = Library::open(&root)?;
-        let entry = lib.import_rar(&rar)?;
-        Ok(serde_json::to_string(&entry)?)
-    })();
-    match result {
-        Ok(j) => new_jstring(&env, j),
-        Err(e) => new_jstring(&env, error_json(&format!("importRar: {e:#}"))),
-    }
+    // Every kind of download goes through the knowledge base, which can take a
+    // game out of an installer; a failure comes back explained.
+    new_jstring(&env, import_reply(&root, &rar))
 }
 
 #[no_mangle]
@@ -186,15 +179,9 @@ pub extern "system" fn Java_com_pockethle_app_NativeBridge_importExe<'local>(
         Some(p) => p,
         None => return new_jstring(&env, error_json("missing exe path")),
     };
-    let result = (|| -> anyhow::Result<String> {
-        let mut lib = Library::open(&root)?;
-        let entry = lib.import_exe(&exe)?;
-        Ok(serde_json::to_string(&entry)?)
-    })();
-    match result {
-        Ok(j) => new_jstring(&env, j),
-        Err(e) => new_jstring(&env, error_json(&format!("importExe: {e:#}"))),
-    }
+    // Every kind of download goes through the knowledge base, which can take a
+    // game out of an installer; a failure comes back explained.
+    new_jstring(&env, import_reply(&root, &exe))
 }
 
 #[no_mangle]
@@ -221,6 +208,41 @@ pub extern "system" fn Java_com_pockethle_app_NativeBridge_removeGame<'local>(
     match result {
         Ok(()) => new_jstring(&env, "{\"ok\":true}"),
         Err(e) => new_jstring(&env, error_json(&format!("removeGame: {e:#}"))),
+    }
+}
+
+/// `export`, `import` or `reset` a game's progress, in the save zip format the
+/// desktop and browser versions share. Returns `{"ok":true,"count":N}` or
+/// `{"ok":false,"error":...}`; `zipPath` is ignored for `reset`.
+#[no_mangle]
+pub extern "system" fn Java_com_pockethle_app_NativeBridge_saveAction<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    library_root: JString<'local>,
+    id: JString<'local>,
+    action: JString<'local>,
+    zip_path: JString<'local>,
+) -> jstring {
+    use pocket_library::save_archive;
+    init_logger();
+    let (Some(root), Some(id), Some(action), Some(zip)) = (
+        jstring_to_path(&mut env, library_root),
+        jstring_to_string(&mut env, id),
+        jstring_to_string(&mut env, action),
+        jstring_to_path(&mut env, zip_path),
+    ) else {
+        return new_jstring(&env, error_json("missing argument"));
+    };
+    let game_dir = root.join("games").join(&id);
+    let result = match action.as_str() {
+        "export" => std::fs::File::create(&zip).and_then(|f| save_archive::export(&game_dir, f)),
+        "import" => std::fs::File::open(&zip).and_then(|f| save_archive::import(&game_dir, f)),
+        "reset" => save_archive::reset(&game_dir),
+        other => return new_jstring(&env, error_json(&format!("unknown save action {other}"))),
+    };
+    match result {
+        Ok(count) => new_jstring(&env, format!("{{\"ok\":true,\"count\":{count}}}")),
+        Err(e) => new_jstring(&env, error_json(&format!("{action}: {e}"))),
     }
 }
 
@@ -460,9 +482,8 @@ fn build_unicorn() -> anyhow::Result<Emulator> {
 
 #[cfg(not(feature = "unicorn"))]
 fn build_unicorn() -> anyhow::Result<Emulator> {
-    Err(anyhow::anyhow!(
-        "binary was not compiled with the `unicorn` feature"
-    ))
+    // Without Unicorn, the portable interpreter runs the ARM game instead.
+    Ok(Emulator::with_interp_cpu())
 }
 
 fn jstring_to_string<'a>(env: &mut JNIEnv<'a>, value: JString<'a>) -> Option<String> {
@@ -488,6 +509,27 @@ fn new_jstring(env: &JNIEnv<'_>, body: impl AsRef<str>) -> jstring {
         Err(e) => {
             log::error!("could not allocate JString: {e}");
             std::ptr::null_mut()
+        }
+    }
+}
+
+/// Import anything through the library's knowledge base, as JSON for the app.
+fn import_reply(root: &std::path::Path, path: &std::path::Path) -> String {
+    let mut lib = match Library::open(root) {
+        Ok(lib) => lib,
+        Err(e) => return error_json(&format!("{e:#}")),
+    };
+    match lib.import_any(path) {
+        Ok(entry) => {
+            let mut value = serde_json::to_value(entry.clone()).unwrap_or_default();
+            if let (Some(object), Some(note)) = (value.as_object_mut(), lib.last_import_note()) {
+                object.insert("import_note".into(), note.into());
+            }
+            value.to_string()
+        }
+        Err(e) => {
+            let problem = pocket_library::import_kb::KnowledgeBase::load(root).explain_import(&e);
+            error_json(&problem.message(pocket_library::import_problem::Lang::En))
         }
     }
 }

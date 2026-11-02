@@ -17,7 +17,8 @@
 //!   canonical path, so `RegQueryValueEx` can resolve them without the
 //!   guest holding a pointer into host memory.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+use std::path::PathBuf;
 
 /// Value types we model — the subset Pocket PC titles actually use.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,6 +71,54 @@ pub struct Registry {
     /// Open handle -> key path (lowercased).
     handles: HashMap<u32, String>,
     next_handle: u32,
+    /// Where guest writes are kept across runs, when attached.
+    file: Option<PathBuf>,
+    /// Guest-written values, `(key, name) -> value`, as stored in [`Self::file`].
+    guest_values: BTreeMap<(String, String), RegistryValue>,
+}
+
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn unhex(text: &str) -> Option<Vec<u8>> {
+    if text.len() % 2 != 0 {
+        return None;
+    }
+    (0..text.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(text.get(i..i + 2)?, 16).ok())
+        .collect()
+}
+
+/// One value per line, hex-encoded so names can hold any character.
+fn format_record(key: &str, name: &str, value: &RegistryValue) -> String {
+    let (kind, data) = match value {
+        RegistryValue::Sz(text) => ('S', text.as_bytes().to_vec()),
+        RegistryValue::Dword(number) => ('D', number.to_le_bytes().to_vec()),
+        RegistryValue::Binary(bytes) => ('B', bytes.clone()),
+    };
+    format!(
+        "{}\t{}\t{kind}\t{}\n",
+        hex(key.as_bytes()),
+        hex(name.as_bytes()),
+        hex(&data)
+    )
+}
+
+fn parse_record(line: &str) -> Option<(String, String, RegistryValue)> {
+    let mut fields = line.split('\t');
+    let key = String::from_utf8(unhex(fields.next()?)?).ok()?;
+    let name = String::from_utf8(unhex(fields.next()?)?).ok()?;
+    let kind = fields.next()?;
+    let data = unhex(fields.next()?)?;
+    let value = match kind {
+        "S" => RegistryValue::Sz(String::from_utf8(data).ok()?),
+        "D" => RegistryValue::Dword(u32::from_le_bytes(data.try_into().ok()?)),
+        "B" => RegistryValue::Binary(data),
+        _ => return None,
+    };
+    Some((key, name, value))
 }
 
 /// Map a predefined `HKEY_*` constant to its canonical prefix.
@@ -112,6 +161,61 @@ impl Registry {
             display: HashMap::new(),
             handles: HashMap::new(),
             next_handle: HANDLE_BASE,
+            file: None,
+            guest_values: BTreeMap::new(),
+        }
+    }
+
+    /// Keep guest writes in `file`, restoring whatever an earlier run stored.
+    ///
+    /// EverQuest lists saved characters from `Char0File`, `Char0Level` and so
+    /// on under its own key, so a registry that forgets on exit makes every
+    /// character vanish even though the `.sav` file is still on disk.
+    pub fn attach_file(&mut self, file: PathBuf) {
+        if let Ok(text) = std::fs::read_to_string(&file) {
+            for (key, name, value) in text.lines().filter_map(parse_record) {
+                self.set_value(&key, &name, value.clone());
+                self.guest_values.insert((key, name), value);
+            }
+        }
+        self.file = Some(file);
+    }
+
+    /// `RegSetValueEx`: like [`Self::set_value`], and persisted if attached.
+    pub fn set_guest_value(&mut self, path: &str, name: &str, value: RegistryValue) {
+        self.set_value(path, name, value.clone());
+        if self.file.is_some() {
+            self.guest_values
+                .insert((path.to_string(), name.to_string()), value);
+            self.write_file();
+        }
+    }
+
+    /// `RegDeleteValue`: like [`Self::delete_value`], and persisted if attached.
+    pub fn delete_guest_value(&mut self, path: &str, name: &str) -> bool {
+        let removed = self.delete_value(path, name);
+        if self.file.is_some() {
+            self.guest_values
+                .remove(&(path.to_string(), name.to_string()));
+            self.write_file();
+        }
+        removed
+    }
+
+    fn write_file(&self) {
+        let Some(file) = &self.file else {
+            return;
+        };
+        let text: String = self
+            .guest_values
+            .iter()
+            .map(|((key, name), value)| format_record(key, name, value))
+            .collect();
+        // Write-then-rename, so a crash mid-save cannot lose every character.
+        let temp = file.with_extension("tmp");
+        let result = std::fs::write(&temp, text).and_then(|()| std::fs::rename(&temp, file));
+        if let Err(error) = result {
+            log::warn!("cannot save registry to {}: {error}", file.display());
         }
     }
 
@@ -409,5 +513,39 @@ mod tests {
         let sz = RegistryValue::Sz("AB".to_string());
         assert_eq!(sz.type_code(), 1);
         assert_eq!(sz.to_bytes(), vec![b'A', 0, b'B', 0, 0, 0]);
+    }
+}
+
+#[cfg(test)]
+mod persistence_tests {
+    use super::*;
+
+    /// EverQuest's character list has to survive the process exiting.
+    #[test]
+    fn guest_writes_survive_a_new_registry_and_deletes_stick() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("registry.dat");
+        let key = "HKCU\\SOFTWARE\\Emodiv\\PocketEQ\\DarkHeart";
+        let mut first = Registry::new();
+        first.attach_file(file.clone());
+        first.set_guest_value(key, "Char0Zone", RegistryValue::Sz("Freeport\twest".into()));
+        first.set_guest_value(key, "Char0Level", RegistryValue::Dword(7));
+        first.set_guest_value(key, "Gone", RegistryValue::Binary(vec![1, 2]));
+        first.delete_guest_value(key, "Gone");
+
+        let mut second = Registry::new();
+        second.attach_file(file);
+        assert_eq!(
+            second.value(key, "Char0Zone"),
+            Some(&RegistryValue::Sz("Freeport\twest".into()))
+        );
+        assert_eq!(second.value(key, "Char0Level"), Some(&RegistryValue::Dword(7)));
+        assert_eq!(second.value(key, "Gone"), None);
+    }
+
+    #[test]
+    fn a_damaged_line_is_skipped() {
+        assert!(parse_record("zz\tzz\tS\t00").is_none());
+        assert!(parse_record("").is_none());
     }
 }
