@@ -41,6 +41,7 @@ pub mod framebuffer;
 pub mod gapi;
 pub mod gdi;
 pub mod gz;
+pub mod itemview;
 pub mod msgbox;
 pub mod native_thunks;
 pub mod profile;
@@ -974,6 +975,11 @@ pub struct KernelState {
     pub fb_mapped: bool,
     /// Scanline pitch in the guest's raw framebuffer mapping. Zero means the canonical tightly packed stride.
     pub guest_fb_pitch: u32,
+    /// The GAPI mapping uses the Compaq iPAQ 3600-series memory order: the
+    /// panel is a 320×240 landscape LCD mounted sideways, so a portrait
+    /// pixel (x, y) lives at `x * 640 + (319 - y) * 2` and GAPI reports
+    /// `cbxPitch = 640`, `cbyPitch = -2`. See [`guest_fb_origin`].
+    pub gx_ipaq_layout: bool,
     /// How many frames the guest has presented by writing the raw
     /// framebuffer with a `memcpy` we caught synchronously, rather
     /// than with the plain stores that only the polling read-back in
@@ -1351,7 +1357,7 @@ impl KernelState {
         let controls = self.controls.clone();
         let modal = self.modal.clone();
         let mut surf = gdi::Surface::Screen(&mut self.framebuffer);
-        controls.render(&mut surf);
+        controls.render_with(&mut surf, &self.image_lists);
         // The modal goes last: it is a separate top-level window and
         // has to cover whatever the application and its children drew.
         if let Some(modal) = modal {
@@ -2428,6 +2434,7 @@ impl Process {
                 module_search_dirs,
                 fb_mapped: false,
                 guest_fb_pitch: 0,
+                gx_ipaq_layout: false,
                 direct_fb_frames: 0,
                 gx_readback_scratch: Vec::new(),
                 mem_op_scratch: Vec::new(),
@@ -2587,13 +2594,53 @@ fn merge_direct_writes(guest: &[u8], shadow: &[u8], host: &mut [u8]) -> bool {
     changed
 }
 
-fn read_guest_framebuffer(cpu: &mut dyn Cpu, state: &mut KernelState) -> bool {
-    let pitch = state.guest_fb_pitch.max(state.framebuffer.stride_bytes()) as usize;
-    let row_bytes = state.framebuffer.stride_bytes() as usize;
+/// Physical size of the Compaq iPAQ 3600-series panel: 320 pixels per
+/// scanline, 240 scanlines, mounted sideways under a portrait screen.
+pub const IPAQ_PANEL_PITCH: u32 = 640;
+
+/// Whether the framebuffer can use the iPAQ memory order at all. It only
+/// exists for the 240×320, 16-bit portrait screen the iPAQ 3630 had.
+pub fn ipaq_layout_fits(fb: &Framebuffer) -> bool {
+    fb.width == 240 && fb.height == 320 && fb.bpp == 16
+}
+
+/// The pointer `GXBeginDraw` returns: the address of portrait pixel (0, 0).
+/// In iPAQ order that pixel is the *last* one of the first physical
+/// scanline, because moving down the portrait screen walks backwards along
+/// the panel (`cbyPitch` is negative).
+pub fn guest_fb_origin(state: &KernelState) -> u32 {
+    if state.gx_ipaq_layout {
+        SYNTHETIC_FRAMEBUFFER_BASE + (state.framebuffer.height - 1) * 2
+    } else {
+        SYNTHETIC_FRAMEBUFFER_BASE
+    }
+}
+
+/// Copy the guest's GAPI mapping into `gx_readback_scratch` in host
+/// (portrait, tightly packed) order.
+pub fn read_guest_framebuffer(cpu: &mut dyn Cpu, state: &mut KernelState) -> bool {
     let len = state.framebuffer.pixels.len();
     if state.gx_readback_scratch.len() != len {
         state.gx_readback_scratch.resize(len, 0);
     }
+    if state.gx_ipaq_layout {
+        let mut panel = std::mem::take(&mut state.mem_op_scratch_b);
+        panel.resize(len, 0);
+        let ok = match cpu.read_mem_into(SYNTHETIC_FRAMEBUFFER_BASE, &mut panel) {
+            Ok(()) => {
+                ipaq_panel_to_portrait(&panel, &mut state.gx_readback_scratch, state.framebuffer.width, state.framebuffer.height);
+                true
+            }
+            Err(error) => {
+                log::warn!("unable to read the GAPI framebuffer: {error}");
+                false
+            }
+        };
+        state.mem_op_scratch_b = panel;
+        return ok;
+    }
+    let pitch = state.guest_fb_pitch.max(state.framebuffer.stride_bytes()) as usize;
+    let row_bytes = state.framebuffer.stride_bytes() as usize;
     if pitch == row_bytes {
         if let Err(error) =
             cpu.read_mem_into(SYNTHETIC_FRAMEBUFFER_BASE, &mut state.gx_readback_scratch)
@@ -2616,6 +2663,60 @@ fn read_guest_framebuffer(cpu: &mut dyn Cpu, state: &mut KernelState) -> bool {
     true
 }
 
+/// Copy the host framebuffer into the guest's GAPI mapping, in whatever
+/// memory order the guest was told about.
+pub fn write_guest_framebuffer(
+    cpu: &mut dyn Cpu,
+    state: &mut KernelState,
+) -> Result<(), pocket_cpu::CpuError> {
+    if state.gx_ipaq_layout {
+        let mut panel = std::mem::take(&mut state.mem_op_scratch_b);
+        panel.resize(state.framebuffer.pixels.len(), 0);
+        portrait_to_ipaq_panel(&state.framebuffer.pixels, &mut panel, state.framebuffer.width, state.framebuffer.height);
+        let result = cpu.write_mem(SYNTHETIC_FRAMEBUFFER_BASE, &panel);
+        state.mem_op_scratch_b = panel;
+        return result;
+    }
+    let pitch = state.guest_fb_pitch.max(state.framebuffer.stride_bytes()) as usize;
+    let row_bytes = state.framebuffer.stride_bytes() as usize;
+    if pitch == row_bytes {
+        return cpu.write_mem(SYNTHETIC_FRAMEBUFFER_BASE, &state.framebuffer.pixels);
+    }
+    for row in 0..state.framebuffer.height as usize {
+        let src = row * row_bytes;
+        let dst = SYNTHETIC_FRAMEBUFFER_BASE + (row * pitch) as u32;
+        cpu.write_mem(dst, &state.framebuffer.pixels[src..src + row_bytes])?;
+    }
+    Ok(())
+}
+
+/// iPAQ panel → portrait. Portrait (x, y) is panel scanline `x`, column
+/// `height-1-y`.
+pub fn ipaq_panel_to_portrait(panel: &[u8], portrait: &mut [u8], width: u32, height: u32) {
+    let (w, h) = (width as usize, height as usize);
+    for x in 0..w {
+        let line = &panel[x * h * 2..(x + 1) * h * 2];
+        for y in 0..h {
+            let d = (y * w + x) * 2;
+            let c = (h - 1 - y) * 2;
+            portrait[d..d + 2].copy_from_slice(&line[c..c + 2]);
+        }
+    }
+}
+
+/// Portrait → iPAQ panel; the inverse of [`ipaq_panel_to_portrait`].
+pub fn portrait_to_ipaq_panel(portrait: &[u8], panel: &mut [u8], width: u32, height: u32) {
+    let (w, h) = (width as usize, height as usize);
+    for x in 0..w {
+        let line = &mut panel[x * h * 2..(x + 1) * h * 2];
+        for y in 0..h {
+            let s = (y * w + x) * 2;
+            let c = (h - 1 - y) * 2;
+            line[c..c + 2].copy_from_slice(&portrait[s..s + 2]);
+        }
+    }
+}
+
 /// A device has one screen; here GDI paints the host copy and GAPI the guest
 /// mapping. Pocket Quake uses both every frame: GDI for its button panels and a
 /// `GXBeginDraw` pointer, held forever, for the 3D view. It never calls GAPI
@@ -2632,15 +2733,9 @@ fn merge_held_display(cpu: &mut dyn Cpu, state: &mut KernelState) {
         );
     }
     state.framebuffer.mark_dirty();
-    let pitch = state.guest_fb_pitch.max(state.framebuffer.stride_bytes()) as usize;
-    let row_bytes = state.framebuffer.stride_bytes() as usize;
-    for row in 0..state.framebuffer.height as usize {
-        let src = row * row_bytes;
-        let dst = SYNTHETIC_FRAMEBUFFER_BASE + (row * pitch) as u32;
-        if let Err(error) = cpu.write_mem(dst, &state.framebuffer.pixels[src..src + row_bytes]) {
-            log::warn!("unable to update the GAPI framebuffer: {error}");
-            return;
-        }
+    if let Err(error) = write_guest_framebuffer(cpu, state) {
+        log::warn!("unable to update the GAPI framebuffer: {error}");
+        return;
     }
     state.gx_held_shadow.clone_from(&state.framebuffer.pixels);
     state.gx_last_pushed_counter = state.framebuffer.frame_counter;

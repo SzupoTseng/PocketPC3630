@@ -31,6 +31,7 @@ pub mod gles;
 pub mod gx;
 pub mod fmod;
 pub mod hss;
+mod itemviews;
 pub mod ole32;
 pub mod ordinals;
 pub mod ws2;

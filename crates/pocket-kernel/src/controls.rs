@@ -18,8 +18,11 @@
 //! itself after the parent's `WM_PAINT` — the same "control owns its
 //! pixels" reasoning as [`crate::StatusBar`].
 
+use std::collections::HashMap;
+
 use crate::font;
-use crate::gdi::Surface;
+use crate::gdi::{ImageList, Surface};
+use crate::itemview::{ListData, ListHit, TreeData, TreeHit, ViewEvent};
 
 /// Which built-in window class a control was created from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,6 +30,10 @@ pub enum ControlClass {
     Button,
     Edit,
     Static,
+    /// `SysTreeView32` (`WC_TREEVIEW`).
+    TreeView,
+    /// `SysListView32` (`WC_LISTVIEW`).
+    ListView,
 }
 
 impl ControlClass {
@@ -41,6 +48,10 @@ impl ControlClass {
             Some(Self::Edit)
         } else if name.eq_ignore_ascii_case("STATIC") {
             Some(Self::Static)
+        } else if name.eq_ignore_ascii_case("SysTreeView32") {
+            Some(Self::TreeView)
+        } else if name.eq_ignore_ascii_case("SysListView32") {
+            Some(Self::ListView)
         } else {
             None
         }
@@ -280,6 +291,10 @@ pub struct ChildWindow {
     pub pressed: bool,
     /// `BM_SETCHECK` state of a check box or radio button.
     pub checked: bool,
+    /// Items of a tree view.
+    pub tree: Option<Box<TreeData>>,
+    /// Items and columns of a list view.
+    pub list: Option<Box<ListData>>,
 }
 
 impl ChildWindow {
@@ -385,6 +400,12 @@ impl ChildWindow {
     /// Paint the control. `focused` drives the focus rectangle and the
     /// edit caret; the caller knows which control holds the focus.
     pub fn render(&self, surf: &mut Surface<'_>, focused: bool) {
+        self.render_with(surf, focused, &HashMap::new());
+    }
+
+    /// [`Self::render`] with the image lists a tree or list view draws
+    /// its icons from.
+    pub fn render_with(&self, surf: &mut Surface<'_>, focused: bool, lists: &HashMap<u32, ImageList>) {
         if !self.visible || self.w <= 0 || self.h <= 0 {
             return;
         }
@@ -392,6 +413,27 @@ impl ChildWindow {
             ControlClass::Button => self.render_button(surf, focused),
             ControlClass::Edit => self.render_edit(surf, focused),
             ControlClass::Static => self.render_static(surf),
+            ControlClass::TreeView => {
+                if let Some(tree) = &self.tree {
+                    tree.render(surf, lists, self.x, self.y, self.w, self.h, self.style);
+                }
+            }
+            ControlClass::ListView => {
+                if let Some(list) = &self.list {
+                    list.render(surf, lists, self.x, self.y, self.w, self.h, self.style);
+                }
+            }
+        }
+    }
+
+    /// Rows a tree or list view shows at once.
+    pub fn rows_fit(&self) -> usize {
+        if let Some(tree) = &self.tree {
+            tree.rows_fit(self.h, self.style)
+        } else if let Some(list) = &self.list {
+            list.rows_fit(self.w, self.h, self.style)
+        } else {
+            1
         }
     }
 
@@ -664,6 +706,10 @@ pub struct Controls {
     panels: Vec<DialogPanel>,
     /// Handle of the control holding the input focus, or `0`.
     pub focus: u32,
+    /// `WM_NOTIFY`s a tree or list view owes its parent, as
+    /// `(parent, id, hwnd, event)`. The dispatcher drains these and
+    /// builds the notification structures in guest memory.
+    pub notifications: Vec<(u32, u32, u32, ViewEvent)>,
     next_hwnd: u32,
     /// Push button the stylus went down on. Win32 captures the mouse
     /// here: releasing outside the button cancels the click instead of
@@ -677,6 +723,7 @@ impl Default for Controls {
             children: Vec::new(),
             panels: Vec::new(),
             focus: 0,
+            notifications: Vec::new(),
             next_hwnd: Self::HWND_BASE,
             capture: 0,
         }
@@ -733,8 +780,146 @@ impl Controls {
             enabled: style & WS_DISABLED == 0,
             pressed: false,
             checked: false,
+            tree: (class == ControlClass::TreeView).then(|| Box::new(TreeData::new())),
+            list: (class == ControlClass::ListView).then(|| Box::new(ListData::new())),
         });
         hwnd
+    }
+
+    /// Queue a `WM_NOTIFY` from control `hwnd` to its parent.
+    pub fn notify(&mut self, hwnd: u32, event: ViewEvent) {
+        if let Some(c) = self.get(hwnd) {
+            let (parent, id) = (c.parent, c.id);
+            if self.notifications.len() < 64 {
+                self.notifications.push((parent, id, hwnd, event));
+            }
+        }
+    }
+
+    /// Stylus down inside a tree or list view, at `(px, py)` relative to
+    /// the parent's client area. Returns `true` when the view used it.
+    fn view_pointer_down(&mut self, hwnd: u32, px: i32, py: i32) -> bool {
+        const TVC_BYMOUSE: u32 = 1;
+        let Some(child) = self.get_mut(hwnd) else { return false };
+        let (x, y, w, h, style) = (child.x, child.y, child.w, child.h, child.style);
+        let fit = child.rows_fit();
+        let mut events = Vec::new();
+        if let Some(tree) = child.tree.as_mut() {
+            match tree.hit(x, y, w, h, style, px, py) {
+                TreeHit::Button(item) => events.extend(tree.toggle_by_user(item)),
+                TreeHit::Item(item) => {
+                    if tree.selected == item {
+                        events.push(ViewEvent::TreeActivate { item });
+                    } else {
+                        events.extend(tree.select(item, TVC_BYMOUSE));
+                    }
+                    events.push(ViewEvent::TreeClick);
+                }
+                TreeHit::Scroll(down) => {
+                    let rows = tree.visible_rows().len();
+                    tree.top = if down {
+                        (tree.top + fit).min(rows.saturating_sub(fit))
+                    } else {
+                        tree.top.saturating_sub(fit)
+                    };
+                }
+                TreeHit::Nowhere => {}
+            }
+        } else if let Some(list) = child.list.as_mut() {
+            match list.hit(x, y, w, h, style, px, py) {
+                ListHit::Item(i) => {
+                    let again = list.focus == i
+                        && list.items.get(i as usize).is_some_and(|it| it.state & crate::itemview::LVIS_SELECTED != 0);
+                    events.extend(list.select_only(i));
+                    events.push(ViewEvent::ListClick { item: i });
+                    if again {
+                        events.push(ViewEvent::ListActivate { item: i });
+                    }
+                }
+                ListHit::Header(column) => events.push(ViewEvent::ColumnClick { column }),
+                ListHit::Scroll(down) => {
+                    let per_row = 1;
+                    let total = list.items.len() / per_row;
+                    list.top = if down {
+                        (list.top + fit).min(total.saturating_sub(fit))
+                    } else {
+                        list.top.saturating_sub(fit)
+                    };
+                }
+                ListHit::Nowhere => events.push(ViewEvent::ListClick { item: -1 }),
+            }
+        } else {
+            return false;
+        }
+        for event in events {
+            self.notify(hwnd, event);
+        }
+        true
+    }
+
+    /// Arrow keys, Enter and Space in a focused tree or list view.
+    fn view_key_down(&mut self, hwnd: u32, vk: u16) -> Option<ControlAction> {
+        const VK_RETURN: u16 = 0x0D;
+        const VK_LEFT: u16 = 0x25;
+        const VK_UP: u16 = 0x26;
+        const VK_RIGHT: u16 = 0x27;
+        const VK_DOWN: u16 = 0x28;
+        const TVC_BYKEYBOARD: u32 = 2;
+        let child = self.get_mut(hwnd)?;
+        let fit = child.rows_fit();
+        let mut events = Vec::new();
+        if let Some(tree) = child.tree.as_mut() {
+            let rows = tree.visible_rows();
+            let at = rows.iter().position(|r| r.0 == tree.selected);
+            let sel = tree.selected;
+            match vk {
+                VK_UP | VK_DOWN => {
+                    let next = match at {
+                        None => rows.first().map(|r| r.0),
+                        Some(i) if vk == VK_UP => i.checked_sub(1).map(|j| rows[j].0),
+                        Some(i) => rows.get(i + 1).map(|r| r.0),
+                    };
+                    if let Some(n) = next {
+                        events.extend(tree.select(n, TVC_BYKEYBOARD));
+                        tree.ensure_visible(n, fit);
+                    }
+                }
+                VK_RIGHT => {
+                    if tree.get(sel).is_some_and(|i| i.expandable() && !i.expanded()) {
+                        events.extend(tree.toggle_by_user(sel));
+                    }
+                }
+                VK_LEFT => {
+                    if tree.get(sel).is_some_and(|i| i.expanded()) {
+                        events.extend(tree.toggle_by_user(sel));
+                    } else if let Some(p) = tree.get(sel).map(|i| i.parent).filter(|p| *p != 0) {
+                        events.extend(tree.select(p, TVC_BYKEYBOARD));
+                        tree.ensure_visible(p, fit);
+                    }
+                }
+                VK_RETURN if sel != 0 => events.push(ViewEvent::TreeActivate { item: sel }),
+                _ => return None,
+            }
+        } else if let Some(list) = child.list.as_mut() {
+            let n = list.items.len() as i32;
+            let cur = list.focus;
+            match vk {
+                VK_UP | VK_DOWN | VK_LEFT | VK_RIGHT if n > 0 => {
+                    let step = if vk == VK_UP || vk == VK_LEFT { -1 } else { 1 };
+                    let next = if cur < 0 { 0 } else { (cur + step).clamp(0, n - 1) };
+                    events.extend(list.select_only(next));
+                    list.ensure_visible(next, fit);
+                }
+                VK_RETURN if cur >= 0 => events.push(ViewEvent::ListActivate { item: cur }),
+                _ => return None,
+            }
+        } else {
+            return None;
+        }
+        for event in events {
+            self.notify(hwnd, event);
+        }
+        Some(ControlAction::Consumed)
     }
 
     /// Register a dialog panel, replacing any previous one with the same
@@ -879,8 +1064,14 @@ impl Controls {
     /// Stylus down. Takes the focus, and arms a push button.
     pub fn pointer_down(&mut self, x: i32, y: i32) -> Option<ControlAction> {
         let hwnd = self.hit_test(x, y)?;
+        let (ox, oy) = self.get(hwnd).map(|c| self.parent_origin(c.parent))?;
         let child = self.get_mut(hwnd)?;
         if !child.is_focusable() {
+            return Some(ControlAction::Consumed);
+        }
+        if matches!(child.class, ControlClass::TreeView | ControlClass::ListView) {
+            self.focus = hwnd;
+            self.view_pointer_down(hwnd, x - ox, y - oy);
             return Some(ControlAction::Consumed);
         }
         if child.class == ControlClass::Button {
@@ -1018,6 +1209,12 @@ impl Controls {
         const VK_SPACE: u16 = 0x20;
 
         let focus = self.focus;
+        if self
+            .get(focus)
+            .is_some_and(|c| matches!(c.class, ControlClass::TreeView | ControlClass::ListView))
+        {
+            return self.view_key_down(focus, vk);
+        }
         let child = self.get_mut(focus)?;
         if !child.enabled {
             // `SetFocus` on a disabled control is not something Win32
@@ -1073,17 +1270,28 @@ impl Controls {
     /// them — the separate pass makes the "frames are backdrop" rule
     /// explicit rather than incidental.
     pub fn render(&self, surf: &mut Surface<'_>) {
+        self.render_with(surf, &HashMap::new());
+    }
+
+    /// [`Self::render`] with the image lists tree and list views draw
+    /// their icons from.
+    pub fn render_with(&self, surf: &mut Surface<'_>, lists: &HashMap<u32, ImageList>) {
         // Children of a frame window, which no panel owns.
-        self.render_children_of(surf, |parent| self.panel(parent).is_none());
+        self.render_children_of(surf, lists, |parent| self.panel(parent).is_none());
         for panel in &self.panels {
             panel.render(surf);
-            self.render_children_of(surf, |parent| parent == panel.hwnd);
+            self.render_children_of(surf, lists, |parent| parent == panel.hwnd);
         }
     }
 
     /// Paint every visible child whose parent satisfies `owned`, group
     /// boxes first.
-    fn render_children_of(&self, surf: &mut Surface<'_>, owned: impl Fn(u32) -> bool) {
+    fn render_children_of(
+        &self,
+        surf: &mut Surface<'_>,
+        lists: &HashMap<u32, ImageList>,
+        owned: impl Fn(u32) -> bool,
+    ) {
         for group_pass in [true, false] {
             for child in &self.children {
                 if child.is_group_box() != group_pass
@@ -1095,13 +1303,13 @@ impl Controls {
                 let (ox, oy) = self.parent_origin(child.parent);
                 let focused = child.hwnd == self.focus;
                 if (ox, oy) == (0, 0) {
-                    child.render(surf, focused);
+                    child.render_with(surf, focused, lists);
                 } else {
                     // Cheap: the translated copy lives only for the call.
                     let mut moved = child.clone();
                     moved.x += ox;
                     moved.y += oy;
-                    moved.render(surf, focused);
+                    moved.render_with(surf, focused, lists);
                 }
             }
         }

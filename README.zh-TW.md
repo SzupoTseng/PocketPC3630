@@ -99,8 +99,8 @@ PocketPC3630 **不附任何遊戲，也不附微軟的檔案**。請使用你合
 
 | | 結果 | 數量 |
 |---|---|---:|
-| ✅ | **可執行**：能啟動並畫出遊戲或程式畫面 | **95** |
-| 🟡 | **部分可用**：能啟動，但畫面空白或很快停止 | 156 |
+| ✅ | **可執行**：能啟動並畫出遊戲或程式畫面 | **102** |
+| 🟡 | **部分可用**：能啟動，但畫面空白或很快停止 | 149 |
 | 🟥 | **無法啟動**：能匯入，啟動時失敗 | 388 |
 | ⛔ | **無法匯入**：下載檔裡沒有 Pocket PC 程式 | 384 |
 | ⚪ | **未測試**：項目沒有套件，或下載失敗 | 420 |
@@ -131,6 +131,8 @@ flowchart LR
     F --> G["前端<br/>Windows · Android · 網頁 · 命令列"]
 ```
 
+**為什麼模擬作業系統，而不是整台機器？** 請看[為什麼用高階模擬](docs/WHY_HLE.zh-TW.md)：和 QEMU 這類原生裝置模擬器有什麼不同、得到什麼、付出什麼。
+
 ## 🛠 從原始碼建置
 
 需要較新的穩定版 [Rust](https://rustup.rs)。
@@ -151,12 +153,12 @@ target/release/pockethle play MyGame.zip
 
 ## 🚧 已知限制
 
-- 直接寫入 Compaq iPAQ 側向影格緩衝區的遊戲（Pocket Hustler），文字與球桌會畫成轉置的樣子，這種記憶體排列尚未模擬。單純畫成側躺的遊戲，可以用網頁版的「旋轉畫面」轉正。
-- SimCity 2000（ZIO 版）會開啟視窗，但從不在裡面繪圖。
+- 為橫向裝置設計的遊戲會畫成側躺的樣子，可以用網頁版的「旋轉畫面」轉正。只支援 Compaq iPAQ 3630 側向畫面記憶體的遊戲（Pocket Hustler）會自動改用那種排列。
+- 會開啟多個視窗的 MFC 程式（Haali Reader、SimCity 2000）還無法啟動：目前所有頂層視窗共用同一個 handle，讓 MFC 的視窗對照表出錯。支援獨立視窗是下一個主要工作。
 - 少數較少用的 MIPS 與 SH3 輔助函式（SH3 的 64 位元運算、兩者的 `setjmp`）尚未實作。
 - 尚不支援 MIPS16 程式碼（部分 MIPS 版）與 SH-4 浮點指令。
 - .NET Compact Framework 程式、Wise 安裝程式、x86 版本無法執行。
-- 使用 MFC 的程式需要 `mfcce300.dll`。網頁版會自動從 Internet Archive 上微軟的 Pocket PC 2000 SDK 取得。手動方式：用 7-Zip 打開 [SDK](https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe)，取出 `Program Files/mfc/lib/arm/mfcce300.dll` 與 `olece300.dll`（MIPS、SH3 版改用 `mips`、`sh3` 資料夾）。
+- 使用 MFC 的程式需要 `mfcce300.dll`。網頁版會自動從 Internet Archive 上微軟的 Pocket PC 2000 SDK 取得。手動方式：用 7-Zip 打開 [SDK](https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe)，取出 `Program Files/mfc/lib/arm/mfcce300.dll` 與 `olece300.dll`（MIPS、SH3 版改用 `mips`、`sh3` 資料夾）。為 Pocket PC 2002 編譯的 ARM 程式需要較新的版本，在 [Pocket PC 2002 SDK](https://archive.org/download/WMSDK/ppc2002_sdk.exe) 的 `program files/Pocket PC 2002/mfc/Lib/ARM/mfcce300.dll`。
 - Pocket Slay 在瀏覽器中約 1.5 幀/秒。
 
 ## ⚖️ 法律聲明

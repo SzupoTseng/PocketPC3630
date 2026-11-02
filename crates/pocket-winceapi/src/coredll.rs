@@ -1279,6 +1279,8 @@ pub fn register(d: &mut WinCeDispatcher) {
     d.register_handler(dll, "GetThreadLocale", get_thread_locale);
     d.register_handler(dll, "GetLocaleInfoW", get_locale_info_w);
     d.register_handler(dll, "GetACP", get_acp);
+    d.register_handler(dll, "EnumSystemCodePagesW", enum_system_code_pages_w);
+    d.register_handler(dll, "IsValidCodePage", is_valid_code_page);
     d.register_constant(dll, "ShowCursor", 1, one_returning);
     d.register_handler(dll, "CreateCursor", create_cursor);
     d.register_handler(dll, "DestroyCursor", destroy_cursor);
@@ -4026,7 +4028,7 @@ fn read_cstr(ctx: &mut CallCtx<'_>, p: u32, max: u32) -> Result<Vec<u8>, KernelE
     Ok(out)
 }
 
-fn read_wstr(ctx: &mut CallCtx<'_>, p: u32, max: u32) -> Result<Vec<u16>, KernelError> {
+pub(crate) fn read_wstr(ctx: &mut CallCtx<'_>, p: u32, max: u32) -> Result<Vec<u16>, KernelError> {
     let mut out: Vec<u16> = Vec::new();
     let mut buf = [0u8; WSTR_CHUNK * 2];
     let mut off: u32 = 0;
@@ -8032,7 +8034,7 @@ fn repaint_controls(ctx: &mut CallCtx<'_>) {
     }
     let controls = ctx.kernel.controls.clone();
     let mut surf = Surface::Screen(&mut ctx.kernel.framebuffer);
-    controls.render(&mut surf);
+    controls.render_with(&mut surf, &ctx.kernel.image_lists);
     ctx.kernel.framebuffer.mark_dirty();
 }
 
@@ -8059,6 +8061,13 @@ fn control_message(
     const EM_SETSEL: u32 = 0x00B1;
     const EM_REPLACESEL: u32 = 0x00C2;
 
+    // Tree and list views have a message set of their own.
+    if let Some(r) = crate::itemviews::view_message(ctx, hwnd, message, wparam, lparam)? {
+        if message >= 0x1000 {
+            repaint_controls(ctx);
+        }
+        return Ok(r);
+    }
     match message {
         WM_SETTEXT | EM_REPLACESEL => {
             let text = if lparam != 0 {
@@ -8464,6 +8473,8 @@ fn controls_take_input(
     // The control's appearance changed (pressed, focused, new text), and
     // on a device it would have invalidated itself.
     repaint_controls(ctx);
+    // A tree or list view reports taps as WM_NOTIFY, posted here.
+    crate::itemviews::flush_notifications(ctx);
     match action {
         ControlAction::Clicked { parent, id, hwnd } => {
             log::debug!("control id={id} clicked -> WM_COMMAND to 0x{parent:08x}");
@@ -9013,7 +9024,17 @@ fn synthetic_message_for(ctx: &mut CallCtx<'_>) -> (u32, u32, u32, u32) {
         };
         let wait_ms = next.saturating_sub(now);
         if wait_ms > 0 {
-            std::thread::sleep(std::time::Duration::from_millis(wait_ms.min(16)));
+            // A browser tab must not block: `thread::sleep` there is a
+            // busy loop on the clock, and the tick never hands control
+            // back to the page. An app that idles in `GetMessage` (Pocket
+            // Explorer, any dialog-style program) hung the web version in
+            // its first tick. Ask the page to call back instead, the same
+            // way `Sleep` does.
+            if ctx.kernel.cooperative_host {
+                ctx.kernel.host_yield_ms = Some(wait_ms.min(16) as u32);
+            } else {
+                std::thread::sleep(std::time::Duration::from_millis(wait_ms.min(16)));
+            }
         }
     }
     if let Some(message) = synthetic_message_if_due(ctx) {
@@ -14893,6 +14914,77 @@ fn get_acp(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     Ok(DispatchOutcome::ReturnedR0(1252))
 }
 
+/// Code pages `MultiByteToWideChar` really converts: the Latin-1 ANSI
+/// page `GetACP` reports, and UTF-8.
+const SUPPORTED_CODE_PAGES: [u32; 2] = [1252, 65001];
+
+/// `IsValidCodePage(cp)`: only the pages we can convert.
+fn is_valid_code_page(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let cp = ctx.arg_u32(0)?;
+    Ok(DispatchOutcome::ReturnedR0(u32::from(SUPPORTED_CODE_PAGES.contains(&cp))))
+}
+
+/// An `EnumSystemCodePagesW` walk in progress.
+struct CodePageWalk {
+    callback: u32,
+    /// Index of the page handed to the callback last.
+    next: usize,
+    /// Guest buffer holding the page number as a string.
+    text: u32,
+    /// Where `EnumSystemCodePagesW` returns once the walk is over.
+    caller: u32,
+}
+
+thread_local! {
+    static CODE_PAGE_WALK: std::cell::RefCell<Option<CodePageWalk>> = const { std::cell::RefCell::new(None) };
+}
+
+/// `EnumSystemCodePagesW(CODEPAGE_ENUMPROCW proc, DWORD flags)`.
+///
+/// Calls `proc` once per code page with its number as a string, stopping
+/// early if it returns `FALSE`. Haali Reader builds its encoding menu this
+/// way and then indexes the first entry of the list it collected; with no
+/// pages at all it read through a null pointer and crashed at start-up.
+///
+/// Each call jumps into the guest procedure with its return address set to
+/// this thunk, so the handler runs again when the procedure returns, with
+/// its `BOOL` in `r0` — the same re-entry `DecompressImageIndirect` uses.
+fn enum_system_code_pages_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let thunk_va = ctx.thunk.thunk_va;
+    let walk = CODE_PAGE_WALK.with(|w| w.borrow_mut().take());
+    let mut walk = match walk {
+        Some(w) => {
+            let keep_going = ctx.cpu.read_reg(ArmReg::R0)? != 0;
+            if !keep_going || w.next >= SUPPORTED_CODE_PAGES.len() {
+                ctx.kernel.heap.free(w.text);
+                ctx.cpu.write_reg(ArmReg::Lr, w.caller)?;
+                return Ok(DispatchOutcome::ReturnedR0(1));
+            }
+            w
+        }
+        None => {
+            let callback = ctx.arg_u32(0)?;
+            if callback == 0 {
+                return Ok(DispatchOutcome::ReturnedR0(0));
+            }
+            let Some(text) = ctx.kernel.heap.alloc(16) else {
+                return Ok(DispatchOutcome::ReturnedR0(0));
+            };
+            CodePageWalk { callback, next: 0, text, caller: ctx.cpu.read_reg(ArmReg::Lr)? }
+        }
+    };
+    let page = SUPPORTED_CODE_PAGES[walk.next].to_string();
+    let mut bytes: Vec<u8> = page.encode_utf16().flat_map(u16::to_le_bytes).collect();
+    bytes.extend_from_slice(&[0, 0]);
+    ctx.cpu.write_mem(walk.text, &bytes)?;
+    walk.next += 1;
+    ctx.cpu.write_reg(ArmReg::R0, walk.text)?;
+    ctx.cpu.write_reg(ArmReg::Lr, thunk_va)?;
+    let callback = walk.callback;
+    CODE_PAGE_WALK.with(|w| *w.borrow_mut() = Some(walk));
+    Ok(DispatchOutcome::JumpTo(callback))
+}
+
 fn create_cursor(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     Ok(DispatchOutcome::ReturnedR0(0xDEAD_6801))
 }
@@ -17282,6 +17374,7 @@ pub(crate) mod tests {
             module_search_dirs: Vec::new(),
             fb_mapped: false,
             guest_fb_pitch: 0,
+            gx_ipaq_layout: false,
             direct_fb_frames: 0,
             gx_readback_scratch: Vec::new(),
             mem_op_scratch: Vec::new(),

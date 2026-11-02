@@ -6,8 +6,8 @@ Also available as [compatibility.csv](compatibility.csv). Free programs that run
 
 | | Result | Count |
 |---|---|---:|
-| ✅ | **Runs** — Starts and draws the game or program. | 95 |
-| 🟡 | **Partly works** — Imports and starts, but the screen stays blank, draws nothing, or stops soon. | 156 |
+| ✅ | **Runs** — Starts and draws the game or program. | 102 |
+| 🟡 | **Partly works** — Imports and starts, but the screen stays blank, draws nothing, or stops soon. | 149 |
 | 🟥 | **Does not start** — Imports, but fails while starting (usually a missing system DLL or an API not emulated yet). | 388 |
 | ⛔ | **Not importable** — No Pocket PC program inside the download (desktop tools, ROM updates, documents). | 384 |
 | ⚪ | **Not tested** — The archive.org item has no package, or the download failed. | 420 |
@@ -24,14 +24,14 @@ Each program counted once. These are the next things to implement.
 | `COREDLL.dll!SetViewportOrgEx` | 4 |
 | `AYGSHELL.dll!#43` | 4 |
 | `AYGSHELL.dll!#209` | 3 |
-| `OFFICE.dll!RMLoadLibrary` | 3 |
-| `AYGSHELL.dll!#112` | 3 |
 | `AYGSHELL.dll!#109` | 3 |
-| `OFFICE.dll!RMFreeLibrary` | 3 |
-| `Mcf.DLL!McfUninitialize` | 3 |
+| `OFFICE.dll!RMLoadLibrary` | 3 |
 | `AYGSHELL.dll!#310` | 3 |
-| `COREDLL.dll!#1984` | 3 |
+| `Mcf.DLL!McfUninitialize` | 3 |
+| `OFFICE.dll!RMFreeLibrary` | 3 |
 | `COREDLL.dll!#1877` | 3 |
+| `AYGSHELL.dll!#112` | 3 |
+| `COREDLL.dll!#1984` | 3 |
 | `htmlview.dll!InitHTMLControl` | 3 |
 | `COREDLL.dll!SelectPalette` | 3 |
 | `InkX.dll!InitInkX` | 3 |
@@ -41,7 +41,7 @@ Each program counted once. These are the next things to implement.
 
 73 programs need `mfcce300.dll`, a library built into the device. 13 programs need `mfcce211.dll`, a library built into the device. 6 programs need `mfcce20.dll`, a library built into the device. 2 programs need `mfcce201.dll`, a library built into the device. 1 programs need `mfcce400.dll`, a library built into the device. The website adds `mfcce300.dll` from Microsoft's Pocket PC 2000 SDK in one click.
 
-## ✅ Runs (95)
+## ✅ Runs (102)
 
 Starts and draws the game or program.
 
@@ -65,6 +65,7 @@ Starts and draws the game or program.
 | [Calendar Search](https://archive.org/details/tucows_32395_Calendar_Search) | `CalendarSearchMIPS-PR2.exe` | Runs | Missing: `COREDLL.dll!PegOpenDatabase`, `COREDLL.dll!PegOidGetInfo` |
 | [CE-Star Suite](https://archive.org/details/tucows_153762_CE-Star_Suite) | `ver2PkPCARM.zip` | Runs |  |
 | [CE5250](https://archive.org/details/tucows_232364_CE5250) | `CE5250_PocketPC.zip` | Runs |  |
+| [CEDBView](https://archive.org/details/tucows_38929_CEDBView) | `cedbview.zip` | Runs |  |
 | [CEniffer](https://archive.org/details/tucows_32190_CEniffer) | `CEnifferMIPS.zip.CAB` | Runs |  |
 | [CETerm](https://archive.org/details/tucows_232362_CETerm) | `CETerm_PocketPC31.zip` | Runs |  |
 | [CEVT220](https://archive.org/details/tucows_232369_CEVT220) | `CEVT220_PocketPC.zip` | Runs |  |
@@ -80,7 +81,7 @@ Starts and draws the game or program.
 | [dotPocket](https://archive.org/details/tucows_270214_dotPocket) | `dotpocket2003.exe` | Runs |  |
 | [Dragon Bane II](https://archive.org/details/tucows_273050_Dragon_Bane_II) | `DB2SetupARM.exe` | Runs |  |
 | [dsFORTH](https://archive.org/details/tucows_32354_dsFORTH) | `ds2_b3_Setup.exe` | Runs |  |
-| [dTree](https://archive.org/details/tucows_32496_dTree) | `dTree.exe` | Runs |  |
+| [dTree](https://archive.org/details/tucows_183459_dTree) | `idTree.exe` | Runs |  |
 | [Elevens Game](https://archive.org/details/tucows_314055_Elevens_Game) | `Elevens.exe` | Runs |  |
 | [ELFView - The Extremely Large File Viewer](https://archive.org/details/tucows_330232_ELFView_-_The_Extremely_Large_File_Viewer) | `ELFViewARM.CAB` | Runs |  |
 | [Fedot's Adventures](https://archive.org/details/fedots-adventures) | `Fedot's Adventures.cab` | Runs |  |
@@ -108,11 +109,13 @@ Starts and draws the game or program.
 | [Nerve](https://archive.org/details/tucows_248733_Nerve) | `NerveDemoSetup.exe` | Runs |  |
 | [PalmGB](https://archive.org/details/tucows_216709_PalmGB) | `pgbsetup.exe` | Runs | Missing: `COREDLL.dll!SelectPalette` |
 | [PalmGB](https://archive.org/details/tucows_32646_PalmGB) | `pgbsetup.exe` | Runs | Missing: `COREDLL.dll!SelectPalette` |
+| [PHM registry editor v0.70](https://archive.org/details/phm-registry-editor.0.70) | `phm-registry-editor.0.70.cab` | Runs |  |
 | [PilotCE](https://archive.org/details/tucows_32648_PilotCE) | `PilotCE.exe` | Runs | Missing: `PilotCpuCE.dll!CPU_getlong`, `PilotCpuCE.dll!CPU_pen`, `PilotCpuCE.dll!CPU_init` |
 | [Pocket 12C](https://archive.org/details/tucows_255472_Pocket_12C) | `P12CV150ARM.exe` | Runs | Missing: `COREDLL.dll!_fpclass` |
 | [Pocket 15C Scientific Calculator](https://archive.org/details/tucows_294403_Pocket_15C_Scientific_Calculator) | `Pocket15CV110.exe` | Runs | Missing: `COREDLL.dll!_fpclass` |
+| [Pocket Explorer](https://archive.org/details/tucows_212439_Pocket_Explorer) | `pexplorerarm.exe` | Runs |  |
+| [Pocket Explorer](https://archive.org/details/tucows_212439_Pocket_Explorer) | `pexplorersh.exe` | Runs |  |
 | [Pocket Pinball](https://archive.org/details/tucows_250021_Pocket_Pinball) | `PocketPinballSetupDemo.exe` | Runs |  |
-| [Pocket Slay](https://archive.org/details/tucows_182765_Pocket_Slay) | `PocketSlay.zip` | Runs | Tap a tree in the top-left, then OK in the New Game dialog (the shareware version only lets you pick the first two rows). |
 | [Pocket Taipei](https://archive.org/details/tucows_254025_Pocket_Taipei) | `ptaipei10.zip` | Runs |  |
 | [Pocket Tune](https://archive.org/details/tucows_252624_Pocket_Tune) | `PocketTune_2_0_5.zip` | Runs |  |
 | [Pocket Woman](https://archive.org/details/tucows_241852_Pocket_Woman) | `PocketWoman.zip` | Runs | Missing: `AYGSHELL.dll!#39` |
@@ -127,6 +130,7 @@ Starts and draws the game or program.
 | [Pretec CompactGPS](https://archive.org/details/compact-gps-lp) | `CompactGPS.zip` | Runs |  |
 | [Pretec CompactGPS](https://archive.org/details/compact-gps-lp) | `CompactGPS_LP.zip` | Runs |  |
 | [Primer](https://archive.org/details/tucows_76856_Primer) | `PrimerCE.exe` | Runs | Missing: `COREDLL.dll!EnumFontFamiliesW`, `COREDLL.dll!IntersectClipRect`, `COREDLL.dll!SelectClipRgn` |
+| [ProxiWeb](https://archive.org/details/tucows_32654_ProxiWeb) | `PrxWebCE3B1.exe` | Runs | Missing: `WINSOCK.dll!htonl` |
 | [SEdit](https://archive.org/details/tucows_180072_SEdit) | `seditmips.zip` | Runs |  |
 | [Seven Game](https://archive.org/details/tucows_312195_Seven_Game) | `Seven.exe` | Runs |  |
 | [SnoopSoft Dashboard](https://archive.org/details/tucows_216191_SnoopSoft_Dashboard) | `dashboard.zip` | Runs |  |
@@ -140,10 +144,13 @@ Starts and draws the game or program.
 | [Windows CE 1.0 Programs](https://archive.org/details/windowsce1.0) | `Windows CE 1.0.zip` | Runs | Missing: `COREDLL.dll!AudioUpdateFromRegistry` |
 | [Windows mobile cabs](https://archive.org/details/tombraider_arm_hexturbation) | `line4setup.arm.CAB` | Runs |  |
 | [WinEyes](https://archive.org/details/tucows_226355_WinEyes) | `wineyesce.zip` | Runs |  |
+| [WinMobile Lens](https://archive.org/details/tucows_371685_WinMobile_Lens) | `WinMobileLens_SetupADS_Arm.exe` | Runs |  |
 | [XLISP-Plus](https://archive.org/details/tucows_32693_XLISP-Plus) | `xl21gce.zip` | Runs | Missing: `COREDLL.dll!IntersectClipRect` |
 | [Yotz](https://archive.org/details/tucows_32181_Yotz) | `yotzdemo.exe` | Runs |  |
+| [ZIO Simcity 2000](https://archive.org/details/zio-simcity-2000) | `ZIO_Simcity_2000 v1.00.cab` | Runs |  |
+| [ZIO Simcity 2000](https://archive.org/details/zio-simcity-2000) | `ZIO Simcity 2000 v1.01 Patched Scrollbars.cab` | Runs |  |
 
-## 🟡 Partly works (156)
+## 🟡 Partly works (149)
 
 Imports and starts, but the screen stays blank, draws nothing, or stops soon.
 
@@ -152,7 +159,7 @@ Imports and starts, but the screen stays blank, draws nothing, or stops soon.
 | [A few Games, Software and Themes for PocketPC](https://archive.org/details/game_20260818) | `Game.rar` | Blank screen | Missing: `DocList.dll!DocList_Create`, `AYGSHELL.dll!#88` |
 | [AI Baseball](https://archive.org/details/tucows_249836_AI_Baseball) | `aibaseballdemo_100.zip` | Exits at once |  |
 | [AI Football](https://archive.org/details/tucows_223136_AI_Football) | `aifootballdemo_120.zip` | Exits at once |  |
-| [ArCEnoid](https://archive.org/details/tucows_32070_ArCEnoid) | `ArCEnoid_9.zip` | Stops later | The game stopped on something the emulator cannot do yet. Missing: `COREDLL.dll!MaskBlt` |
+| [ArCEnoid](https://archive.org/details/tucows_32070_ArCEnoid) | `ArCEnoid_9.zip` | Blank screen | Missing: `COREDLL.dll!MaskBlt` |
 | [Arkanoi 3 D PPC WM 5 V 1 0](https://archive.org/details/arkanoi-3-d-ppc-wm-5-v-1-0) | `Arkanoi3D_PPC_WM5_v1_0.CAB` | Exits at once | Missing: `COREDLL.dll!GetFileAttributesExW` |
 | [AT&T PocketPC/Windows Mobile Game Collection (EN)](https://archive.org/details/games_202405) | `Games.zip` | Exits at once |  |
 | [Better Measure](https://archive.org/details/tucows_262702_Better_Measure) | `Bettermeasuredemo.zip` | Exits at once |  |
@@ -161,7 +168,6 @@ Imports and starts, but the screen stays blank, draws nothing, or stops soon.
 | [Bubblets](https://archive.org/details/tucows_32120_Bubblets) | `bubblets.zip` | Exits at once | The game stopped on something the emulator cannot do yet. |
 | [CE6b](https://archive.org/details/tucows_52638_CE6b) | `ce6b_hpc.zip` | Stops later |  |
 | [CEBall](https://archive.org/details/tucows_32077_CEBall) | `CEBall_All.zip` | Blank screen |  |
-| [CEDBView](https://archive.org/details/tucows_38929_CEDBView) | `cedbview.zip` | No frames |  |
 | [CEWedge](https://archive.org/details/tucows_163947_CEWedge) | `cewedge.exe` | Exits at once |  |
 | [CEWedge](https://archive.org/details/tucows_259055_CEWedge) | `cewedge.exe` | Exits at once |  |
 | [Chinese Input](https://archive.org/details/tucows_32573_Chinese_Input) | `cimesh.zip` | Blank screen |  |
@@ -179,7 +185,7 @@ Imports and starts, but the screen stays blank, draws nothing, or stops soon.
 | [Dell Axim X5 Pocket PC 2003 Upgrade CD](https://archive.org/details/wmx5dell) | `wmx5dell.rar` | Exits at once |  |
 | [DialupMaster](https://archive.org/details/tucows_32191_DialupMaster) | `DialupMaster100.zip` | No frames | Missing: `COREDLL.dll!RasEnumConnections` |
 | [drivers](https://archive.org/details/drivers_forsocketandsymboleWLANwm5PPC) | `drivers.zip` | Blank screen | Missing: `CEWDM.dll!CEDeviceIoControl`, `CEWDM.dll!CECreateFile` |
-| [dTree](https://archive.org/details/tucows_183459_dTree) | `idTree.exe` | No frames |  |
+| [dTree](https://archive.org/details/tucows_32496_dTree) | `dTree.exe` | Blank screen |  |
 | [E6 Calculator](https://archive.org/details/tucows_32304_E6_Calculator) | `e6demo.zip` | Stops later |  |
 | [Fade (Version 1.04, French) [Pocket PC]](https://archive.org/details/fade-1.04-fr-pocket-pc) | `Fade (1.04 FR).exe` | Exits at once | The game needs a file that is not in the package. |
 | [Fade (Version 1.06 patch, English) [Pocket PC]](https://archive.org/details/fade-1.06-pocket-pc) | `Fade Patch 1.04 to 1.06 US.zip` | Exits at once | The game needs a file that is not in the package. |
@@ -219,12 +225,11 @@ Imports and starts, but the screen stays blank, draws nothing, or stops soon.
 | [nPOPuk 3.05 Windows Mobile/Windows CE](https://archive.org/details/npopuk3.05) | `npopuk305_wce50arm (1).zip` | Stops later | The game needs a file that is not in the package. Missing: `COREDLL.dll!ImageList_SetOverlayImage` |
 | [nPOPuk 3.05 Windows Mobile/Windows CE](https://archive.org/details/npopuk3.05) | `npopuk305ssl_wce50arm.zip` | Stops later | The game needs a file that is not in the package. Missing: `COREDLL.dll!ImageList_SetOverlayImage` |
 | [OmniSolve](https://archive.org/details/tucows_220911_OmniSolve) | `OmniSolvePPC_Install.exe` | Exits at once | The game stopped on something the emulator cannot do yet. |
-| [Outliner](https://archive.org/details/tucows_32421_Outliner) | `hpcoutliner.zip` | Exits at once | The game stopped on something the emulator cannot do yet. |
+| [Outliner](https://archive.org/details/tucows_32421_Outliner) | `hpcoutliner.zip` | Blank screen |  |
 | [PalmFlash](https://archive.org/details/tucows_32645_PalmFlash) | `PalmFlash.exe` | Blank screen |  |
 | [Panda Vs. UFO](https://archive.org/details/tucows_78647_Panda_Vs._UFO) | `PandaVSUFO_Trial_PPC_SH3.exe` | No frames |  |
 | [ParaWinCE](https://archive.org/details/tucows_214659_ParaWinCE) | `pg50101t.exe` | Exits at once |  |
 | [pDiveLog](https://archive.org/details/tucows_302095_pDiveLog) | `pDiveLogPPC300Setup.exe` | Blank screen | Missing: `InkX.dll!InitInkX` |
-| [PHM registry editor v0.70](https://archive.org/details/phm-registry-editor.0.70) | `phm-registry-editor.0.70.cab` | No frames |  |
 | [phoneME Windows CE rev20547 2013-08-15 cabs](https://archive.org/details/phoneme-windows-ce-rev20547-2013-08-15-cabs) | `CLDC-phoneme_feature_mr4-win32_arm_wm5-bin-rev20547-20130815.cab` | Blank screen |  |
 | [phoneME Windows CE rev20547 2013-08-15 cabs](https://archive.org/details/phoneme-windows-ce-rev20547-2013-08-15-cabs) | `CLDC-phoneme_feature_mr4-win32_arm_wm6-bin-rev20547-20130815.cab` | Blank screen |  |
 | [PhoneTone](https://archive.org/details/tucows_222934_PhoneTone) | `PhoneTonePKT30Day.exe` | Exits at once | The game needs a file that is not in the package. |
@@ -233,8 +238,6 @@ Imports and starts, but the screen stays blank, draws nothing, or stops soon.
 | [Pocket BizCalc Pocket PC](https://archive.org/details/Pocket-BizCalc-1999-02-22-ce-ppc) | `pbizcalc.sh3.CAB` | Blank screen |  |
 | [Pocket Chord Finder](https://archive.org/details/tucows_232040_Pocket_Chord_Finder) | `pcf15.zip` | Exits at once |  |
 | [Pocket Cool-O-Meter](https://archive.org/details/tucows_145485_Pocket_Cool-O-Meter) | `pocketcm.zip` | Exits at once |  |
-| [Pocket Explorer](https://archive.org/details/tucows_212439_Pocket_Explorer) | `pexplorerarm.exe` | Blank screen |  |
-| [Pocket Explorer](https://archive.org/details/tucows_212439_Pocket_Explorer) | `pexplorersh.exe` | Blank screen |  |
 | [Pocket Genesis](https://archive.org/details/pocket-genesis_202607) | `PocketGenesis.exe` | Blank screen |  |
 | [Pocket Genesis 1.0](https://archive.org/details/pocketgenesis1.0b11) | `PocketGenesis1.0b1arm.zip` | Blank screen |  |
 | [Pocket Genesis 1.0](https://archive.org/details/pocketgenesis1.0b11) | `PocketGenesis1.0b2-38xx.zip` | Blank screen |  |
@@ -245,6 +248,7 @@ Imports and starts, but the screen stays blank, draws nothing, or stops soon.
 | [Pocket PC Teletype GPS Full](https://archive.org/details/appspocketpcteletypegpsfull) | `(Apps) - Pocket PC - Teletype GPS Full.zip` | Blank screen | Missing: `COREDLL.dll!GetClipBox`, `COREDLL.dll!MaskBlt`, `GPSDriver.dll!?TTGPS_GetPositionalData@@YA_NPAUTTGPS_POSITIONALDATA@@@Z` |
 | [Pocket Quake II](https://archive.org/details/tucows_315702_Pocket_Quake_II) | `pocketquake2.exe` | Exits at once | The game stopped on something the emulator cannot do yet. |
 | [Pocket Rockets Pro](https://archive.org/details/tucows_328941_Pocket_Rockets_Pro) | `PRP_Trial.zip` | No frames | Missing: `gd201b.dll!?BltFast@CGapiSurface@@QAAJKKPAV1@PAUtagRECT@@KPAU_GDBLTFASTFX@@@Z`, `gd201b.dll!?Flip@CGapiDisplay@@QAAJXZ`, `gd201b.dll!?WaitForNextFrame@CGapiTimer@@QAAJXZ` |
+| [Pocket Slay](https://archive.org/details/tucows_182765_Pocket_Slay) | `PocketSlay.zip` | Blank screen |  |
 | [Pocket Solitaire Engine](https://archive.org/details/tucows_301930_Pocket_Solitaire_Engine) | `SolitaireEngineDemo.exe` | Exits at once |  |
 | [Pocket Spark Handheld PC (Extracted)](https://archive.org/details/pocket-spark-hpc) | `PocketSparkHPC.HPC2K_ARM.CAB` | Blank screen |  |
 | [Pocket Spark Handheld PC (Extracted)](https://archive.org/details/pocket-spark-hpc) | `PocketSparkHPC.HPC2K_mips.CAB` | Blank screen |  |
@@ -259,7 +263,6 @@ Imports and starts, but the screen stays blank, draws nothing, or stops soon.
 | [PowerVR Racer (Ridge Racer OpenGL MBX ES 1.1 tech demo) for Dell Axim x50v x51v](https://archive.org/details/powervr-racer) | `PVR_Racer.zip` | Stops later |  |
 | [PPToools](https://archive.org/details/tucows_199958_PPToools) | `pptools.zip` | Stops later | Missing: `CSFileView.dll!#1` |
 | [ProgramMenu](https://archive.org/details/tucows_183690_ProgramMenu) | `pmenu14.zip` | Blank screen | Missing: `AYGSHELL.dll!#2` |
-| [ProxiWeb](https://archive.org/details/tucows_32654_ProxiWeb) | `PrxWebCE3B1.exe` | No frames | Missing: `WINSOCK.dll!__WSAFDIsSet`, `WINSOCK.dll!select`, `WINSOCK.dll!htonl` |
 | [PTE](https://archive.org/details/tucows_222772_PTE) | `ptef.zip` | Exits at once |  |
 | [QISndFx](https://archive.org/details/tucows_32373_QISndFx) | `QISndFx_SH3.zip` | Stops later |  |
 | [QRemote](https://archive.org/details/tucows_216286_QRemote) | `qr_arm.cab` | Exits at once |  |
@@ -287,7 +290,7 @@ Imports and starts, but the screen stays blank, draws nothing, or stops soon.
 | [TimeTracker 2000](https://archive.org/details/tucows_78965_TimeTracker_2000) | `TTT.PPC.MIPS.exe` | Exits at once |  |
 | [TrayDate](https://archive.org/details/tucows_32627_TrayDate) | `TrayDate.exe` | Blank screen | Missing: `COREDLL.dll!CreateIconIndirect` |
 | [UKEditor](https://archive.org/details/UKEditor) | `UKEditor.zip` | No frames | Missing: `COREDLL.dll!ExtractIconExW` |
-| [Ultima Underworld for Pocket PC](https://archive.org/details/ultima-underworld-for-pocket-pc) | `Ultima Underworld PPC cabs -iTLcCc-.zip` | Exits at once |  |
+| [Ultima Underworld for Pocket PC](https://archive.org/details/ultima-underworld-for-pocket-pc) | `Ultima Underworld PPC cabs -iTLcCc-.zip` | Stops later |  |
 | [Unfinished Business](https://archive.org/details/unfinished-business_202610) | `Unfinished Business.zip` | Exits at once | The game stopped on something the emulator cannot do yet. Missing: `alib.dll!#22`, `alib.dll!#19`, `alib.dll!#20` |
 | [Update WS 011 SH SP 5a](https://archive.org/details/update-ws-011-sh-sp-5a) | `Update-WS011SH-SP5a.exe` | Exits at once |  |
 | [VBirthday GOLD Edition](https://archive.org/details/tucows_265958_VBirthday_GOLD_Edition) | `VBirthday21GoldTrialSetup.exe` | Exits at once | The game needs a file that is not in the package. |
@@ -298,13 +301,10 @@ Imports and starts, but the screen stays blank, draws nothing, or stops soon.
 | [Windows Media Player for Pocket PC - Technology Preview Edition 2](https://archive.org/details/windowsmediaplayerforpocketpc-technologypreviewedition12extracted) | `Windows Media Player for Pocket PC - Technology Preview Edition/WMP.PPC_SA1100.CAB` | Exits at once | Missing: `COREDLL.dll!UnregisterClassW` |
 | [Windows Mobile application archive](https://archive.org/details/windowsmobile) | `GPRSMonitor_PPC12.cab` | No frames |  |
 | [Windows mobile cabs](https://archive.org/details/tombraider_arm_hexturbation) | `psc.ARM.CAB` | Exits at once |  |
-| [WinMobile Lens](https://archive.org/details/tucows_371685_WinMobile_Lens) | `WinMobileLens_SetupADS_Arm.exe` | Blank screen |  |
 | [WinPopup](https://archive.org/details/tucows_32691_WinPopup) | `winpopupce.zip` | Exits at once |  |
 | [Word Search](https://archive.org/details/tucows_32179_Word_Search) | `WSDemo.exe` | Exits at once |  |
 | [Xylon GPS Data logging](https://archive.org/details/tucows_227730_Xylon_GPS_Data_logging) | `Xylon_Trial.zip` | Exits at once |  |
 | [Yacht](https://archive.org/details/tucows_168569_Yacht) | `Yacht.zip` | Exits at once |  |
-| [ZIO Simcity 2000](https://archive.org/details/zio-simcity-2000) | `ZIO_Simcity_2000 v1.00.cab` | Blank screen | 只畫出灰色的對話框底色：程式有處理重繪，但沒有畫任何東西。 Missing: `COREDLL.dll!GetPaletteEntries` |
-| [ZIO Simcity 2000](https://archive.org/details/zio-simcity-2000) | `ZIO Simcity 2000 v1.01 Patched Scrollbars.cab` | Blank screen | 只畫出灰色的對話框底色：程式有處理重繪，但沒有畫任何東西。 Missing: `COREDLL.dll!GetPaletteEntries` |
 
 ## 🟥 Does not start (388)
 

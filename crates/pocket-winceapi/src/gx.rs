@@ -101,12 +101,40 @@ fn initial_guest_pitch(ctx: &CallCtx<'_>) -> u32 {
     }
 }
 
+/// Games built only for the Compaq iPAQ 3600 series. They ask GAPI for the
+/// display properties but their blitter only handles the iPAQ answer
+/// (`cbxPitch = 640`, `cbyPitch = -2`): Pocket Hustler's flip routine
+/// backs the `GXBeginDraw` pointer up by one panel scanline and
+/// `memcpy`s the whole screen, so with a plain portrait answer it shows
+/// nothing but its glyphs, laid out sideways.
+const IPAQ_ONLY_GAMES: &[&str] = &["hustler"];
+
+/// Whether this game gets the iPAQ 3630 memory order (see
+/// [`pocket_kernel::KernelState::gx_ipaq_layout`]). Most GAPI games either
+/// honour the pitches or assume a plain portrait buffer, so plain portrait
+/// stays the default. `POCKETHLE_GAPI_LAYOUT=ipaq` or `=portrait` forces
+/// one or the other, for trying a game that is not on the list.
+fn wants_ipaq_layout(ctx: &CallCtx<'_>) -> bool {
+    match std::env::var("POCKETHLE_GAPI_LAYOUT") {
+        Ok(v) if v.eq_ignore_ascii_case("ipaq") => return true,
+        Ok(v) if v.eq_ignore_ascii_case("portrait") => return false,
+        _ => {}
+    }
+    let path = ctx.kernel.module_path.to_ascii_lowercase();
+    let exe = ctx.kernel.exe_file_name.to_ascii_lowercase();
+    IPAQ_ONLY_GAMES
+        .iter()
+        .any(|name| path.contains(name) || exe.contains(name))
+}
+
 fn ensure_fb_mapped(ctx: &mut CallCtx<'_>) -> Result<(), KernelError> {
     if ctx.kernel.fb_mapped {
         return Ok(());
     }
     let pitch = initial_guest_pitch(ctx);
     ctx.kernel.guest_fb_pitch = pitch;
+    ctx.kernel.gx_ipaq_layout = wants_ipaq_layout(ctx)
+        && pocket_kernel::ipaq_layout_fits(&ctx.kernel.framebuffer);
     let bytes = page_align_up(
         pitch
             .saturating_mul(ctx.kernel.framebuffer.height)
@@ -114,13 +142,7 @@ fn ensure_fb_mapped(ctx: &mut CallCtx<'_>) -> Result<(), KernelError> {
     );
     ctx.cpu
         .map_region(SYNTHETIC_FB_BASE, bytes, Prot::READ | Prot::WRITE)?;
-    let row_bytes = ctx.kernel.framebuffer.stride_bytes() as usize;
-    for row in 0..ctx.kernel.framebuffer.height as usize {
-        let src = row * row_bytes;
-        let dst = SYNTHETIC_FB_BASE + (row * pitch as usize) as u32;
-        ctx.cpu
-            .write_mem(dst, &ctx.kernel.framebuffer.pixels[src..src + row_bytes])?;
-    }
+    pocket_kernel::write_guest_framebuffer(ctx.cpu, ctx.kernel)?;
     ctx.kernel.gx_last_pushed_counter = ctx.kernel.framebuffer.frame_counter;
     ctx.kernel.fb_mapped = true;
     Ok(())
@@ -161,24 +183,13 @@ fn gx_begin_draw(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> 
     if ctx.kernel.framebuffer.frame_counter != ctx.kernel.gx_last_pushed_counter
         && !ctx.kernel.framebuffer.is_all_black()
     {
-        let pitch = guest_pitch_bytes(ctx) as usize;
-        let row_bytes = ctx.kernel.framebuffer.stride_bytes() as usize;
-        if pitch == row_bytes {
-            ctx.cpu
-                .write_mem(SYNTHETIC_FB_BASE, &ctx.kernel.framebuffer.pixels)?;
-        } else {
-            for row in 0..ctx.kernel.framebuffer.height as usize {
-                let src = row * row_bytes;
-                let dst = SYNTHETIC_FB_BASE + (row * pitch) as u32;
-                ctx.cpu
-                    .write_mem(dst, &ctx.kernel.framebuffer.pixels[src..src + row_bytes])?;
-            }
-        }
+        pocket_kernel::write_guest_framebuffer(ctx.cpu, ctx.kernel)?;
         ctx.kernel.gx_last_pushed_counter = ctx.kernel.framebuffer.frame_counter;
     }
     ctx.kernel.gx_draw_open = true;
-    log::trace!("GXBeginDraw() -> 0x{:08x}", SYNTHETIC_FB_BASE);
-    Ok(DispatchOutcome::ReturnedR0(SYNTHETIC_FB_BASE))
+    let origin = pocket_kernel::guest_fb_origin(ctx.kernel);
+    log::trace!("GXBeginDraw() -> 0x{origin:08x}");
+    Ok(DispatchOutcome::ReturnedR0(origin))
 }
 
 fn gx_end_draw(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
@@ -186,24 +197,8 @@ fn gx_end_draw(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     if !ctx.kernel.fb_mapped {
         return Ok(DispatchOutcome::ReturnedR0(1));
     }
-    let pitch = guest_pitch_bytes(ctx) as usize;
-    let row_bytes = ctx.kernel.framebuffer.stride_bytes() as usize;
-    let fb_len = ctx.kernel.framebuffer.pixels.len();
-    if ctx.kernel.gx_readback_scratch.len() != fb_len {
-        ctx.kernel.gx_readback_scratch.resize(fb_len, 0);
-    }
-    if pitch == row_bytes {
-        ctx.cpu
-            .read_mem_into(SYNTHETIC_FB_BASE, &mut ctx.kernel.gx_readback_scratch)?;
-    } else {
-        for row in 0..ctx.kernel.framebuffer.height as usize {
-            let src = SYNTHETIC_FB_BASE + (row * pitch) as u32;
-            let dst = row * row_bytes;
-            ctx.cpu.read_mem_into(
-                src,
-                &mut ctx.kernel.gx_readback_scratch[dst..dst + row_bytes],
-            )?;
-        }
+    if !pocket_kernel::read_guest_framebuffer(ctx.cpu, ctx.kernel) {
+        return Ok(DispatchOutcome::ReturnedR0(1));
     }
     let signature = sample_signature(
         &ctx.kernel.gx_readback_scratch,
@@ -313,12 +308,22 @@ fn gx_get_display_properties(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, K
     let mut buf = Vec::with_capacity(24);
     buf.extend_from_slice(&width.to_le_bytes());
     buf.extend_from_slice(&height.to_le_bytes());
-    buf.extend_from_slice(&(bpp / 8).to_le_bytes());
-    buf.extend_from_slice(&guest_pitch_bytes(ctx).to_le_bytes());
-    buf.extend_from_slice(&bpp.to_le_bytes());
-    // kfDirect565 is 0x80 in the WinCE GAPI header. The direct flag
-    // is not a pixel-format bit and must not be ORed into ffFormat.
-    buf.extend_from_slice(&0x0000_0080u32.to_le_bytes());
+    if ctx.kernel.gx_ipaq_layout {
+        // What an iPAQ 3630 reports: portrait x steps one 640-byte
+        // scanline of the sideways panel, portrait y walks backwards
+        // along it, and kfDirect | kfDirect565 | kfLandscape describes it.
+        buf.extend_from_slice(&pocket_kernel::IPAQ_PANEL_PITCH.to_le_bytes());
+        buf.extend_from_slice(&(-((bpp / 8) as i32)).to_le_bytes());
+        buf.extend_from_slice(&bpp.to_le_bytes());
+        buf.extend_from_slice(&0x0000_00A8u32.to_le_bytes());
+    } else {
+        buf.extend_from_slice(&(bpp / 8).to_le_bytes());
+        buf.extend_from_slice(&guest_pitch_bytes(ctx).to_le_bytes());
+        buf.extend_from_slice(&bpp.to_le_bytes());
+        // kfDirect565 is 0x80 in the WinCE GAPI header. The direct flag
+        // is not a pixel-format bit and must not be ORed into ffFormat.
+        buf.extend_from_slice(&0x0000_0080u32.to_le_bytes());
+    }
     ctx.cpu.write_mem(sret, &buf)?;
     Ok(DispatchOutcome::ReturnedR0(sret))
 }
@@ -365,6 +370,7 @@ pub(crate) mod tests {
             module_search_dirs: Vec::new(),
             fb_mapped: false,
             guest_fb_pitch: 0,
+            gx_ipaq_layout: false,
             direct_fb_frames: 0,
             gx_readback_scratch: Vec::new(),
             mem_op_scratch: Vec::new(),
@@ -470,6 +476,57 @@ pub(crate) mod tests {
         assert_eq!(
             gx_set_viewport(&mut c).unwrap(),
             DispatchOutcome::ReturnedR0(1)
+        );
+    }
+
+    #[test]
+    fn ipaq_layout_reports_ipaq_pitches_and_round_trips_pixels() {
+        let mut cpu = StubCpu::new();
+        let mut kernel = fresh_kernel();
+        kernel.module_path = "\\Program Files\\Pocket Hustler\\Hustler.exe".to_string();
+        let t = dummy_thunk();
+        let mut c = CallCtx {
+            cpu: &mut cpu,
+            thunk: &t,
+            kernel: &mut kernel,
+        };
+        gx_open_display(&mut c).unwrap();
+        assert!(c.kernel.gx_ipaq_layout);
+        c.cpu.write_reg(ArmReg::R0, 0x1000).unwrap();
+        c.cpu.map_region(0x1000, 0x1000, Prot::READ | Prot::WRITE).unwrap();
+        gx_get_display_properties(&mut c).unwrap();
+        let props = c.cpu.read_mem(0x1000, 24).unwrap();
+        let field = |i: usize| i32::from_le_bytes(props[i * 4..i * 4 + 4].try_into().unwrap());
+        assert_eq!((field(0), field(1), field(2), field(3)), (240, 320, 640, -2));
+        assert_eq!(field(5), 0xA8);
+        // Portrait pixel (x=3, y=5) is written through the GAPI pitches.
+        let origin = match gx_begin_draw(&mut c).unwrap() {
+            DispatchOutcome::ReturnedR0(p) => p,
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(origin, SYNTHETIC_FB_BASE + 319 * 2);
+        let addr = (origin as i64 + 3 * 640 - 5 * 2) as u32;
+        c.cpu.write_mem(addr, &[0x1f, 0xf8]).unwrap();
+        gx_end_draw(&mut c).unwrap();
+        let at = (5 * 240 + 3) * 2;
+        assert_eq!(&c.kernel.framebuffer.pixels[at..at + 2], &[0x1f, 0xf8]);
+    }
+
+    #[test]
+    fn other_games_keep_the_portrait_layout() {
+        let mut cpu = StubCpu::new();
+        let mut kernel = fresh_kernel();
+        let t = dummy_thunk();
+        let mut c = CallCtx {
+            cpu: &mut cpu,
+            thunk: &t,
+            kernel: &mut kernel,
+        };
+        gx_open_display(&mut c).unwrap();
+        assert!(!c.kernel.gx_ipaq_layout);
+        assert_eq!(
+            gx_begin_draw(&mut c).unwrap(),
+            DispatchOutcome::ReturnedR0(SYNTHETIC_FB_BASE)
         );
     }
 

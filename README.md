@@ -118,8 +118,8 @@ We downloaded **every Pocket PC item we could find on archive.org**, imported ea
 
 | | Result | Count |
 |---|---|---:|
-| ✅ | **Runs** — starts and draws the game or program | **95** |
-| 🟡 | **Partly works** — starts, but the screen stays blank or it stops early | 156 |
+| ✅ | **Runs** — starts and draws the game or program | **102** |
+| 🟡 | **Partly works** — starts, but the screen stays blank or it stops early | 149 |
 | 🟥 | **Does not start** — imports, then fails while starting | 388 |
 | ⛔ | **Not importable** — no Pocket PC program in the download | 384 |
 | ⚪ | **Not tested** — no package in the item, or the download failed | 420 |
@@ -149,6 +149,8 @@ flowchart LR
     E -- "call into coredll, gx, aygshell..." --> F["Windows CE APIs<br/>in Rust"]
     F --> G["Frontends<br/>Windows · Android · Web · CLI"]
 ```
+
+**Why emulate the operating system instead of the whole device?** See [Why high-level emulation](docs/WHY_HLE.md): how this differs from QEMU-style device emulators, what it gains, and what it costs.
 
 | Crate | What it does |
 |---|---|
@@ -181,12 +183,12 @@ target/release/pockethle play MyGame.zip
 
 ## 🚧 Known limitations
 
-- Games written straight into the Compaq iPAQ's sideways framebuffer (Pocket Hustler) draw their text and table transposed; emulating that memory layout is not done yet. Games that are simply drawn sideways can be turned with *Rotate screen* in the browser version.
-- SimCity 2000 (ZIO) opens its window but never draws into it.
+- Games made for a landscape device are drawn sideways; *Rotate screen* in the browser version turns them upright. Games built only for the Compaq iPAQ 3630's sideways display memory (Pocket Hustler) get that layout automatically.
+- MFC programs that open more than one window (Haali Reader, SimCity 2000) do not start yet: every top-level window currently shares one handle, which confuses MFC's window map. Separate windows are the next big piece of work.
 - A few rarely used MIPS and SH3 helpers (64-bit maths on SH3, `setjmp` on both) are not implemented yet.
 - MIPS16 code (some MIPS builds) and SH-4 floating point instructions are not supported yet.
 - .NET Compact Framework programs, Wise installers and x86 builds do not run.
-- Programs that use MFC need `mfcce300.dll`. The web version fetches it for you from Microsoft's Pocket PC 2000 SDK on the Internet Archive. By hand: open [the SDK](https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe) with 7-Zip and take `Program Files/mfc/lib/arm/mfcce300.dll` and `olece300.dll` (`mips` or `sh3` for those builds).
+- Programs that use MFC need `mfcce300.dll`. The web version fetches it for you from Microsoft's Pocket PC 2000 SDK on the Internet Archive. By hand: open [the SDK](https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe) with 7-Zip and take `Program Files/mfc/lib/arm/mfcce300.dll` and `olece300.dll` (`mips` or `sh3` for those builds). ARM programs built for Pocket PC 2002 need the newer DLL from the [Pocket PC 2002 SDK](https://archive.org/download/WMSDK/ppc2002_sdk.exe): `program files/Pocket PC 2002/mfc/Lib/ARM/mfcce300.dll`.
 - Pocket Slay runs at about 1.5 frames per second in the browser.
 
 ## ⚖️ Legal

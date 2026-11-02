@@ -17,6 +17,7 @@ Runs,Runs,Calc98 5.3 WinCE (Extracted),https://archive.org/details/calc-9853-win
 Runs,Runs,Calendar Search,https://archive.org/details/tucows_32395_Calendar_Search,CalendarSearchMIPS-PR2.exe,,,COREDLL.dll!PegOpenDatabase COREDLL.dll!PegOidGetInfo
 Runs,Runs,CE-Star Suite,https://archive.org/details/tucows_153762_CE-Star_Suite,ver2PkPCARM.zip,,,
 Runs,Runs,CE5250,https://archive.org/details/tucows_232364_CE5250,CE5250_PocketPC.zip,,,
+Runs,Runs,CEDBView,https://archive.org/details/tucows_38929_CEDBView,cedbview.zip,,,
 Runs,Runs,CEniffer,https://archive.org/details/tucows_32190_CEniffer,CEnifferMIPS.zip.CAB,,,
 Runs,Runs,CETerm,https://archive.org/details/tucows_232362_CETerm,CETerm_PocketPC31.zip,,,
 Runs,Runs,CEVT220,https://archive.org/details/tucows_232369_CEVT220,CEVT220_PocketPC.zip,,,
@@ -32,7 +33,7 @@ Runs,Runs,Doodle Jump for Window Mobile 5.0,https://archive.org/details/doj_2025
 Runs,Runs,dotPocket,https://archive.org/details/tucows_270214_dotPocket,dotpocket2003.exe,,,
 Runs,Runs,Dragon Bane II,https://archive.org/details/tucows_273050_Dragon_Bane_II,DB2SetupARM.exe,,,
 Runs,Runs,dsFORTH,https://archive.org/details/tucows_32354_dsFORTH,ds2_b3_Setup.exe,,,
-Runs,Runs,dTree,https://archive.org/details/tucows_32496_dTree,dTree.exe,,,
+Runs,Runs,dTree,https://archive.org/details/tucows_183459_dTree,idTree.exe,,,
 Runs,Runs,Elevens Game,https://archive.org/details/tucows_314055_Elevens_Game,Elevens.exe,,,
 Runs,Runs,ELFView - The Extremely Large File Viewer,https://archive.org/details/tucows_330232_ELFView_-_The_Extremely_Large_File_Viewer,ELFViewARM.CAB,,,
 Runs,Runs,Fedot's Adventures,https://archive.org/details/fedots-adventures,Fedot's Adventures.cab,,,
@@ -60,11 +61,13 @@ Runs,Runs,moongba2.4.2,https://archive.org/details/moongba2.4.2,moongba2.4.2.zip
 Runs,Runs,Nerve,https://archive.org/details/tucows_248733_Nerve,NerveDemoSetup.exe,,,
 Runs,Runs,PalmGB,https://archive.org/details/tucows_216709_PalmGB,pgbsetup.exe,,,COREDLL.dll!SelectPalette
 Runs,Runs,PalmGB,https://archive.org/details/tucows_32646_PalmGB,pgbsetup.exe,,,COREDLL.dll!SelectPalette
+Runs,Runs,PHM registry editor v0.70,https://archive.org/details/phm-registry-editor.0.70,phm-registry-editor.0.70.cab,,,
 Runs,Runs,PilotCE,https://archive.org/details/tucows_32648_PilotCE,PilotCE.exe,,,PilotCpuCE.dll!CPU_getlong PilotCpuCE.dll!CPU_pen PilotCpuCE.dll!CPU_init PilotCpuCE.dll!CPU_setsounds PilotCpuCE.dll!CPU_SetDisplayWindow PilotCpuCE.dll!CPU_run
 Runs,Runs,Pocket 12C,https://archive.org/details/tucows_255472_Pocket_12C,P12CV150ARM.exe,,,COREDLL.dll!_fpclass
 Runs,Runs,Pocket 15C Scientific Calculator,https://archive.org/details/tucows_294403_Pocket_15C_Scientific_Calculator,Pocket15CV110.exe,,,COREDLL.dll!_fpclass
+Runs,Runs,Pocket Explorer,https://archive.org/details/tucows_212439_Pocket_Explorer,pexplorerarm.exe,,,
+Runs,Runs,Pocket Explorer,https://archive.org/details/tucows_212439_Pocket_Explorer,pexplorersh.exe,,,
 Runs,Runs,Pocket Pinball,https://archive.org/details/tucows_250021_Pocket_Pinball,PocketPinballSetupDemo.exe,,,
-Runs,Runs,Pocket Slay,https://archive.org/details/tucows_182765_Pocket_Slay,PocketSlay.zip,"Tap a tree in the top-left, then OK in the New Game dialog (the shareware version only lets you pick the first two rows).",,
 Runs,Runs,Pocket Taipei,https://archive.org/details/tucows_254025_Pocket_Taipei,ptaipei10.zip,,,
 Runs,Runs,Pocket Tune,https://archive.org/details/tucows_252624_Pocket_Tune,PocketTune_2_0_5.zip,,,
 Runs,Runs,Pocket Woman,https://archive.org/details/tucows_241852_Pocket_Woman,PocketWoman.zip,,,AYGSHELL.dll!#39
@@ -79,6 +82,7 @@ Runs,Runs,PPC Planet CE Archive,https://archive.org/details/ppc-planet-ce,ClockW
 Runs,Runs,Pretec CompactGPS,https://archive.org/details/compact-gps-lp,CompactGPS.zip,,,
 Runs,Runs,Pretec CompactGPS,https://archive.org/details/compact-gps-lp,CompactGPS_LP.zip,,,
 Runs,Runs,Primer,https://archive.org/details/tucows_76856_Primer,PrimerCE.exe,,,COREDLL.dll!EnumFontFamiliesW COREDLL.dll!IntersectClipRect COREDLL.dll!SelectClipRgn
+Runs,Runs,ProxiWeb,https://archive.org/details/tucows_32654_ProxiWeb,PrxWebCE3B1.exe,,,WINSOCK.dll!htonl
 Runs,Runs,SEdit,https://archive.org/details/tucows_180072_SEdit,seditmips.zip,,,
 Runs,Runs,Seven Game,https://archive.org/details/tucows_312195_Seven_Game,Seven.exe,,,
 Runs,Runs,SnoopSoft Dashboard,https://archive.org/details/tucows_216191_SnoopSoft_Dashboard,dashboard.zip,,,
@@ -92,12 +96,15 @@ Runs,Runs,VoiceRecorder,https://archive.org/details/tucows_289072_VoiceRecorder,
 Runs,Runs,Windows CE 1.0 Programs,https://archive.org/details/windowsce1.0,Windows CE 1.0.zip,,,COREDLL.dll!AudioUpdateFromRegistry
 Runs,Runs,Windows mobile cabs,https://archive.org/details/tombraider_arm_hexturbation,line4setup.arm.CAB,,,
 Runs,Runs,WinEyes,https://archive.org/details/tucows_226355_WinEyes,wineyesce.zip,,,
+Runs,Runs,WinMobile Lens,https://archive.org/details/tucows_371685_WinMobile_Lens,WinMobileLens_SetupADS_Arm.exe,,,
 Runs,Runs,XLISP-Plus,https://archive.org/details/tucows_32693_XLISP-Plus,xl21gce.zip,,,COREDLL.dll!IntersectClipRect
 Runs,Runs,Yotz,https://archive.org/details/tucows_32181_Yotz,yotzdemo.exe,,,
+Runs,Runs,ZIO Simcity 2000,https://archive.org/details/zio-simcity-2000,ZIO_Simcity_2000 v1.00.cab,,,
+Runs,Runs,ZIO Simcity 2000,https://archive.org/details/zio-simcity-2000,ZIO Simcity 2000 v1.01 Patched Scrollbars.cab,,,
 Blank screen,Partly works,"A few Games, Software and Themes for PocketPC",https://archive.org/details/game_20260818,Game.rar,,,DocList.dll!DocList_Create AYGSHELL.dll!#88
 Exits at once,Partly works,AI Baseball,https://archive.org/details/tucows_249836_AI_Baseball,aibaseballdemo_100.zip,,,
 Exits at once,Partly works,AI Football,https://archive.org/details/tucows_223136_AI_Football,aifootballdemo_120.zip,,,
-Stops later,Partly works,ArCEnoid,https://archive.org/details/tucows_32070_ArCEnoid,ArCEnoid_9.zip,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!MaskBlt
+Blank screen,Partly works,ArCEnoid,https://archive.org/details/tucows_32070_ArCEnoid,ArCEnoid_9.zip,,,COREDLL.dll!MaskBlt
 Exits at once,Partly works,Arkanoi 3 D PPC WM 5 V 1 0,https://archive.org/details/arkanoi-3-d-ppc-wm-5-v-1-0,Arkanoi3D_PPC_WM5_v1_0.CAB,,,COREDLL.dll!GetFileAttributesExW
 Exits at once,Partly works,AT&T PocketPC/Windows Mobile Game Collection (EN),https://archive.org/details/games_202405,Games.zip,,,
 Exits at once,Partly works,Better Measure,https://archive.org/details/tucows_262702_Better_Measure,Bettermeasuredemo.zip,,,
@@ -106,7 +113,6 @@ Exits at once,Partly works,Book Bag,https://archive.org/details/tucows_251297_Bo
 Exits at once,Partly works,Bubblets,https://archive.org/details/tucows_32120_Bubblets,bubblets.zip,The game stopped on something the emulator cannot do yet.,,
 Stops later,Partly works,CE6b,https://archive.org/details/tucows_52638_CE6b,ce6b_hpc.zip,,,
 Blank screen,Partly works,CEBall,https://archive.org/details/tucows_32077_CEBall,CEBall_All.zip,,,
-No frames,Partly works,CEDBView,https://archive.org/details/tucows_38929_CEDBView,cedbview.zip,,,
 Exits at once,Partly works,CEWedge,https://archive.org/details/tucows_163947_CEWedge,cewedge.exe,,,
 Exits at once,Partly works,CEWedge,https://archive.org/details/tucows_259055_CEWedge,cewedge.exe,,,
 Blank screen,Partly works,Chinese Input,https://archive.org/details/tucows_32573_Chinese_Input,cimesh.zip,,,
@@ -124,7 +130,7 @@ Blank screen,Partly works,Decuma OnSpot for Pocket PC and Palm OS,https://archiv
 Exits at once,Partly works,Dell Axim X5 Pocket PC 2003 Upgrade CD,https://archive.org/details/wmx5dell,wmx5dell.rar,,,
 No frames,Partly works,DialupMaster,https://archive.org/details/tucows_32191_DialupMaster,DialupMaster100.zip,,,COREDLL.dll!RasEnumConnections
 Blank screen,Partly works,drivers,https://archive.org/details/drivers_forsocketandsymboleWLANwm5PPC,drivers.zip,,,CEWDM.dll!CEDeviceIoControl CEWDM.dll!CECreateFile
-No frames,Partly works,dTree,https://archive.org/details/tucows_183459_dTree,idTree.exe,,,
+Blank screen,Partly works,dTree,https://archive.org/details/tucows_32496_dTree,dTree.exe,,,
 Stops later,Partly works,E6 Calculator,https://archive.org/details/tucows_32304_E6_Calculator,e6demo.zip,,,
 Exits at once,Partly works,"Fade (Version 1.04, French) [Pocket PC]",https://archive.org/details/fade-1.04-fr-pocket-pc,Fade (1.04 FR).exe,The game needs a file that is not in the package.,,
 Exits at once,Partly works,"Fade (Version 1.06 patch, English) [Pocket PC]",https://archive.org/details/fade-1.06-pocket-pc,Fade Patch 1.04 to 1.06 US.zip,The game needs a file that is not in the package.,,
@@ -164,12 +170,11 @@ No frames,Partly works,MyMobiler 1.2.5 for Windows Mobile,https://archive.org/de
 Stops later,Partly works,nPOPuk 3.05 Windows Mobile/Windows CE,https://archive.org/details/npopuk3.05,npopuk305_wce50arm (1).zip,The game needs a file that is not in the package.,,COREDLL.dll!ImageList_SetOverlayImage
 Stops later,Partly works,nPOPuk 3.05 Windows Mobile/Windows CE,https://archive.org/details/npopuk3.05,npopuk305ssl_wce50arm.zip,The game needs a file that is not in the package.,,COREDLL.dll!ImageList_SetOverlayImage
 Exits at once,Partly works,OmniSolve,https://archive.org/details/tucows_220911_OmniSolve,OmniSolvePPC_Install.exe,The game stopped on something the emulator cannot do yet.,,
-Exits at once,Partly works,Outliner,https://archive.org/details/tucows_32421_Outliner,hpcoutliner.zip,The game stopped on something the emulator cannot do yet.,,
+Blank screen,Partly works,Outliner,https://archive.org/details/tucows_32421_Outliner,hpcoutliner.zip,,,
 Blank screen,Partly works,PalmFlash,https://archive.org/details/tucows_32645_PalmFlash,PalmFlash.exe,,,
 No frames,Partly works,Panda Vs. UFO,https://archive.org/details/tucows_78647_Panda_Vs._UFO,PandaVSUFO_Trial_PPC_SH3.exe,,,
 Exits at once,Partly works,ParaWinCE,https://archive.org/details/tucows_214659_ParaWinCE,pg50101t.exe,,,
 Blank screen,Partly works,pDiveLog,https://archive.org/details/tucows_302095_pDiveLog,pDiveLogPPC300Setup.exe,,,InkX.dll!InitInkX
-No frames,Partly works,PHM registry editor v0.70,https://archive.org/details/phm-registry-editor.0.70,phm-registry-editor.0.70.cab,,,
 Blank screen,Partly works,phoneME Windows CE rev20547 2013-08-15 cabs,https://archive.org/details/phoneme-windows-ce-rev20547-2013-08-15-cabs,CLDC-phoneme_feature_mr4-win32_arm_wm5-bin-rev20547-20130815.cab,,,
 Blank screen,Partly works,phoneME Windows CE rev20547 2013-08-15 cabs,https://archive.org/details/phoneme-windows-ce-rev20547-2013-08-15-cabs,CLDC-phoneme_feature_mr4-win32_arm_wm6-bin-rev20547-20130815.cab,,,
 Exits at once,Partly works,PhoneTone,https://archive.org/details/tucows_222934_PhoneTone,PhoneTonePKT30Day.exe,The game needs a file that is not in the package.,,
@@ -178,8 +183,6 @@ Stops later,Partly works,Pocket Artist,https://archive.org/details/tucows_47245_
 Blank screen,Partly works,Pocket BizCalc Pocket PC,https://archive.org/details/Pocket-BizCalc-1999-02-22-ce-ppc,pbizcalc.sh3.CAB,,,
 Exits at once,Partly works,Pocket Chord Finder,https://archive.org/details/tucows_232040_Pocket_Chord_Finder,pcf15.zip,,,
 Exits at once,Partly works,Pocket Cool-O-Meter,https://archive.org/details/tucows_145485_Pocket_Cool-O-Meter,pocketcm.zip,,,
-Blank screen,Partly works,Pocket Explorer,https://archive.org/details/tucows_212439_Pocket_Explorer,pexplorerarm.exe,,,
-Blank screen,Partly works,Pocket Explorer,https://archive.org/details/tucows_212439_Pocket_Explorer,pexplorersh.exe,,,
 Blank screen,Partly works,Pocket Genesis,https://archive.org/details/pocket-genesis_202607,PocketGenesis.exe,,,
 Blank screen,Partly works,Pocket Genesis 1.0,https://archive.org/details/pocketgenesis1.0b11,PocketGenesis1.0b1arm.zip,,,
 Blank screen,Partly works,Pocket Genesis 1.0,https://archive.org/details/pocketgenesis1.0b11,PocketGenesis1.0b2-38xx.zip,,,
@@ -190,6 +193,7 @@ No frames,Partly works,Pocket PC software,https://archive.org/details/spb-polish
 Blank screen,Partly works,Pocket PC Teletype GPS Full,https://archive.org/details/appspocketpcteletypegpsfull,(Apps) - Pocket PC - Teletype GPS Full.zip,,,COREDLL.dll!GetClipBox COREDLL.dll!MaskBlt GPSDriver.dll!?TTGPS_GetPositionalData@@YA_NPAUTTGPS_POSITIONALDATA@@@Z GPSDriver.dll!?TTGPS_RegGetAppVal@@YAJPAG0KPAXK@Z GPSDriver.dll!?TTGPS_CreateStatusWnd@@YAPAUHWND__@@PAU1@@Z GPSDriver.dll!?TTGPS_StartReading@@YAPAXPAUHWND__@@IK@Z
 Exits at once,Partly works,Pocket Quake II,https://archive.org/details/tucows_315702_Pocket_Quake_II,pocketquake2.exe,The game stopped on something the emulator cannot do yet.,,
 No frames,Partly works,Pocket Rockets Pro,https://archive.org/details/tucows_328941_Pocket_Rockets_Pro,PRP_Trial.zip,,,gd201b.dll!?BltFast@CGapiSurface@@QAAJKKPAV1@PAUtagRECT@@KPAU_GDBLTFASTFX@@@Z gd201b.dll!?Flip@CGapiDisplay@@QAAJXZ gd201b.dll!?WaitForNextFrame@CGapiTimer@@QAAJXZ gd201b.dll!?SurfacesAreLost@CGapiDisplay@@QAAJXZ gd201b.dll!?Blt@CGapiSurface@@QAAJPAUtagRECT@@PAV1@0KPAU_GDBLTFX@@@Z COREDLL.dll!RectInRegion COREDLL.dll!GetRgnBox COREDLL.dll!OffsetRgn
+Blank screen,Partly works,Pocket Slay,https://archive.org/details/tucows_182765_Pocket_Slay,PocketSlay.zip,,,
 Exits at once,Partly works,Pocket Solitaire Engine,https://archive.org/details/tucows_301930_Pocket_Solitaire_Engine,SolitaireEngineDemo.exe,,,
 Blank screen,Partly works,Pocket Spark Handheld PC (Extracted),https://archive.org/details/pocket-spark-hpc,PocketSparkHPC.HPC2K_ARM.CAB,,,
 Blank screen,Partly works,Pocket Spark Handheld PC (Extracted),https://archive.org/details/pocket-spark-hpc,PocketSparkHPC.HPC2K_mips.CAB,,,
@@ -204,7 +208,6 @@ Stops later,Partly works,PowerVR Demos,https://archive.org/details/pvr-racer,OGL
 Stops later,Partly works,PowerVR Racer (Ridge Racer OpenGL MBX ES 1.1 tech demo) for Dell Axim x50v x51v,https://archive.org/details/powervr-racer,PVR_Racer.zip,,,
 Stops later,Partly works,PPToools,https://archive.org/details/tucows_199958_PPToools,pptools.zip,,,CSFileView.dll!#1
 Blank screen,Partly works,ProgramMenu,https://archive.org/details/tucows_183690_ProgramMenu,pmenu14.zip,,,AYGSHELL.dll!#2
-No frames,Partly works,ProxiWeb,https://archive.org/details/tucows_32654_ProxiWeb,PrxWebCE3B1.exe,,,WINSOCK.dll!__WSAFDIsSet WINSOCK.dll!select WINSOCK.dll!htonl WINSOCK.dll!htons WINSOCK.dll!socket WINSOCK.dll!ioctlsocket WINSOCK.dll!bind WINSOCK.dll!inet_addr
 Exits at once,Partly works,PTE,https://archive.org/details/tucows_222772_PTE,ptef.zip,,,
 Stops later,Partly works,QISndFx,https://archive.org/details/tucows_32373_QISndFx,QISndFx_SH3.zip,,,
 Exits at once,Partly works,QRemote,https://archive.org/details/tucows_216286_QRemote,qr_arm.cab,,,
@@ -232,7 +235,7 @@ Exits at once,Partly works,TextMaker,https://archive.org/details/tucows_315355_T
 Exits at once,Partly works,TimeTracker 2000,https://archive.org/details/tucows_78965_TimeTracker_2000,TTT.PPC.MIPS.exe,,,
 Blank screen,Partly works,TrayDate,https://archive.org/details/tucows_32627_TrayDate,TrayDate.exe,,,COREDLL.dll!CreateIconIndirect
 No frames,Partly works,UKEditor,https://archive.org/details/UKEditor,UKEditor.zip,,,COREDLL.dll!ExtractIconExW
-Exits at once,Partly works,Ultima Underworld for Pocket PC,https://archive.org/details/ultima-underworld-for-pocket-pc,Ultima Underworld PPC cabs -iTLcCc-.zip,,,
+Stops later,Partly works,Ultima Underworld for Pocket PC,https://archive.org/details/ultima-underworld-for-pocket-pc,Ultima Underworld PPC cabs -iTLcCc-.zip,,,
 Exits at once,Partly works,Unfinished Business,https://archive.org/details/unfinished-business_202610,Unfinished Business.zip,The game stopped on something the emulator cannot do yet.,,alib.dll!#22 alib.dll!#19 alib.dll!#20
 Exits at once,Partly works,Update WS 011 SH SP 5a,https://archive.org/details/update-ws-011-sh-sp-5a,Update-WS011SH-SP5a.exe,,,
 Exits at once,Partly works,VBirthday GOLD Edition,https://archive.org/details/tucows_265958_VBirthday_GOLD_Edition,VBirthday21GoldTrialSetup.exe,The game needs a file that is not in the package.,,
@@ -243,13 +246,10 @@ Exits at once,Partly works,wincecabs3,https://archive.org/details/wincecabs3,Poc
 Exits at once,Partly works,Windows Media Player for Pocket PC - Technology Preview Edition 2,https://archive.org/details/windowsmediaplayerforpocketpc-technologypreviewedition12extracted,Windows Media Player for Pocket PC - Technology Preview Edition/WMP.PPC_SA1100.CAB,,,COREDLL.dll!UnregisterClassW
 No frames,Partly works,Windows Mobile application archive,https://archive.org/details/windowsmobile,GPRSMonitor_PPC12.cab,,,
 Exits at once,Partly works,Windows mobile cabs,https://archive.org/details/tombraider_arm_hexturbation,psc.ARM.CAB,,,
-Blank screen,Partly works,WinMobile Lens,https://archive.org/details/tucows_371685_WinMobile_Lens,WinMobileLens_SetupADS_Arm.exe,,,
 Exits at once,Partly works,WinPopup,https://archive.org/details/tucows_32691_WinPopup,winpopupce.zip,,,
 Exits at once,Partly works,Word Search,https://archive.org/details/tucows_32179_Word_Search,WSDemo.exe,,,
 Exits at once,Partly works,Xylon GPS Data logging,https://archive.org/details/tucows_227730_Xylon_GPS_Data_logging,Xylon_Trial.zip,,,
 Exits at once,Partly works,Yacht,https://archive.org/details/tucows_168569_Yacht,Yacht.zip,,,
-Blank screen,Partly works,ZIO Simcity 2000,https://archive.org/details/zio-simcity-2000,ZIO_Simcity_2000 v1.00.cab,只畫出灰色的對話框底色：程式有處理重繪，但沒有畫任何東西。,,COREDLL.dll!GetPaletteEntries
-Blank screen,Partly works,ZIO Simcity 2000,https://archive.org/details/zio-simcity-2000,ZIO Simcity 2000 v1.01 Patched Scrollbars.cab,只畫出灰色的對話框底色：程式有處理重繪，但沒有畫任何東西。,,COREDLL.dll!GetPaletteEntries
 Does not start,Does not start,.net Compact Frame Work 1.0 Sp 3,https://archive.org/details/net-compact-frame-work-1.0-sp-3,.net compact frame work 1.0 sp3.msi.zip,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,.NET Compact Framework 2.0 (& SR),https://archive.org/details/netcompact2.0,NETCFv2.wm.armv4i.cab,"This is a .NET Compact Framework program, which PocketPC3630 cannot run.",Look for a native ARM version of this program.｜mapping image into CPU: loader error: managed PE requires a .NET Compact Framework runtime (v2.0.50727); PocketPC3630 currently executes native ARM/MIPS WinCE images only,
 Does not start,Does not start,.NET Compact Framework 2.0 (& SR),https://archive.org/details/netcompact2.0,NETCFv2.wce5.armv4i.cab,,,
