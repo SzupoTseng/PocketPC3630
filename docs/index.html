@@ -3,19 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#111214">
+<meta name="theme-color" content="#12100e">
 <title>PocketPC3630</title>
 <link rel="icon" href="data:,">
 <style>
 :root {
-  --bg: #f6f5f2; --surface: #ffffff; --ink: #1b1b1a; --dim: #6d6b66; --line: #e3e1db;
-  --accent: #2c6e9e; --accent-ink: #ffffff; --bad: #b3261e; --shadow: 0 1px 2px rgb(0 0 0 / 6%), 0 8px 24px rgb(0 0 0 / 6%);
-  --stage: #0d0e10; --pad: rgb(255 255 255 / 9%); --pad-press: rgb(255 255 255 / 22%); --pad-ink: rgb(255 255 255 / 70%);
+  /* Palette from zjmud: 宣紙日 (rice paper) by day, 竹簡夜 (bamboo slips) by night. */
+  --bg: #efe9dd; --surface: #fffbf2; --ink: #2b2620; --dim: #5e564a; --line: #d3c8b4;
+  --accent: #9c6d1e; --accent-ink: #fffbf2; --bad: #b03a3a; --shadow: 0 6px 20px rgb(90 70 40 / 18%);
+  --stage: #12100e; --pad: rgb(255 255 255 / 9%); --pad-press: rgb(255 255 255 / 22%); --pad-ink: rgb(255 255 255 / 70%);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #111214; --surface: #1a1b1e; --ink: #ecebe7; --dim: #9a988f; --line: #2a2c30;
-    --accent: #7db7e0; --accent-ink: #0b1a26; --bad: #f2b8b5; --shadow: none;
+    --bg: #12100e; --surface: #1a1714; --ink: #e8e0d4; --dim: #a89e90; --line: #3a322a;
+    --accent: #d9a441; --accent-ink: #12100e; --bad: #e07a7a; --shadow: 0 8px 28px rgb(0 0 0 / 45%);
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -68,21 +69,21 @@ dialog ul { margin: 0; padding-left: 1.2em; }
 dialog li { margin: 4px 0; }
 dialog code { font-size: 12.5px; background: var(--bg); padding: 1px 5px; border-radius: 5px; }
 dialog footer { display: flex; justify-content: flex-end; padding: 0 22px 18px; }
-#toast { position: fixed; left: 50%; top: 52px; transform: translateX(-50%); max-width: min(30rem, calc(100vw - 32px)); background: #26272b; color: #ecebe7; padding: 10px 14px; border-radius: 12px; font-size: 13px; box-shadow: 0 8px 24px rgb(0 0 0 / 40%); display: none; z-index: 10; }
+#toast { position: fixed; left: 50%; top: 52px; transform: translateX(-50%); max-width: min(30rem, calc(100vw - 32px)); background: #241f1a; color: #e8e0d4; padding: 10px 14px; border-radius: 12px; font-size: 13px; box-shadow: 0 8px 24px rgb(0 0 0 / 40%); display: none; z-index: 10; }
 #status.bad { color: var(--bad); }
 
 /* Playing */
 #stage {
-  display: none; position: fixed; inset: 0; background: var(--stage); color: #d8d6d0;
+  display: none; position: fixed; inset: 0; background: var(--stage); color: #e8e0d4;
   flex-direction: column; align-items: center;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 body.playing main { display: none; }
 body.playing #stage { display: flex; }
 .bar { width: 100%; max-width: 40rem; display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font-size: 13px; }
-.bar button { color: #d8d6d0; padding: 6px 10px; border-radius: 8px; }
+.bar button { color: #e8e0d4; padding: 6px 10px; border-radius: 8px; }
 .bar button:hover { background: rgb(255 255 255 / 8%); }
-#hud { color: #7f7d77; font-variant-numeric: tabular-nums; }
+#hud { color: #a89e90; font-variant-numeric: tabular-nums; }
 .screen { flex: 1; min-height: 0; width: 100%; display: grid; place-items: center; padding: 0 8px; }
 canvas { display: block; touch-action: none; image-rendering: pixelated; background: #000; outline: none; transform-origin: center;
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
@@ -116,7 +117,7 @@ body.touch .pad { display: flex; }
 /* MFC helper on the game screen */
 .fix { width: 100%; max-width: 40rem; box-sizing: border-box; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin: 0 12px 8px; padding: 10px 12px; border-radius: 12px; background: #2a2416; color: #f3e3b5; font-size: 13px; }
 .fix[hidden] { display: none; }
-.fix button { background: #f0c35a; color: #2a2416; border-radius: 999px; padding: 6px 12px; font-weight: 600; }
+.fix button { background: #d9a441; color: #12100e; border-radius: 999px; padding: 6px 12px; font-weight: 600; }
 
 /* Free software wall: pick, download from archive.org, play. */
 .gallery-tools { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
@@ -124,9 +125,9 @@ body.touch .pad { display: flex; }
 .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow); min-width: 0; }
-.card .thumb { aspect-ratio: 3 / 4; background: #0b0d12; display: grid; place-items: center; overflow: hidden; max-width: 100%; }
+.card .thumb { aspect-ratio: 3 / 4; background: #12100e; display: grid; place-items: center; overflow: hidden; max-width: 100%; }
 .card .thumb img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; display: block; }
-.card .thumb .ph { color: #6f7887; font-size: 30px; font-weight: 700; }
+.card .thumb .ph { color: #6e665c; font-size: 30px; font-weight: 700; }
 .card .body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .card h3 { font-size: 15px; margin: 0; line-height: 1.3; }
 .card .desc { color: var(--dim); font-size: 13px; margin: 0; flex: 1; }
@@ -138,24 +139,40 @@ body.touch .pad { display: flex; }
 .card .src a { color: var(--dim); }
 
 /* Landing: an introduction and a beginner's guide around the library. */
-.hero { background: radial-gradient(120% 140% at 85% 0%, #23406a 0%, #121a2b 45%, #0b0f18 100%); color: #eef2f8; margin: -40px -16px 28px; padding: 44px 20px 40px; }
+.hero { background: radial-gradient(120% 140% at 85% 0%, #4a3518 0%, #1f1a15 45%, #12100e 100%); color: #e8e0d4; margin: -40px -16px 28px; padding: 44px 20px 40px; }
 .hero-in { max-width: 60rem; margin: 0 auto; display: grid; grid-template-columns: 1fr auto; gap: 36px; align-items: center; }
-.eyebrow { margin: 0 0 6px; color: #8fb8ea; font-size: 13px; letter-spacing: 0.06em; font-weight: 600; }
-.hero h1 { font-size: clamp(34px, 6vw, 52px); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 10px; color: #fff; }
-.lead { font-size: clamp(17px, 2.4vw, 21px); margin: 0 0 10px; color: #e3e9f2; }
-.sub { margin: 0 0 22px; color: #a9b6c9; max-width: 34rem; }
+.eyebrow { margin: 0 0 6px; color: #d9a441; font-size: 13px; letter-spacing: 0.06em; font-weight: 600; }
+.hero h1 { font-size: clamp(34px, 6vw, 52px); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 10px; color: #f4ecdf; }
+.lead { font-size: clamp(17px, 2.4vw, 21px); margin: 0 0 10px; color: #e8e0d4; }
+.sub { margin: 0 0 22px; color: #a89e90; max-width: 34rem; }
 .cta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .primary.big { padding: 11px 22px; font-size: 16px; }
-.hero .primary { background: #7db7e0; color: #0b1a26; }
-.ghost { color: #dfe8f4; padding: 10px 18px; border-radius: 999px; border: 1px solid rgb(255 255 255 / 28%); text-decoration: none; }
+/* The drop zone is the page's main control: a game is one drag (or one tap) away. */
+.drop { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; max-width: 32rem; margin: 0 0 14px; padding: 22px 20px;
+  border: 2px dashed #d9a441; border-radius: 16px; background: rgb(217 164 65 / 10%); color: #f4ecdf; text-align: center; transition: background .15s, transform .15s; }
+.drop:hover, .drop.over { background: rgb(217 164 65 / 20%); border-style: solid; transform: translateY(-1px); }
+.drop .ico { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #d9a441; color: #12100e; font-size: 24px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+.drop strong { font-size: 18px; }
+.drop span { font-size: 14px; }
+.drop small { font-size: 12.5px; color: #a89e90; }
+.drop.in-list { max-width: none; margin: 0; color: var(--ink); border-color: var(--accent); }
+.drop.in-list small { color: var(--dim); }
+.drop.in-list .ico { background: var(--accent); color: var(--accent-ink); }
+.cta-links { display: flex; gap: 10px; flex-wrap: wrap; }
+#drop-overlay { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; background: rgb(18 16 14 / 82%); padding: 24px; }
+#drop-overlay.on { display: grid; }
+#drop-overlay div { border: 3px dashed #d9a441; border-radius: 20px; padding: 48px 32px; max-width: 30rem; width: 100%; text-align: center; color: #f4ecdf; font-size: 22px; font-weight: 700; }
+#drop-overlay small { display: block; margin-top: 8px; font-size: 14px; font-weight: 400; color: #a89e90; }
+.hero .primary { background: #d9a441; color: #12100e; }
+.ghost { color: #e8e0d4; padding: 10px 18px; border-radius: 999px; border: 1px solid rgb(255 255 255 / 28%); text-decoration: none; }
 .ghost:hover { background: rgb(255 255 255 / 8%); }
-.downloads { margin: 18px 0 0; font-size: 13px; color: #a9b6c9; }
-.downloads a { color: #b9d6f2; }
-.device { width: 196px; padding: 26px 12px 40px; border-radius: 26px; background: linear-gradient(160deg, #3a404c, #22262e); border: 2px solid #8d95a3; box-shadow: 0 24px 60px rgb(0 0 0 / 50%); position: relative; }
-.device::after { content: ""; position: absolute; left: 50%; bottom: 12px; width: 26px; height: 16px; margin-left: -13px; border-radius: 8px; background: #5a6170; }
+.downloads { margin: 18px 0 0; font-size: 13px; color: #a89e90; }
+.downloads a { color: #e6c27a; }
+.device { width: 196px; padding: 26px 12px 40px; border-radius: 26px; background: linear-gradient(160deg, #3d352c, #221e1a); border: 2px solid #8b7f6c; box-shadow: 0 24px 60px rgb(0 0 0 / 50%); position: relative; }
+.device::after { content: ""; position: absolute; left: 50%; bottom: 12px; width: 26px; height: 16px; margin-left: -13px; border-radius: 8px; background: #5e554a; }
 .device-screen { background: #000; border-radius: 4px; overflow: hidden; aspect-ratio: 3 / 4; }
 .device-screen img { width: 100%; height: 100%; display: block; image-rendering: pixelated; transition: opacity .35s; }
-.device-caption { position: absolute; left: 0; right: 0; bottom: -30px; text-align: center; font-size: 13px; color: #a9b6c9; }
+.device-caption { position: absolute; left: 0; right: 0; bottom: -30px; text-align: center; font-size: 13px; color: #a89e90; }
 body.has-games .hero { padding: 26px 20px 24px; }
 body.has-games .hero .sub, body.has-games .device, body.has-games .downloads { display: none; }
 body.has-games .hero-in { grid-template-columns: 1fr; }
@@ -206,8 +223,14 @@ kbd { font: 12px/1 ui-monospace, Consolas, monospace; border: 1px solid var(--li
         <h1>PocketPC3630</h1>
         <p class="lead">2000 年代的 Pocket PC 遊戲與軟體，直接在瀏覽器裡重新玩。</p>
         <p class="sub">支援 ARM、MIPS、SH3 三種處理器，不需要裝置 ROM。匯入網路上下載的 .zip 或 .cab 就能開始，遊戲與存檔只留在你的瀏覽器裡。</p>
-        <div class="cta">
-          <button type="button" class="primary big" id="pick-hero">匯入遊戲</button>
+        <button type="button" class="drop" id="pick-hero">
+          <span class="ico" aria-hidden="true">+</span>
+          <strong>把遊戲檔拖到這裡</strong>
+          <span>或點一下選擇檔案</span>
+          <small>.zip、.cab、.exe 安裝檔都可以，不用先解壓縮；可一次選多個檔案（遊戲＋DLL）</small>
+        </button>
+        <div class="cta-links">
+          <a class="ghost" href="#free">沒有遊戲？玩免費的</a>
           <a class="ghost" href="#guide">新手教學</a>
         </div>
         <p class="downloads">也有 <a href="https://github.com/SzupoTseng/PocketPC3630/releases/latest">Windows 版</a> 與 <a href="https://github.com/SzupoTseng/PocketPC3630/releases/latest">Android 版</a> · <a href="https://github.com/SzupoTseng/PocketPC3630">GitHub 原始碼</a></p>
@@ -395,6 +418,7 @@ kbd { font: 12px/1 ui-monospace, Consolas, monospace; border: 1px solid var(--li
 <div id="toast" role="status"></div>
 
 <input type="file" id="file" accept=".zip,.cab,.rar,.exe,.dll,*/*" multiple hidden>
+<div id="drop-overlay" aria-hidden="true"><div>放開即可匯入<small>.zip、.cab、.exe，可一次多個檔案</small></div></div>
 <input type="file" id="save-file" accept=".zip" hidden>
 <script src="pockethle.js"></script>
 <script>
@@ -508,9 +532,11 @@ function listGames() {
   const count = M._pocket_game_count();
   document.body.classList.toggle('has-games', count > 0);
   if (count === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'empty';
-    empty.textContent = '還沒有遊戲。匯入你擁有的遊戲包（.zip 或 .cab）就能開始。';
+    const empty = document.createElement('button');
+    empty.type = 'button';
+    empty.className = 'drop in-list';
+    empty.innerHTML = '<span class="ico" aria-hidden="true">+</span><strong>遊戲庫還是空的</strong><span>把遊戲檔拖到這裡，或點一下選擇檔案</span><small>也可以往下捲，直接玩免費遊戲</small>';
+    empty.addEventListener('click', () => $('file').click());
     list.append(empty);
     return;
   }
@@ -991,10 +1017,8 @@ function toast(text, ms = 9000) {
 }
 // Several files at once (a game plus the DLLs it needs) become one package,
 // so nobody has to build a zip by hand.
-$('file').addEventListener('change', async (event) => {
-  const files = [...event.target.files];
-  event.target.value = '';
-  if (!files.length) return;
+async function importFiles(files) {
+  if (!files.length || !M) return;
   try {
     if (files.length === 1) { await importFile(files[0]); return; }
     say(`正在把 ${files.length} 個檔案組成一個遊戲包…`);
@@ -1003,6 +1027,28 @@ $('file').addEventListener('change', async (event) => {
     for (const f of files) entries.push([f.name, new Uint8Array(await f.arrayBuffer())]);
     await importFile(new File([zipStore(entries)], main.name.replace(/\.[^.]+$/, '') + '.zip'));
   } catch (error) { say(String(error), true); }
+}
+$('file').addEventListener('change', (event) => {
+  const files = [...event.target.files];
+  event.target.value = '';
+  importFiles(files);
+});
+// Drop files anywhere on the page. Counting enters and leaves keeps the
+// overlay up while the pointer crosses child elements.
+let dragDepth = 0;
+const hasFiles = (event) => [...(event.dataTransfer?.types || [])].includes('Files');
+const overlay = (on) => { $('drop-overlay').classList.toggle('on', on); $('pick-hero').classList.toggle('over', on); };
+window.addEventListener('dragenter', (event) => {
+  if (!hasFiles(event) || document.body.classList.contains('playing')) return;
+  event.preventDefault(); dragDepth++; overlay(true);
+});
+window.addEventListener('dragover', (event) => { if (hasFiles(event)) event.preventDefault(); });
+window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; overlay(false); } });
+window.addEventListener('drop', (event) => {
+  if (!hasFiles(event)) return;
+  event.preventDefault(); dragDepth = 0; overlay(false);
+  if (document.body.classList.contains('playing')) return;
+  importFiles([...event.dataTransfer.files]);
 });
 $('save-file').addEventListener('change', (event) => {
   const [file] = event.target.files;
