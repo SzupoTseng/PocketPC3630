@@ -39,7 +39,7 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 ---
 
 > ### 👉 Try it now: **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**
-> Nothing to install. Pick one of **70 free Pocket PC games and apps** (FreeCell, Pocket Quake, Pocket Slay, mahjong, Tetris, chess...) and press *Download and play*: it is fetched from the Internet Archive, imported and started in one click. A step-by-step guide on the page covers controls, saves, phones and the MFC library.
+> Nothing to install. Pick one of **74 free Pocket PC games and apps** (FreeCell, Pocket Quake, Pocket Slay, mahjong, Tetris, chess...) and press *Download and play*: it is fetched from the Internet Archive, imported and started in one click. A step-by-step guide on the page covers controls, saves, phones and the MFC library.
 
 <p align="center"><a href="https://szupotseng.github.io/PocketPC3630/"><img src="docs/images/website.png" alt="The PocketPC3630 website: introduction and the free games wall" width="88%" /></a></p>
 
@@ -118,8 +118,8 @@ We downloaded **every Pocket PC item we could find on archive.org**, imported ea
 
 | | Result | Count |
 |---|---|---:|
-| ✅ | **Runs** — starts and draws the game or program | **89** |
-| 🟡 | **Partly works** — starts, but the screen stays blank or it stops early | 160 |
+| ✅ | **Runs** — starts and draws the game or program | **93** |
+| 🟡 | **Partly works** — starts, but the screen stays blank or it stops early | 156 |
 | 🟥 | **Does not start** — imports, then fails while starting | 390 |
 | ⛔ | **Not importable** — no Pocket PC program in the download | 384 |
 | ⚪ | **Not tested** — no package in the item, or the download failed | 420 |
