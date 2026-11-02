@@ -28,7 +28,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
 
 /* Library */
-main { max-width: 36rem; margin: 0 auto; padding: 40px 16px 32px; }
+main { max-width: 64rem; margin: 0 auto; padding: 40px 16px 32px; }
+.library { max-width: 36rem; margin: 0 auto; }
 header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
 h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
 .primary {
@@ -107,17 +108,223 @@ body.touch .pad { display: flex; }
   body.touch .dpad { order: 1; align-self: center; margin-left: 16px; }
   body.touch .buttons { order: 3; align-self: center; margin-right: 16px; }
 }
+
+
+/* MFC helper on the game screen */
+.fix { width: 100%; max-width: 40rem; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin: 0 12px 8px; padding: 10px 12px; border-radius: 12px; background: #2a2416; color: #f3e3b5; font-size: 13px; }
+.fix[hidden] { display: none; }
+.fix button { background: #f0c35a; color: #2a2416; border-radius: 999px; padding: 6px 12px; font-weight: 600; }
+
+/* Free software wall: pick, download from archive.org, play. */
+.gallery-tools { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+.chip { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-size: 14px; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow); min-width: 0; }
+.card .thumb { aspect-ratio: 3 / 4; background: #0b0d12; display: grid; place-items: center; overflow: hidden; max-width: 100%; }
+.card .thumb img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; display: block; }
+.card .thumb .ph { color: #6f7887; font-size: 30px; font-weight: 700; }
+.card .body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.card h3 { font-size: 15px; margin: 0; line-height: 1.3; }
+.card .desc { color: var(--dim); font-size: 13px; margin: 0; flex: 1; }
+.tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--bg); color: var(--dim); border: 1px solid var(--line); }
+.card .go { margin-top: 4px; background: var(--accent); color: var(--accent-ink); border-radius: 10px; padding: 8px 10px; font-weight: 600; font-size: 14px; }
+.card .go:disabled { opacity: .6; cursor: progress; }
+.card .src { font-size: 12px; color: var(--dim); text-align: center; }
+.card .src a { color: var(--dim); }
+
+/* Landing: an introduction and a beginner's guide around the library. */
+.hero { background: radial-gradient(120% 140% at 85% 0%, #23406a 0%, #121a2b 45%, #0b0f18 100%); color: #eef2f8; margin: -40px -16px 28px; padding: 44px 20px 40px; }
+.hero-in { max-width: 60rem; margin: 0 auto; display: grid; grid-template-columns: 1fr auto; gap: 36px; align-items: center; }
+.eyebrow { margin: 0 0 6px; color: #8fb8ea; font-size: 13px; letter-spacing: 0.06em; font-weight: 600; }
+.hero h1 { font-size: clamp(34px, 6vw, 52px); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 10px; color: #fff; }
+.lead { font-size: clamp(17px, 2.4vw, 21px); margin: 0 0 10px; color: #e3e9f2; }
+.sub { margin: 0 0 22px; color: #a9b6c9; max-width: 34rem; }
+.cta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.primary.big { padding: 11px 22px; font-size: 16px; }
+.hero .primary { background: #7db7e0; color: #0b1a26; }
+.ghost { color: #dfe8f4; padding: 10px 18px; border-radius: 999px; border: 1px solid rgb(255 255 255 / 28%); text-decoration: none; }
+.ghost:hover { background: rgb(255 255 255 / 8%); }
+.downloads { margin: 18px 0 0; font-size: 13px; color: #a9b6c9; }
+.downloads a { color: #b9d6f2; }
+.device { width: 196px; padding: 26px 12px 40px; border-radius: 26px; background: linear-gradient(160deg, #3a404c, #22262e); border: 2px solid #8d95a3; box-shadow: 0 24px 60px rgb(0 0 0 / 50%); position: relative; }
+.device::after { content: ""; position: absolute; left: 50%; bottom: 12px; width: 26px; height: 16px; margin-left: -13px; border-radius: 8px; background: #5a6170; }
+.device-screen { background: #000; border-radius: 4px; overflow: hidden; aspect-ratio: 3 / 4; }
+.device-screen img { width: 100%; height: 100%; display: block; image-rendering: pixelated; transition: opacity .35s; }
+.device-caption { position: absolute; left: 0; right: 0; bottom: -30px; text-align: center; font-size: 13px; color: #a9b6c9; }
+body.has-games .hero { padding: 26px 20px 24px; }
+body.has-games .hero .sub, body.has-games .device, body.has-games .downloads { display: none; }
+body.has-games .hero-in { grid-template-columns: 1fr; }
+.library-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.library-head h2 { font-size: 18px; margin: 0; }
+.wrap { max-width: 60rem; margin: 48px auto 0; }
+.wrap > h2 { font-size: 22px; margin: 0 0 6px; letter-spacing: -0.01em; }
+.wrap > .intro { color: var(--dim); margin: 0 0 18px; }
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; counter-reset: step; }
+.topics .step h3::before { content: "›"; counter-increment: none; background: var(--line); color: var(--ink); }
+.keys { width: 100%; border-collapse: collapse; font-size: 13px; }
+.keys td { padding: 5px 0; border-top: 1px solid var(--line); color: var(--dim); vertical-align: top; }
+.keys td:first-child { color: var(--ink); padding-right: 8px; white-space: nowrap; }
+.keys tr:first-child td { border-top: 0; }
+.step { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 18px 16px; box-shadow: var(--shadow); min-width: 0; }
+.step h3 { margin: 0 0 8px; font-size: 16px; display: flex; gap: 10px; align-items: center; }
+.step h3::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-size: 14px; flex: none; }
+.step p, .step li { color: var(--dim); font-size: 14px; }
+.step ul { padding-left: 1.1em; margin: 8px 0 0; }
+.step a { color: var(--accent); }
+kbd { font: 12px/1 ui-monospace, Consolas, monospace; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 2px 5px; background: var(--bg); color: var(--ink); }
+.features { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.feature { padding: 4px 2px; min-width: 0; }
+.feature b { display: block; margin-bottom: 4px; }
+.feature span { color: var(--dim); font-size: 14px; }
+.faq details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.faq details + details { margin-top: 8px; }
+.faq summary { cursor: pointer; font-weight: 600; }
+.faq p { color: var(--dim); margin: 8px 0 2px; font-size: 14px; }
+.faq a { color: var(--accent); }
+.site { max-width: 60rem; margin: 48px auto 0; padding-top: 18px; border-top: 1px solid var(--line); color: var(--dim); font-size: 12.5px; }
+.site a { color: var(--accent); }
+@media (max-width: 760px) {
+  .hero-in { grid-template-columns: 1fr; }
+  .device { margin: 8px auto 30px; width: 170px; }
+  .steps, .features { grid-template-columns: 1fr; }
+}
+@media (min-width: 761px) and (max-width: 980px) { .features { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .device-screen img { transition: none; } }
 </style>
 </head>
 <body>
 <main>
-  <header>
-    <h1>PocketPC3630</h1>
+  <section class="hero">
+    <div class="hero-in">
+      <div>
+        <p class="eyebrow">POCKET PC 模擬器 · 免安裝</p>
+        <h1>PocketPC3630</h1>
+        <p class="lead">2000 年代的 Pocket PC 遊戲與軟體，直接在瀏覽器裡重新玩。</p>
+        <p class="sub">支援 ARM、MIPS、SH3 三種處理器，不需要裝置 ROM。匯入網路上下載的 .zip 或 .cab 就能開始，遊戲與存檔只留在你的瀏覽器裡。</p>
+        <div class="cta">
+          <button type="button" class="primary big" id="pick-hero">匯入遊戲</button>
+          <a class="ghost" href="#guide">新手教學</a>
+        </div>
+        <p class="downloads">也有 <a href="https://github.com/SzupoTseng/PocketPC3630/releases/latest">Windows 版</a> 與 <a href="https://github.com/SzupoTseng/PocketPC3630/releases/latest">Android 版</a> · <a href="https://github.com/SzupoTseng/PocketPC3630">GitHub 原始碼</a></p>
+      </div>
+      <div class="device" aria-hidden="true">
+        <div class="device-screen"><img id="shot" src="images/shots/everquest.png" alt="" width="240" height="320"></div>
+        <div class="device-caption" id="shot-caption">EverQuest · ARM</div>
+      </div>
+    </div>
+  </section>
+  <section class="library" aria-label="遊戲庫">
+  <div class="library-head">
+    <h2>我的遊戲庫</h2>
     <button type="button" class="primary" id="pick">匯入遊戲</button>
-  </header>
-  <section class="list" id="games" aria-label="遊戲庫"></section>
+  </div>
+  <section class="list" id="games"></section>
   <p class="note">遊戲與進度只存在這個瀏覽器。進度會自動保存；清除網站資料前請先下載存檔。有些遊戲要從遊戲內正常退出才會寫入進度。<button type="button" class="link" id="help-open">遊戲包格式</button></p>
   <p id="status" role="status">載入中…</p>
+  </section>
+
+
+  <section class="wrap" id="free">
+    <h2>免費遊戲與軟體</h2>
+    <p class="intro">當年公開免費下載（免費、共享或試用版）、實測可以執行的 Pocket PC 程式。按「下載並開始」會從 archive.org 取得檔案、匯入並直接開始，檔案不經過本站。</p>
+    <div class="gallery-tools" role="group" aria-label="篩選">
+      <button type="button" class="chip" data-filter="all" aria-pressed="true">全部</button>
+      <button type="button" class="chip" data-filter="game" aria-pressed="false">遊戲</button>
+      <button type="button" class="chip" data-filter="tool" aria-pressed="false">工具</button>
+    </div>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section class="wrap" id="own">
+    <h2>實測可玩的其他遊戲</h2>
+    <p class="intro">這些商業遊戲在 PocketPC3630 上能執行，但本站不提供下載。如果你有合法的副本（例如當年買的光碟或安裝檔），直接匯入即可。</p>
+    <div class="cards" id="own-cards"></div>
+  </section>
+
+  <section class="wrap" id="guide">
+    <h2>新手教學：三步驟開始玩</h2>
+    <p class="intro">第一次用？照著做，五分鐘內就能玩到第一個遊戲。</p>
+    <div class="steps">
+      <div class="step">
+        <h3>取得遊戲包</h3>
+        <p>下載當年的 Pocket PC 遊戲或軟體，通常是 <code>.zip</code>、<code>.cab</code> 或安裝程式 <code>.exe</code>。不用解壓縮，也不用挑處理器版本。先試試這些可以免費下載、已確認能玩的：</p>
+        <ul>
+          <li><a href="https://archive.org/details/tucows_200089_Free_Cell">FreeCell</a>：免費的新接龍（選 <code>FreeCell_ARM.zip</code>）</li>
+          <li><a href="https://archive.org/details/tucows_309937_GNUChess">GNUChess</a>：開源西洋棋</li>
+          <li><a href="https://archive.org/details/tucows_182765_Pocket_Slay">Pocket Slay</a>：回合制策略（共享軟體）</li>
+        </ul>
+      </div>
+      <div class="step">
+        <h3>匯入</h3>
+        <p>按上方的「匯入遊戲」，選剛下載的檔案。模擬器會自動拆開安裝程式、找出遊戲、挑出適合的版本，完成後出現在「我的遊戲庫」。</p>
+        <p>下載的程式絕不會被執行，只會被拆開檢查。看不懂的檔案會告訴你原因與下一步。</p>
+      </div>
+      <div class="step">
+        <h3>開始玩</h3>
+        <ul>
+          <li>點遊戲名稱開始；按 <b>‹ 遊戲庫</b> 回來</li>
+          <li>滑鼠點擊＝觸控筆</li>
+          <li><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 方向、<kbd>Enter</kbd> 動作鍵、<kbd>Esc</kbd> 返回</li>
+          <li>手機上會出現方向鍵與 A／B／C 按鈕</li>
+          <li>進度自動保存；「⋯」選單可下載、匯入或重置存檔</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap" id="howto">
+    <h2>更多教學</h2>
+    <p class="intro">遇到下面這些情況時，照著做就好。</p>
+    <div class="steps topics">
+      <div class="step"><h3>操作方式對照</h3>
+        <table class="keys"><tbody>
+          <tr><td>觸控筆點擊</td><td>滑鼠左鍵／手指點畫面</td></tr>
+          <tr><td>方向鍵</td><td><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd>／螢幕方向鍵</td></tr>
+          <tr><td>動作鍵（中間鍵）</td><td><kbd>Enter</kbd>／圓形大按鈕</td></tr>
+          <tr><td>按鍵 A／B／C</td><td><kbd>Ctrl</kbd>／<kbd>Space</kbd>／<kbd>Shift</kbd></td></tr>
+          <tr><td>軟鍵 1／2</td><td><kbd>Tab</kbd>／<kbd>Esc</kbd></td></tr>
+        </tbody></table></div>
+      <div class="step"><h3>遊戲說缺少 MFC</h3>
+        <p>有些程式需要 Pocket PC 內建的 <code>mfcce300.dll</code>。遊戲畫面上方會出現「自動取得 MFC 並重新開始」，按下去就好：本站會從 archive.org 下載微軟當年免費提供的 <a href="https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe">Pocket PC 2000 SDK</a>，只取出需要的檔案放進遊戲。</p>
+        <p>想手動處理：用 <a href="https://www.7-zip.org/">7-Zip</a> 打開這個 SDK，取出 <code>Program Files/mfc/lib/arm/mfcce300.dll</code> 與 <code>olece300.dll</code>（MIPS、SH3 版遊戲改用 <code>mips</code>、<code>sh3</code> 資料夾），再和遊戲一起匯入。</p></div>
+      <div class="step"><h3>一次匯入多個檔案</h3>
+        <p>按「匯入遊戲」時可以同時選好幾個檔案，例如遊戲的 <code>.cab</code> 加上 <code>mfcce300.dll</code>，或遊戲本體加上資料檔。本站會自動把它們組成一個遊戲包，不用自己壓縮。</p></div>
+      <div class="step"><h3>備份與搬移存檔</h3>
+        <p>進度每 10 秒自動保存在瀏覽器裡。在遊戲庫按遊戲旁的「⋯ › 下載存檔」得到一個 <code>.zip</code>；到另一台電腦、Windows 版或 Android 版，用「⋯ › 匯入存檔」就能接著玩。</p></div>
+      <div class="step"><h3>在手機或平板上玩</h3>
+        <p>用手機瀏覽器打開本站就能玩，畫面下方會出現方向鍵和 A／B／C 按鈕；橫放時按鍵會移到兩側。想要離線玩，可以安裝 <a href="https://github.com/SzupoTseng/PocketPC3630/releases/latest">Android 版</a>。</p></div>
+      <div class="step"><h3>遊戲打不開怎麼辦</h3>
+        <p>畫面會用白話說明原因與下一步，例如「這是桌面程式」「這是 .NET 程式」。多數下載檔有好幾個處理器版本，本站會自動挑選。也可以先查 <a href="https://github.com/SzupoTseng/PocketPC3630/blob/main/docs/COMPATIBILITY.md">相容性清單</a>，看看這個軟體的測試結果。</p></div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <h2>為什麼好用</h2>
+    <p class="intro">不是完整模擬整台機器，而是用 Rust 重新實作 Windows CE，所以開得快、不需要 ROM。</p>
+    <div class="features">
+      <div class="feature"><b>三種處理器</b><span>ARM（iPAQ、Axim）、MIPS（Casio Cassiopeia）、SH3（HP Jornada）的版本都能玩。</span></div>
+      <div class="feature"><b>看得懂下載檔</b><span>安裝程式、自解壓檔、藏在裡面的 CAB、1999 年的壓縮格式，都能自動拆出遊戲。</span></div>
+      <div class="feature"><b>存檔到處通用</b><span>同一個存檔 zip 可以在網頁、Windows、Android 之間搬來搬去。</span></div>
+      <div class="feature"><b>實測上千個軟體</b><span>archive.org 上 1,443 個下載檔都測過，<a href="https://github.com/SzupoTseng/PocketPC3630/blob/main/docs/COMPATIBILITY.md">相容性清單</a>寫明每個的結果。</span></div>
+    </div>
+  </section>
+
+  <section class="wrap faq">
+    <h2>常見問題</h2>
+    <p class="intro">遇到問題先看這裡。</p>
+    <details><summary>需要 Pocket PC 的 ROM 或系統檔嗎？</summary><p>不需要。大多數遊戲直接就能玩。使用 MFC 的程式需要 <code>mfcce300.dll</code>：遊戲畫面會出現「自動取得 MFC」按鈕，本站會從 archive.org 上微軟的 <a href="https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe">Pocket PC 2000 SDK</a> 取出它。也可以手動用 7-Zip 打開 SDK，取出 <code>Program Files/mfc/lib/arm/mfcce300.dll</code>，和遊戲一起匯入。</p></details>
+    <details><summary>遊戲和存檔放在哪裡？會上傳嗎？</summary><p>都只存在這個瀏覽器（IndexedDB），不會上傳到任何伺服器。清除網站資料會一併刪除，請先用「⋯ › 下載存檔」備份。</p></details>
+    <details><summary>為什麼有的遊戲不能玩？</summary><p>模擬器還沒實作所有 Windows CE 功能。.NET 程式、x86 版本和部分安裝程式目前不支援。<a href="https://github.com/SzupoTseng/PocketPC3630/blob/main/docs/COMPATIBILITY.md">相容性清單</a>列出每個測過的軟體與原因。</p></details>
+    <details><summary>可以在電腦或手機上離線玩嗎？</summary><p>可以下載 <a href="https://github.com/SzupoTseng/PocketPC3630/releases/latest">Windows 版與 Android 版</a>，功能與存檔格式和網頁版相同。</p></details>
+    <details><summary>可以同時開兩個分頁嗎？</summary><p>不行。兩個分頁會互相覆蓋進度，所以第二個分頁會停在提示畫面。</p></details>
+  </section>
+
+  <footer class="site">
+    PocketPC3630 以 MIT 或 Apache 2.0 授權開源，fork 自 <a href="https://github.com/j92580498-max/PocketHLE">PocketHLE</a>。不附任何遊戲或微軟檔案，請只使用你合法取得的軟體。
+    <a href="https://github.com/SzupoTseng/PocketPC3630">GitHub</a> · <a href="https://github.com/SzupoTseng/PocketPC3630/blob/main/docs/COMPATIBILITY.md">相容性清單</a> · <a href="https://github.com/SzupoTseng/PocketPC3630/releases/latest">下載 Windows／Android 版</a>
+  </footer>
 </main>
 
 <div id="stage">
@@ -125,6 +332,10 @@ body.touch .pad { display: flex; }
     <button type="button" id="leave">‹ 遊戲庫</button>
     <span id="hud"></span>
     <button type="button" id="save-now">下載存檔</button>
+  </div>
+  <div class="fix" id="fix" hidden>
+    <span id="fix-text">這個遊戲需要 Pocket PC 內建的 MFC 系統檔。</span>
+    <button type="button" id="fix-go">自動取得 MFC 並重新開始</button>
   </div>
   <div class="screen"><canvas id="screen" width="240" height="320" tabindex="0" aria-label="遊戲畫面"></canvas></div>
   <div class="pad" aria-hidden="true">
@@ -172,7 +383,7 @@ body.touch .pad { display: flex; }
 </dialog>
 <div id="toast" role="status"></div>
 
-<input type="file" id="file" accept=".zip,.cab,.rar,.exe,*/*" hidden>
+<input type="file" id="file" accept=".zip,.cab,.rar,.exe,.dll,*/*" multiple hidden>
 <input type="file" id="save-file" accept=".zip" hidden>
 <script src="pockethle.js"></script>
 <script>
@@ -284,6 +495,7 @@ function listGames() {
   const list = $('games');
   list.replaceChildren();
   const count = M._pocket_game_count();
+  document.body.classList.toggle('has-games', count > 0);
   if (count === 0) {
     const empty = document.createElement('div');
     empty.className = 'empty';
@@ -455,7 +667,10 @@ function start(index) {
   attachInput(canvas, width, height);
   startAudio();
   const warning = M.UTF8ToString(M._pocket_boot_warning());
-  if (warning) toast(warning);
+  if (/mfcce|olece/i.test(warning)) {
+    $('fix').hidden = false;
+    $('fix-go').onclick = () => fixMfc(index);
+  } else if (warning) toast(warning);
   $('save-now').onclick = () => { syncFs(false).catch(console.error); exportSave(index); };
 
   const context = canvas.getContext('2d');
@@ -494,7 +709,233 @@ function start(index) {
   setInterval(() => { if (running) syncFs(false).catch(console.error); }, SAVE_EVERY_MS);
 }
 
+
+
+// ---- MFC: take the DLLs from Microsoft's own Pocket PC 2000 SDK ----
+const SDK_ITEM = 'pocketpc_2000_sdk_web', SDK_FILE = 'pocketpc_2000_sdk_web.exe';
+function walk(dir, out = []) {
+  for (const name of M.FS.readdir(dir)) {
+    if (name === '.' || name === '..') continue;
+    const path = `${dir}/${name}`;
+    if (M.FS.isDir(M.FS.stat(path).mode)) walk(path, out); else out.push(path);
+  }
+  return out;
+}
+function cpuOf(path) {
+  const b = M.FS.readFile(path);
+  const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  if (b.length < 0x40 || v.getUint16(0, true) !== 0x5a4d) return null;
+  const machine = v.getUint16(v.getUint32(0x3c, true) + 4, true);
+  if ([0x1c0, 0x1c2, 0x1c4].includes(machine)) return 'arm';
+  if ([0x162, 0x166, 0x169].includes(machine)) return 'mips';
+  if ([0x1a2, 0x1a3, 0x1a6].includes(machine)) return 'sh3';
+  return null;
+}
+async function fixMfc(index) {
+  $('fix-go').disabled = true;
+  const show = (text) => { $('fix-text').textContent = text; };
+  try {
+    const dir = `/library/games/${gameId(index)}`;
+    const exes = walk(dir).filter((p) => /\.exe$/i.test(p));
+    const cpu = exes.map(cpuOf).find(Boolean) || 'arm';
+    const sdk = await unzip(await download(SDK_ITEM, SDK_FILE, '微軟 Pocket PC 2000 SDK（55 MB，只下載一次）'));
+    const dlls = ['mfcce300.dll', 'olece300.dll'];
+    const targets = new Set(exes.map((p) => p.slice(0, p.lastIndexOf('/'))));
+    for (const name of dlls) {
+      const read = sdk.get(`Program Files/mfc/lib/${cpu}/${name}`);
+      if (!read) throw new Error(`SDK 裡找不到 ${cpu}/${name}`);
+      const data = await read();
+      for (const t of targets) M.FS.writeFile(`${t}/${name}`, data);
+    }
+    await syncFs(false);
+    show('已加入 MFC，重新開始中…');
+    try { sessionStorage.setItem('pocket-autostart', gameId(index)); } catch {}
+    location.reload();
+  } catch (error) {
+    show(`無法自動取得：${error.message}。可以手動下載 SDK（見首頁「常見問題」），再把 DLL 和遊戲一起匯入。`);
+    $('fix-go').disabled = false;
+  }
+}
+
+// Bring-your-own games: screenshots only, no download.
+const OWN = /*OWN*/[{"title":"EverQuest for the Pocket PC","shot":"everquest-create","cpu":"ARM"},{"title":"Bejeweled 2","shot":"bejeweled2-ppc","cpu":"ARM"},{"title":"Bomberman '08","shot":"bomberman-08","cpu":"ARM"},{"title":"Bookworm","shot":"bookworm_wm5-6","cpu":"ARM"},{"title":"Block Breaker Deluxe 2","shot":"block-breaker-deluxe-2-hd","cpu":"ARM"},{"title":"Doodle Jump","shot":"doj_20251217","cpu":"ARM"},{"title":"Fedot's Adventures","shot":"fedots-adventures","cpu":"ARM"},{"title":"Lemonade Tycoon","shot":"lemonade-tycoon_202505","cpu":"ARM"},{"title":"Metalion","shot":"metalion-usa-arm","cpu":"ARM"},{"title":"Soccer Kid","shot":"soccer-kid-folder","cpu":"ARM"}]/*ENDOWN*/;
+function showOwn() {
+  const box = $('own-cards');
+  for (const entry of OWN) {
+    const card = document.createElement('article'); card.className = 'card';
+    const thumb = document.createElement('div'); thumb.className = 'thumb';
+    const img = document.createElement('img'); img.src = `images/shots/${entry.shot}.png`; img.alt = `${entry.title} 的畫面`; img.loading = 'lazy'; img.width = 240; img.height = 320;
+    thumb.append(img);
+    const body = document.createElement('div'); body.className = 'body';
+    const h = document.createElement('h3'); h.textContent = entry.title;
+    const tags = document.createElement('div'); tags.className = 'tags';
+    for (const t of ['遊戲', entry.cpu || 'ARM', '需自備']) { const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = t; tags.append(tag); }
+    body.append(h, tags);
+    card.append(thumb, body); box.append(card);
+  }
+}
+showOwn();
+
+// ---- Free software wall ----
+const CATALOG = /*CATALOG*/[{"item":"tucows_164867_Pocket_Quake","file":"PocketQuakeARM.zip","title":"Pocket Quake","kind":"game","cpu":"ARM","license":"GPL＋共享版資料","desc":"Quake 掌上版，附 id Software 的共享版第一章。會一併下載 18 MB 的遊戲資料。","shot":"quake","build":"quake"},{"item":"tucows_200089_Free_Cell","file":"FreeCell_ARM.zip","title":"FreeCell","kind":"game","cpu":"ARM","license":"Tucows","desc":"經典新接龍，免費軟體。","shot":"freecell"},{"item":"tucows_182765_Pocket_Slay","file":"PocketSlay.zip","title":"Pocket Slay","kind":"game","cpu":"ARM","license":"Tucows","desc":"六角格回合制領土戰略。點一下樹，再按 OK 開局。","shot":"slay"},{"item":"tucows_254025_Pocket_Taipei","file":"ptaipei10.zip","title":"Pocket Taipei","kind":"game","cpu":"ARM","license":"Tucows","desc":"麻將牌配對消除。","shot":"taipei"},{"item":"tucows_240055_Blocks_extracted","file":"Blocks/install.PPC_ARM.CAB","title":"Blocks","kind":"game","cpu":"ARM","license":"Tucows","desc":"俄羅斯方塊類方塊遊戲。","shot":"blocks"},{"item":"tucows_243676_Hanoi_Tower","file":"CEZebra100b2.exe","title":"CEZebra 黑白棋","kind":"game","cpu":"ARM","license":"Tucows","desc":"CEZebra 黑白棋（Reversi）。","shot":"zebra"},{"item":"tucows_208847_PocketConquest","file":"PocketConquest.zip","title":"PocketConquest","kind":"game","cpu":"ARM","license":"Tucows","desc":"世界地圖上的兵棋征服戰略。","shot":"conquest"},{"item":"tucows_309937_GNUChess","file":"GNUChess.zip","title":"GNUChess","kind":"game","cpu":"ARM","license":"Tucows","desc":"開源西洋棋引擎 GNU Chess。"},{"item":"tucows_229202_Bubble_Shooter","file":"bubshootce.exe","title":"Bubble Shooter","kind":"game","cpu":"ARM","license":"Tucows","desc":"泡泡龍類射擊消除（試用版）。","shot":"tucows_229202_bubble_shooter"},{"item":"tucows_230188_Bubble_Thriller","file":"thrillce.exe","title":"Bubble Thriller","kind":"game","cpu":"ARM","license":"Tucows","desc":"泡泡射擊消除（試用版）。","shot":"tucows_230188_bubble_thriller"},{"item":"tucows_309982_Crack_Game","file":"Crack.exe","title":"Crack Game","kind":"game","cpu":"ARM","license":"Tucows","desc":"撲克牌接龍遊戲。"},{"item":"tucows_291799_DevilDarts","file":"DevilDartsSetup_demo_arm.exe","title":"DevilDarts","kind":"game","cpu":"ARM","license":"Tucows","desc":"射飛鏢（試玩版）。"},{"item":"tucows_273050_Dragon_Bane_II","file":"DB2SetupARM.exe","title":"Dragon Bane II","kind":"game","cpu":"ARM","license":"Tucows","desc":"角色扮演冒險遊戲。","shot":"tucows_273050_dragon_bane_ii"},{"item":"tucows_314055_Elevens_Game","file":"Elevens.exe","title":"Elevens Game","kind":"game","cpu":"ARM","license":"Tucows","desc":"撲克牌湊十一接龍。"},{"item":"tucows_250046_Gem_Slider","file":"gslidece.exe","title":"Gem Slider","kind":"game","cpu":"ARM","license":"Tucows","desc":"寶石滑動消除（試用版）。"},{"item":"tucows_210362_Line4Line","file":"line4linearm.zip","title":"Line4Line","kind":"game","cpu":"ARM","license":"Tucows","desc":"連線益智遊戲。","shot":"tucows_210362_line4line"},{"item":"tucows_222951_Moline","file":"Moline_PocketPC_Trial.exe","title":"Moline","kind":"game","cpu":"ARM","license":"Tucows","desc":"益智遊戲（試用版）。"},{"item":"tucows_219512_Porta-Pinball","file":"PortaPinSetup300.exe","title":"Porta-Pinball","kind":"game","cpu":"ARM","license":"Tucows","desc":"彈珠台。","shot":"tucows_219512_porta-pinball"},{"item":"tucows_312195_Seven_Game","file":"Seven.exe","title":"Seven Game","kind":"game","cpu":"ARM","license":"Tucows","desc":"撲克牌遊戲「七」。"},{"item":"tucows_308748_Sorcery_PDA","file":"InstallDXA.exe","title":"Sorcery PDA","kind":"game","cpu":"ARM","license":"Tucows","desc":"魔法冒險遊戲。"},{"item":"tucows_32181_Yotz","file":"yotzdemo.exe","title":"Yotz","kind":"game","cpu":"ARM","license":"Tucows","desc":"擲骰子遊戲（試玩版）。"},{"item":"tucows_32528_AlarMe","file":"AlarMe_HPC.exe","title":"AlarMe","kind":"tool","cpu":"ARM","license":"Tucows","desc":"鬧鐘提醒。","shot":"tucows_32528_alarme"},{"item":"tucows_272210_AW_RoadLingua","file":"rl_ppc.zip","title":"AW RoadLingua","kind":"tool","cpu":"ARM","license":"Tucows","desc":"旅遊外語片語。","shot":"tucows_272210_aw_roadlingua"},{"item":"tucows_32347_BasiCE","file":"basice.zip","title":"BasiCE","kind":"tool","cpu":"ARM","license":"Tucows","desc":"BASIC 程式語言直譯器。","shot":"tucows_32347_basice"},{"item":"tucows_212355_Calc98","file":"c9853a.exe","title":"Calc98","kind":"tool","cpu":"ARM","license":"Tucows","desc":"工程計算機 Calc98。","shot":"tucows_212355_calc98"},{"item":"tucows_32395_Calendar_Search","file":"CalendarSearchMIPS-PR2.exe","title":"Calendar Search","kind":"tool","cpu":"MIPS","license":"Tucows","desc":"行事曆搜尋。","shot":"tucows_32395_calendar_search"},{"item":"tucows_153762_CE-Star_Suite","file":"ver2PkPCARM.zip","title":"CE-Star Suite","kind":"tool","cpu":"ARM","license":"Tucows","desc":"文書工具套件。","shot":"tucows_153762_ce-star_suite"},{"item":"tucows_232364_CE5250","file":"CE5250_PocketPC.zip","title":"CE5250","kind":"tool","cpu":"ARM","license":"Tucows","desc":"IBM 5250 終端機模擬。","shot":"tucows_232364_ce5250"},{"item":"tucows_38929_CEDBView","file":"cedbview.zip","title":"CEDBView","kind":"tool","cpu":"ARM","license":"Tucows","desc":"Windows CE 資料庫檢視器。"},{"item":"tucows_32190_CEniffer","file":"CEnifferMIPS.zip.CAB","title":"CEniffer","kind":"tool","cpu":"MIPS","license":"Tucows","desc":"網路封包監看。","shot":"tucows_32190_ceniffer"},{"item":"tucows_232362_CETerm","file":"CETerm_PocketPC31.zip","title":"CETerm","kind":"tool","cpu":"ARM","license":"Tucows","desc":"終端機模擬程式。","shot":"tucows_232362_ceterm"},{"item":"tucows_232369_CEVT220","file":"CEVT220_PocketPC.zip","title":"CEVT220","kind":"tool","cpu":"ARM","license":"Tucows","desc":"VT220 終端機模擬。","shot":"tucows_232369_cevt220"},{"item":"tucows_32183_Chat","file":"CHAT.zip","title":"Chat","kind":"tool","cpu":"ARM","license":"Tucows","desc":"聊天程式。","shot":"tucows_32183_chat"},{"item":"tucows_358883_CommLog","file":"CommLogCEDesktopSetup.zip","title":"CommLog","kind":"tool","cpu":"ARM","license":"Tucows","desc":"通訊紀錄。","shot":"tucows_358883_commlog"},{"item":"tucows_304510_Connex","file":"Connex_PPC_Setup.exe","title":"Connex","kind":"tool","cpu":"ARM","license":"Tucows","desc":"網路連線工具。","shot":"tucows_304510_connex"},{"item":"tucows_32301_CoolCalc","file":"coolcalcppc.exe","title":"CoolCalc","kind":"tool","cpu":"ARM","license":"Tucows","desc":"計算機。","shot":"tucows_32301_coolcalc"},{"item":"tucows_270214_dotPocket","file":"dotpocket2003.exe","title":"dotPocket","kind":"tool","cpu":"ARM","license":"Tucows","desc":".NET 開發輔助工具。","shot":"tucows_270214_dotpocket"},{"item":"tucows_32354_dsFORTH","file":"ds2_b3_Setup.exe","title":"dsFORTH","kind":"tool","cpu":"ARM","license":"Tucows","desc":"FORTH 程式語言。","shot":"tucows_32354_dsforth"},{"item":"tucows_32496_dTree","file":"dTree.exe","title":"dTree","kind":"tool","cpu":"ARM","license":"Tucows","desc":"目錄樹檢視。","shot":"tucows_32496_dtree"},{"item":"tucows_330232_ELFView_-_The_Extremely_Large_File_Viewer","file":"ELFViewARM.CAB","title":"ELFView - The Extremely Large File Viewer","kind":"tool","cpu":"ARM","license":"Tucows","desc":"超大檔案檢視器。","shot":"tucows_330232_elfview_-_the_extremely_large_file_viewer"},{"item":"tucows_32432_HPC_Loan_Manager","file":"hpcloan.zip","title":"HPC Loan Manager","kind":"tool","cpu":"ARM","license":"Tucows","desc":"貸款試算（Handheld PC 版）。","shot":"tucows_32432_hpc_loan_manager"},{"item":"tucows_32412_HPC_PPC_Stock_Manager","file":"hpcstock.zip","title":"HPC/PPC Stock Manager","kind":"tool","cpu":"ARM","license":"Tucows","desc":"股票管理（Handheld PC 版）。","shot":"tucows_32412_hpc_ppc_stock_manager"},{"item":"tucows_32414_IntelliGOLF_Par","file":"igtparce.exe","title":"IntelliGOLF Par","kind":"tool","cpu":"ARM","license":"Tucows","desc":"高爾夫計分卡。","shot":"tucows_32414_intelligolf_par"},{"item":"tucows_32505_IrDesk","file":"IrDesk_All.zip","title":"IrDesk","kind":"tool","cpu":"ARM","license":"Tucows","desc":"紅外線傳輸工具。","shot":"tucows_32505_irdesk"},{"item":"tucows_150885_Klondike_WAP_Browser","file":"klondikewapsetup.exe","title":"Klondike WAP Browser","kind":"tool","cpu":"ARM","license":"Tucows","desc":"WAP 手機網頁瀏覽器。","shot":"tucows_150885_klondike_wap_browser"},{"item":"tucows_32202_LinkSpy","file":"LinkSpySH3.zip","title":"LinkSpy","kind":"tool","cpu":"SH3","license":"Tucows","desc":"連線監看工具。","shot":"tucows_32202_linkspy"},{"item":"tucows_222365_Loan_Manager","file":"pkpcloan_setup.exe","title":"Loan Manager","kind":"tool","cpu":"ARM","license":"Tucows","desc":"貸款試算。","shot":"tucows_222365_loan_manager"},{"item":"tucows_328115_Locker","file":"LockerCE_Trial.zip","title":"Locker","kind":"tool","cpu":"ARM","license":"Tucows","desc":"檔案加密鎖（試用版）。","shot":"tucows_328115_locker"},{"item":"tucows_216317_MicroCalc_Standard","file":"MicroCalc108.zip","title":"MicroCalc Standard","kind":"tool","cpu":"ARM","license":"Tucows","desc":"計算機。","shot":"tucows_216317_microcalc_standard"},{"item":"tucows_32364_miniBasic","file":"minibasic.zip","title":"miniBasic","kind":"tool","cpu":"ARM","license":"Tucows","desc":"迷你 BASIC 直譯器。","shot":"tucows_32364_minibasic"},{"item":"tucows_216709_PalmGB","file":"pgbsetup.exe","title":"PalmGB","kind":"tool","cpu":"ARM","license":"Tucows","desc":"Game Boy 模擬器。","shot":"tucows_216709_palmgb"},{"item":"tucows_32646_PalmGB","file":"pgbsetup.exe","title":"PalmGB","kind":"tool","cpu":"ARM","license":"Tucows","desc":"Game Boy 模擬器（舊版）。","shot":"tucows_32646_palmgb"},{"item":"tucows_32648_PilotCE","file":"PilotCE.exe","title":"PilotCE","kind":"tool","cpu":"ARM","license":"Tucows","desc":"飛行計畫計算。","shot":"tucows_32648_pilotce"},{"item":"tucows_255472_Pocket_12C","file":"P12CV150ARM.exe","title":"Pocket 12C","kind":"tool","cpu":"ARM","license":"Tucows","desc":"HP 12C 財務計算機模擬。","shot":"tucows_255472_pocket_12c"},{"item":"tucows_294403_Pocket_15C_Scientific_Calculator","file":"Pocket15CV110.exe","title":"Pocket 15C Scientific Calculator","kind":"tool","cpu":"ARM","license":"Tucows","desc":"HP 15C 科學計算機模擬。","shot":"tucows_294403_pocket_15c_scientific_calculator"},{"item":"tucows_252624_Pocket_Tune","file":"PocketTune_2_0_5.zip","title":"Pocket Tune","kind":"tool","cpu":"ARM","license":"Tucows","desc":"樂器調音器。","shot":"tucows_252624_pocket_tune"},{"item":"tucows_241852_Pocket_Woman","file":"PocketWoman.zip","title":"Pocket Woman","kind":"tool","cpu":"ARM","license":"Tucows","desc":"生理週期行事曆。","shot":"tucows_241852_pocket_woman"},{"item":"tucows_196486_PocketFract","file":"PocketFract.zip","title":"PocketFract","kind":"tool","cpu":"ARM","license":"Tucows","desc":"碎形圖產生器。","shot":"tucows_196486_pocketfract"},{"item":"tucows_145763_PocketNav","file":"pocketnav.zip","title":"PocketNav","kind":"tool","cpu":"ARM","license":"Tucows","desc":"檔案瀏覽與導覽。","shot":"tucows_145763_pocketnav"},{"item":"tucows_145909_PocketNotepad","file":"pocketnotepad21e.zip","title":"PocketNotepad","kind":"tool","cpu":"ARM","license":"Tucows","desc":"記事本。","shot":"tucows_145909_pocketnotepad"},{"item":"tucows_213457_PocketSTM","file":"pocketstmfstrarm.CAB","title":"PocketSTM","kind":"tool","cpu":"ARM","license":"Tucows","desc":"時間管理工具。","shot":"tucows_213457_pocketstm"},{"item":"tucows_76856_Primer","file":"PrimerCE.exe","title":"Primer","kind":"tool","cpu":"ARM","license":"Tucows","desc":"教學工具。","shot":"tucows_76856_primer"},{"item":"tucows_180072_SEdit","file":"seditmips.zip","title":"SEdit","kind":"tool","cpu":"MIPS","license":"Tucows","desc":"文字編輯器。","shot":"tucows_180072_sedit"},{"item":"tucows_216191_SnoopSoft_Dashboard","file":"dashboard.zip","title":"SnoopSoft Dashboard","kind":"tool","cpu":"ARM","license":"Tucows","desc":"系統資訊儀表板。","shot":"tucows_216191_snoopsoft_dashboard"},{"item":"tucows_222355_Stock_Manager","file":"pkpcstocks_setup.exe","title":"Stock Manager","kind":"tool","cpu":"ARM","license":"Tucows","desc":"股票投資組合管理。","shot":"tucows_222355_stock_manager"},{"item":"tucows_277018_TZO_Dynamic_DNS","file":"tzopocketpc.zip","title":"TZO Dynamic DNS","kind":"tool","cpu":"ARM","license":"Tucows","desc":"動態 DNS 用戶端。","shot":"tucows_277018_tzo_dynamic_dns"},{"item":"tucows_245237_UniversalRemoteCE","file":"UniversalRemote_trial.exe","title":"UniversalRemoteCE","kind":"tool","cpu":"ARM","license":"Tucows","desc":"紅外線萬用遙控器（試用版）。","shot":"tucows_245237_universalremotece"},{"item":"tucows_289072_VoiceRecorder","file":"VoiceRecorderSetup_TRIAL_tucows.exe","title":"VoiceRecorder","kind":"tool","cpu":"ARM","license":"Tucows","desc":"錄音機（試用版）。","shot":"tucows_289072_voicerecorder"},{"item":"tucows_226355_WinEyes","file":"wineyesce.zip","title":"WinEyes","kind":"tool","cpu":"ARM","license":"Tucows","desc":"跟著觸控筆轉動的眼睛（經典 xeyes）。","shot":"tucows_226355_wineyes"},{"item":"tucows_32693_XLISP-Plus","file":"xl21gce.zip","title":"XLISP-Plus","kind":"tool","cpu":"ARM","license":"Tucows","desc":"LISP 程式語言直譯器。","shot":"tucows_32693_xlisp-plus"}]/*END*/;
+const corsUrl = (item, file) => `https://archive.org/cors/${item}/${file.split('/').map(encodeURIComponent).join('/')}`;
+
+async function download(item, file, label) {
+  const response = await fetch(corsUrl(item, file));
+  if (!response.ok) throw new Error(`archive.org 回應 ${response.status}`);
+  const total = Number(response.headers.get('content-length')) || 0;
+  const reader = response.body.getReader();
+  const parts = []; let got = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    parts.push(value); got += value.length;
+    say(`正在從 archive.org 下載 ${label}…${total ? Math.round(got * 100 / total) + '%' : Math.round(got / 1024) + ' KB'}`);
+  }
+  const out = new Uint8Array(got); let at = 0;
+  for (const p of parts) { out.set(p, at); at += p.length; }
+  return out;
+}
+
+// A small zip reader and a store-only writer, enough to put Pocket Quake's
+// engine and the Quake shareware data into one package in the browser.
+async function unzip(bytes) {
+  const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let eocd = bytes.length - 22;
+  while (eocd >= 0 && v.getUint32(eocd, true) !== 0x06054b50) eocd--;
+  if (eocd < 0) throw new Error('不是 zip 檔');
+  const count = v.getUint16(eocd + 10, true);
+  let at = v.getUint32(eocd + 16, true);
+  const files = new Map();
+  for (let n = 0; n < count; n++) {
+    const method = v.getUint16(at + 10, true), size = v.getUint32(at + 20, true);
+    const nameLen = v.getUint16(at + 28, true), extraLen = v.getUint16(at + 30, true), commentLen = v.getUint16(at + 32, true);
+    const local = v.getUint32(at + 42, true);
+    const name = new TextDecoder().decode(bytes.subarray(at + 46, at + 46 + nameLen));
+    at += 46 + nameLen + extraLen + commentLen;
+    if (name.endsWith('/')) continue;
+    const start = local + 30 + v.getUint16(local + 26, true) + v.getUint16(local + 28, true);
+    const raw = bytes.subarray(start, start + v.getUint32(at - 46 - nameLen - extraLen - commentLen + 20, true));
+    files.set(name, async () => method === 0 ? raw.slice(0, size)
+      : new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()));
+  }
+  return files;
+}
+const CRC = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+const crc32 = (b) => { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+function zipStore(entries) {
+  const enc = new TextEncoder(), chunks = [], central = []; let offset = 0;
+  for (const [name, data] of entries) {
+    const n = enc.encode(name), crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint32(14, crc, true);
+    h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, n.length, true);
+    chunks.push(new Uint8Array(h.buffer), n, data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint32(16, crc, true);
+    c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, n.length, true); c.setUint32(42, offset, true);
+    central.push(new Uint8Array(c.buffer), n);
+    offset += 30 + n.length + data.length;
+  }
+  const size = central.reduce((a, b) => a + b.length, 0);
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, entries.length, true); e.setUint16(10, entries.length, true);
+  e.setUint32(12, size, true); e.setUint32(16, offset, true);
+  return new Blob([...chunks, ...central, new Uint8Array(e.buffer)]);
+}
+
+async function buildQuake(engineItem, engineFile) {
+  const engine = await unzip(await download(engineItem, engineFile, 'Pocket Quake'));
+  const data = await unzip(await download('quakeshareware', 'QUAKE_SW.zip', 'Quake 共享版資料（18 MB）'));
+  say('正在組合 Pocket Quake…');
+  const entries = [];
+  for (const [name, read] of engine) {
+    const base = name.split('/').pop();
+    if (/\.(exe|dll)$/i.test(base)) entries.push([`quake/${base}`, await read()]);
+    else if (/^autoexec\.cfg$/i.test(base)) entries.push(['quake/id1/autoexec.cfg', await read()]);
+  }
+  const pak = [...data.keys()].find((k) => /id1\/pak0\.pak$/i.test(k));
+  if (!pak) throw new Error('找不到 Quake 資料檔 pak0.pak');
+  entries.push(['quake/id1/pak0.pak', await data.get(pak)()]);
+  return new File([zipStore(entries)], 'PocketQuake.zip');
+}
+
+async function getFree(entry, button) {
+  button.disabled = true;
+  const before = new Set(Array.from({ length: M._pocket_game_count() }, (_, i) => gameId(i)));
+  try {
+    const file = entry.build === 'quake'
+      ? await buildQuake(entry.item, entry.file)
+      : new File([await download(entry.item, entry.file, entry.title)], entry.file.split('/').pop());
+    await importFile(file);
+    const count = M._pocket_game_count();
+    for (let i = 0; i < count; i++) if (!before.has(gameId(i))) { start(i); return; }
+  } catch (error) {
+    say(`無法取得「${entry.title}」：${error.message}。可以改用 archive.org 的連結手動下載，再按「匯入遊戲」。`, true);
+  } finally { button.disabled = false; }
+}
+
+function showCards(filter) {
+  const box = $('cards');
+  box.replaceChildren();
+  for (const entry of CATALOG) {
+    if (filter !== 'all' && entry.kind !== filter) continue;
+    const card = document.createElement('article');
+    card.className = 'card';
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    if (entry.shot || entry.item) {
+      const img = document.createElement('img');
+      img.src = entry.shot ? `images/shots/${entry.shot}.png` : `https://archive.org/services/img/${entry.item}`; img.alt = `${entry.title} 的畫面`; img.loading = 'lazy'; img.width = 240; img.height = 320;
+      thumb.append(img);
+    } else {
+      const ph = document.createElement('span'); ph.className = 'ph'; ph.textContent = entry.title.slice(0, 1); thumb.append(ph);
+    }
+    const body = document.createElement('div');
+    body.className = 'body';
+    const h = document.createElement('h3'); h.textContent = entry.title;
+    const tags = document.createElement('div'); tags.className = 'tags';
+    for (const t of [entry.kind === 'game' ? '遊戲' : '工具', entry.license, entry.cpu].filter(Boolean)) {
+      const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = t; tags.append(tag);
+    }
+    const desc = document.createElement('p'); desc.className = 'desc'; desc.textContent = entry.desc || '';
+    const go = document.createElement('button'); go.type = 'button'; go.className = 'go'; go.textContent = '下載並開始';
+    go.addEventListener('click', () => getFree(entry, go));
+    const src = document.createElement('div'); src.className = 'src';
+    const a = document.createElement('a'); a.href = `https://archive.org/details/${entry.item}`; a.textContent = 'archive.org 頁面'; a.target = '_blank'; a.rel = 'noopener';
+    src.append(a);
+    body.append(h, tags, desc, go, src);
+    card.append(thumb, body);
+    box.append(card);
+  }
+}
+for (const chip of document.querySelectorAll('.chip')) {
+  chip.addEventListener('click', () => {
+    for (const c of document.querySelectorAll('.chip')) c.setAttribute('aria-pressed', String(c === chip));
+    showCards(chip.dataset.filter);
+  });
+}
+showCards('all');
+
 $('pick').addEventListener('click', () => $('file').click());
+$('pick-hero').addEventListener('click', () => $('file').click());
+
+// The hero's Pocket PC shows what the emulator runs, a few seconds each.
+(() => {
+  const shots = [
+    ['everquest', 'EverQuest · ARM'], ['quake', 'Pocket Quake · ARM'],
+    ['slay', 'Pocket Slay · ARM'], ['freecell', 'FreeCell · SH3'], ['everquest-create', 'EverQuest · ARM'],
+  ];
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let i = 0;
+  setInterval(() => {
+    if (document.hidden || document.body.classList.contains('playing')) return;
+    i = (i + 1) % shots.length;
+    const img = $('shot');
+    img.style.opacity = 0;
+    setTimeout(() => { img.src = `images/shots/${shots[i][0]}.png`; $('shot-caption').textContent = shots[i][1]; img.style.opacity = 1; }, 350);
+  }, 3500);
+})();
 $('help-open').addEventListener('click', () => $('help').showModal());
 $('help-close').addEventListener('click', () => $('help').close());
 
@@ -505,10 +946,20 @@ function toast(text, ms = 9000) {
   clearTimeout(toast.timer);
   toast.timer = setTimeout(() => { box.style.display = 'none'; }, ms);
 }
-$('file').addEventListener('change', (event) => {
-  const [file] = event.target.files;
+// Several files at once (a game plus the DLLs it needs) become one package,
+// so nobody has to build a zip by hand.
+$('file').addEventListener('change', async (event) => {
+  const files = [...event.target.files];
   event.target.value = '';
-  if (file) importFile(file).catch((error) => say(String(error), true));
+  if (!files.length) return;
+  try {
+    if (files.length === 1) { await importFile(files[0]); return; }
+    say(`正在把 ${files.length} 個檔案組成一個遊戲包…`);
+    const main = files.find((f) => !/\.dll$/i.test(f.name)) ?? files[0];
+    const entries = [];
+    for (const f of files) entries.push([f.name, new Uint8Array(await f.arrayBuffer())]);
+    await importFile(new File([zipStore(entries)], main.name.replace(/\.[^.]+$/, '') + '.zip'));
+  } catch (error) { say(String(error), true); }
 });
 $('save-file').addEventListener('change', (event) => {
   const [file] = event.target.files;
@@ -540,6 +991,7 @@ function holdTabLock() {
   if (!(await holdTabLock())) {
     say('PocketPC3630 已在另一個分頁開啟。請先關閉那個分頁再重新整理，以免進度互相覆蓋。', true);
     $('pick').hidden = true;
+    $('pick-hero').hidden = true;
     return;
   }
   M = await PocketHLE();
@@ -555,6 +1007,11 @@ function holdTabLock() {
     stored = false;
   }
   listGames();
+  try {
+    const want = sessionStorage.getItem('pocket-autostart');
+    sessionStorage.removeItem('pocket-autostart');
+    if (want) for (let i = 0; i < M._pocket_game_count(); i++) if (gameId(i) === want) { setTimeout(() => start(i), 0); break; }
+  } catch {}
   say(stored ? '' : '這個瀏覽器無法保存資料：重新整理後遊戲與進度都會消失，請下載存檔備份。', !stored);
   window.pocketReady = true;
 })().catch((error) => say(`無法載入模擬器：${error}`, true));

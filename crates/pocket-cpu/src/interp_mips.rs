@@ -7,7 +7,7 @@
 //! MIPS16, the compressed encoding some VR41xx builds use, is reported as
 //! unsupported. `tests/interp_diff.rs` checks this against Unicorn's MIPS.
 
-use super::{bad, InterpCpu, DEFAULT_SLICE, PAGE_MASK, PAGE_SHIFT, RETIRED};
+use super::{bad, InterpCpu, DEFAULT_SLICE, IMPLICIT_CALL_HIGH, IMPLICIT_CALL_LOW, PAGE_MASK, PAGE_SHIFT, RETIRED};
 use crate::{regs::ArmReg, CpuError, StopReason};
 use std::sync::atomic::Ordering;
 
@@ -436,6 +436,18 @@ impl InterpCpu {
             }
             if self.is_hook(pc) {
                 break 'run Ok(StopReason::Hook(pc));
+            }
+            // An implicit kernel call: MIPS and SuperH Windows CE reach
+            // some kernel services by jumping to an address just below
+            // 0xFFFF_FE01, which faults on a device and is dispatched by
+            // the kernel. Pocket Slay's C runtime ends the program this
+            // way (`jalr` to 0xFFFF_F3FA). Return to the caller, as the
+            // ARM trap page does, with the first argument left as the
+            // result.
+            if (IMPLICIT_CALL_LOW..=IMPLICIT_CALL_HIGH).contains(&pc) {
+                self.mips.gpr[2] = self.mips.gpr[4];
+                pc = self.mips.gpr[31];
+                continue;
             }
             let instruction = match self.fetch(pc) {
                 Ok(i) => i,

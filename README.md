@@ -38,6 +38,11 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 
 ---
 
+> ### 👉 Try it now: **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**
+> Nothing to install. Pick one of **70 free Pocket PC games and apps** (FreeCell, Pocket Quake, Pocket Slay, mahjong, Tetris, chess...) and press *Download and play*: it is fetched from the Internet Archive, imported and started in one click. A step-by-step guide on the page covers controls, saves, phones and the MFC library.
+
+<p align="center"><a href="https://szupotseng.github.io/PocketPC3630/"><img src="docs/images/website.png" alt="The PocketPC3630 website: introduction and the free games wall" width="88%" /></a></p>
+
 PocketPC3630 is named after the **Compaq iPAQ H3630**, the StrongARM pocket computer that made Pocket PC famous.
 It is a fork of [PocketHLE](https://github.com/j92580498-max/PocketHLE) that grew the original Pocket PC 2002/2003 ARM emulator into a home for the whole Pocket PC era:
 the MIPS Casio Cassiopeias and the SH3 HP Jornadas of 2000, a browser version you can open from a link, saves that move between your PC, phone and browser,
@@ -104,6 +109,7 @@ Highlights of what this fork added on top of PocketHLE:
 - **Monochrome bitmaps.** A 1-bit bitmap blitted to a colour screen now takes the destination's text and background colours, as on a device. That is how Pocket Slay paints every territory.
 - **Modal dialogs that behave.** The window underneath keeps repainting while a dialog is open, dialogs wait for you, and static text wraps at its line breaks.
 - **Image lists, command bars, shell folders.** `ImageList_*`, the Handheld PC `CommandBar_*` family (by name and by ordinal), `GetTextMetricsW`, `SendDlgItemMessageW`, `ShellExecuteEx`, `SHGetSpecialFolderLocation`, `SHGetMalloc` with a working COM allocator, `ExitThread`, `wvsprintfW` and more.
+- **Implicit kernel calls on MIPS and SH3.** Their C runtimes reach some kernel services by jumping to addresses just below `0xFFFFFE01`, which fault on a device and are handled by the kernel. These now return to the caller, as on ARM, so MIPS and SH3 programs end cleanly instead of crashing on exit.
 - **Faithful clipping.** A blit whose source lies outside its bitmap now copies nothing instead of wrapping around to the bitmap's top-left corner.
 
 ## 📋 Compatibility
@@ -121,7 +127,7 @@ We downloaded **every Pocket PC item we could find on archive.org**, imported ea
 **→ [The full list, with the reason for every failure and the APIs each program is missing](docs/COMPATIBILITY.md)** (also as [CSV](docs/compatibility.csv)).
 
 "Runs" means the program drew its own screen. It does not promise every feature works.
-73 programs call into `mfcce300.dll`, the MFC library built into Pocket PC devices, and stop without it. Copy it from your own device into the game's package and try again.
+73 programs call into `mfcce300.dll`, the MFC library built into Pocket PC devices, and stop without it. The web version adds it from Microsoft's Pocket PC 2000 SDK with one click; see [Known limitations](#-known-limitations) for doing it by hand.
 
 Showcase titles, each verified by hand:
 
@@ -175,11 +181,10 @@ target/release/pockethle play MyGame.zip
 
 ## 🚧 Known limitations
 
-- Pocket Slay's MIPS and SH3 builds draw the map and play, but stop after a while (a jump to an invalid address); the ARM build does not.
 - A few rarely used MIPS and SH3 helpers (64-bit maths on SH3, `setjmp` on both) are not implemented yet.
 - MIPS16 code (some MIPS builds) and SH-4 floating point instructions are not supported yet.
 - .NET Compact Framework programs, Wise installers and x86 builds do not run.
-- Programs that use MFC need `mfcce300.dll` from your own device.
+- Programs that use MFC need `mfcce300.dll`. The web version fetches it for you from Microsoft's Pocket PC 2000 SDK on the Internet Archive. By hand: open [the SDK](https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe) with 7-Zip and take `Program Files/mfc/lib/arm/mfcce300.dll` and `olece300.dll` (`mips` or `sh3` for those builds).
 - Pocket Slay runs at about 1.5 frames per second in the browser.
 - The Android app is built from this code but has only been tested with ARM games so far.
 

@@ -24,6 +24,11 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 
 ---
 
+> ### 👉 馬上試玩：**[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**
+> 不用安裝。從 **70 款免費的 Pocket PC 遊戲與軟體**（FreeCell、Pocket Quake、Pocket Slay、麻將、俄羅斯方塊、西洋棋……）挑一個按「下載並開始」，就會從 Internet Archive 取得、匯入並直接開始。網站上有完整新手教學：操作方式、存檔、手機上玩、MFC 系統檔怎麼取得。
+
+<p align="center"><a href="https://szupotseng.github.io/PocketPC3630/"><img src="docs/images/website.png" alt="PocketPC3630 網站：介紹與免費遊戲牆" width="88%" /></a></p>
+
 PocketPC3630 的名字來自 **Compaq iPAQ H3630**，那台讓 Pocket PC 紅起來的 StrongARM 掌上電腦。
 它 fork 自 [PocketHLE](https://github.com/j92580498-max/PocketHLE)，把原本只跑 Pocket PC 2002/2003 ARM 程式的模擬器，擴充成整個 Pocket PC 年代的家：
 2000 年的 MIPS Casio Cassiopeia 與 SH3 HP Jornada、點開連結就能玩的網頁版、在電腦/手機/瀏覽器之間通用的存檔，
@@ -85,6 +90,7 @@ PocketPC3630 **不附任何遊戲，也不附微軟的檔案**。請使用你合
 - **單色點陣圖：** 1 位元點陣圖複製到彩色畫面時，會套用目的端的文字色與背景色，和真機一樣。Pocket Slay 的每一塊領地都是這樣上色的。
 - **正確的模態對話框：** 對話框開著時底下的視窗仍會重繪；對話框會等你操作；靜態文字會依換行斷行。
 - **圖像清單、命令列、Shell 資料夾：** `ImageList_*`、Handheld PC 的 `CommandBar_*`（名稱與序號）、`GetTextMetricsW`、`SendDlgItemMessageW`、`ShellExecuteEx`、`SHGetSpecialFolderLocation`、附可用 COM 配置器的 `SHGetMalloc`、`ExitThread`、`wvsprintfW` 等。
+- **MIPS 與 SH3 的隱含核心呼叫：** 它們的 C 執行期會跳到 `0xFFFFFE01` 下方的位址來呼叫部分核心服務，在真機上由核心攔截處理。現在模擬器會直接返回呼叫者（和 ARM 相同），MIPS 與 SH3 程式結束時不再當掉。
 - **正確的裁切：** 來源超出點陣圖範圍的複製現在不會畫任何東西，不再繞回圖片左上角。
 
 ## 📋 相容性
@@ -102,7 +108,7 @@ PocketPC3630 **不附任何遊戲，也不附微軟的檔案**。請使用你合
 **→ [完整清單：每個失敗的原因，以及每個程式缺少的 API](docs/COMPATIBILITY.md)**（另有 [CSV](docs/compatibility.csv)）
 
 「可執行」代表程式畫出了自己的畫面，不保證每個功能都正常。
-有 73 個程式會呼叫 Pocket PC 內建的 MFC 函式庫 `mfcce300.dll`，缺少時會停止。從你自己的裝置複製一份放進遊戲包，再試一次。
+有 73 個程式會呼叫 Pocket PC 內建的 MFC 函式庫 `mfcce300.dll`，缺少時會停止。網頁版一鍵就能從微軟的 Pocket PC 2000 SDK 補上；手動方式見[已知限制](#-已知限制)。
 
 逐一親自驗證過的代表作：
 
@@ -145,11 +151,10 @@ target/release/pockethle play MyGame.zip
 
 ## 🚧 已知限制
 
-- Pocket Slay 的 MIPS 與 SH3 版能畫出地圖並遊玩，但一段時間後會停止（跳到無效位址）；ARM 版不會。
 - 少數較少用的 MIPS 與 SH3 輔助函式（SH3 的 64 位元運算、兩者的 `setjmp`）尚未實作。
 - 尚不支援 MIPS16 程式碼（部分 MIPS 版）與 SH-4 浮點指令。
 - .NET Compact Framework 程式、Wise 安裝程式、x86 版本無法執行。
-- 使用 MFC 的程式需要你自己裝置上的 `mfcce300.dll`。
+- 使用 MFC 的程式需要 `mfcce300.dll`。網頁版會自動從 Internet Archive 上微軟的 Pocket PC 2000 SDK 取得。手動方式：用 7-Zip 打開 [SDK](https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe)，取出 `Program Files/mfc/lib/arm/mfcce300.dll` 與 `olece300.dll`（MIPS、SH3 版改用 `mips`、`sh3` 資料夾）。
 - Pocket Slay 在瀏覽器中約 1.5 幀/秒。
 - Android 版已用這份程式碼建置，但目前只用 ARM 遊戲測試過。
 

@@ -10,6 +10,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::{regs::ArmReg, Arch, Cpu, CpuError, Intrinsic, Prot, StopReason};
 
+/// The range MIPS and SuperH Windows CE use for implicit kernel calls:
+/// `FIRST_METHOD` (0xFFFF_FE01) minus the method number, two bytes each.
+const IMPLICIT_CALL_LOW: u32 = 0xFFFF_0000;
+const IMPLICIT_CALL_HIGH: u32 = 0xFFFF_FE01;
+
 #[path = "interp_mips.rs"]
 mod mips;
 #[path = "interp_sh.rs"]

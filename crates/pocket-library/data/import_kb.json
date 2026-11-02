@@ -183,8 +183,8 @@
         "zh-Hant": "遊戲需要 Pocket PC 系統內建的檔案。"
       },
       "hint": {
-        "en": "Missing: {missing}. Put your own copy in the package next to the .cab.",
-        "zh-Hant": "缺少：{missing}。請把你自己的副本放進遊戲包，和 .cab 放在同一層。"
+        "en": "Missing: {missing}. It is part of Microsoft's free Pocket PC 2000 SDK: download https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe, open it with 7-Zip and take Program Files/mfc/lib/arm/{missing} (use the mips or sh3 folder for those builds), then import it together with the game. The web version can do this for you.",
+        "zh-Hant": "缺少：{missing}。它在微軟免費提供的 Pocket PC 2000 SDK 裡：下載 https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe ，用 7-Zip 打開，取出 Program Files/mfc/lib/arm/{missing}（MIPS、SH3 版改用 mips、sh3 資料夾），再和遊戲一起匯入。網頁版可以自動完成。"
       }
     },
     {

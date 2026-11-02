@@ -7,7 +7,7 @@
 //! `tools/sh_vectors.py` records programs run by QEMU's SH-4, whose integer
 //! instructions are the SH-3's, and `tests/sh_vectors.rs` replays them here.
 
-use super::{bad, InterpCpu, DEFAULT_SLICE, PAGE_MASK, PAGE_SHIFT, RETIRED};
+use super::{bad, InterpCpu, DEFAULT_SLICE, IMPLICIT_CALL_HIGH, IMPLICIT_CALL_LOW, PAGE_MASK, PAGE_SHIFT, RETIRED};
 use crate::{regs::ArmReg, CpuError, StopReason};
 use std::sync::atomic::Ordering;
 
@@ -619,6 +619,13 @@ impl InterpCpu {
             }
             if self.is_hook(pc) {
                 break 'run Ok(StopReason::Hook(pc));
+            }
+            // An implicit kernel call (see `interp_mips.rs`): return to
+            // the caller with the first argument left as the result.
+            if (IMPLICIT_CALL_LOW..=IMPLICIT_CALL_HIGH).contains(&pc) {
+                self.sh.r[0] = self.sh.r[4];
+                pc = self.sh.pr;
+                continue;
             }
             let instruction = match self.sh_fetch(pc) {
                 Ok(i) => i,
