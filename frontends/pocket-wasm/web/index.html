@@ -111,7 +111,7 @@ body.touch .pad { display: flex; }
 
 
 /* MFC helper on the game screen */
-.fix { width: 100%; max-width: 40rem; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin: 0 12px 8px; padding: 10px 12px; border-radius: 12px; background: #2a2416; color: #f3e3b5; font-size: 13px; }
+.fix { width: 100%; max-width: 40rem; box-sizing: border-box; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin: 0 12px 8px; padding: 10px 12px; border-radius: 12px; background: #2a2416; color: #f3e3b5; font-size: 13px; }
 .fix[hidden] { display: none; }
 .fix button { background: #f0c35a; color: #2a2416; border-radius: 999px; padding: 6px 12px; font-weight: 600; }
 
@@ -219,6 +219,10 @@ kbd { font: 12px/1 ui-monospace, Consolas, monospace; border: 1px solid var(--li
   <div class="library-head">
     <h2>我的遊戲庫</h2>
     <button type="button" class="primary" id="pick">匯入遊戲</button>
+  </div>
+  <div class="fix" id="fix-lib" hidden>
+    <span id="fix-lib-text">這個遊戲需要 Pocket PC 內建的 MFC 系統檔。</span>
+    <button type="button" id="fix-lib-go">自動取得 MFC 並重新開始</button>
   </div>
   <section class="list" id="games"></section>
   <p class="note">遊戲與進度只存在這個瀏覽器。進度會自動保存；清除網站資料前請先下載存檔。有些遊戲要從遊戲內正常退出才會寫入進度。<button type="button" class="link" id="help-open">遊戲包格式</button></p>
@@ -698,7 +702,13 @@ function start(index) {
       running = false;
       document.body.classList.remove('playing');
       syncFs(false);
-      say(lastError() || '遊戲已結束。', Boolean(lastError()));
+      const error = lastError();
+      say(error || '遊戲已結束。', Boolean(error));
+      // A game that reaches MFC only after starting stops here; offer the fix.
+      if (/mfcce|olece/i.test(error)) {
+        $('fix-lib').hidden = false;
+        $('fix-lib-go').onclick = () => fixMfc(index, 'fix-lib');
+      }
       return;
     }
     // setTimeout(0) is clamped to 4 ms, which would cost a slow machine frames.
@@ -731,9 +741,9 @@ function cpuOf(path) {
   if ([0x1a2, 0x1a3, 0x1a6].includes(machine)) return 'sh3';
   return null;
 }
-async function fixMfc(index) {
-  $('fix-go').disabled = true;
-  const show = (text) => { $('fix-text').textContent = text; };
+async function fixMfc(index, where = 'fix') {
+  $(`${where}-go`).disabled = true;
+  const show = (text) => { $(`${where}-text`).textContent = text; };
   try {
     const dir = `/library/games/${gameId(index)}`;
     const exes = walk(dir).filter((p) => /\.exe$/i.test(p));
@@ -753,7 +763,7 @@ async function fixMfc(index) {
     location.reload();
   } catch (error) {
     show(`無法自動取得：${error.message}。可以手動下載 SDK（見首頁「常見問題」），再把 DLL 和遊戲一起匯入。`);
-    $('fix-go').disabled = false;
+    $(`${where}-go`).disabled = false;
   }
 }
 
