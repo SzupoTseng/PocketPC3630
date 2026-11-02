@@ -795,6 +795,17 @@ impl Vfs {
         Some(handle)
     }
 
+    /// Size of the file behind a `CreateFileForMappingW` handle that a
+    /// mapping has taken over. The handle stays valid on a device until the
+    /// mapping closes, and DevilDarts asks `GetFileSize` about it after
+    /// mapping each picture; answering 0 left its pictures empty.
+    pub fn mapped_source_size(&self, file_handle: u32) -> Option<u64> {
+        self.file_mappings
+            .values()
+            .find(|m| !m.closed && m.source_file_handle == Some(file_handle))
+            .map(|m| m.size)
+    }
+
     pub fn file_mapping_size(&self, handle: u32) -> Option<u64> {
         let mapping = self.file_mappings.get(&handle)?;
         (!mapping.closed).then_some(mapping.size)

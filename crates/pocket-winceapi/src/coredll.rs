@@ -6359,7 +6359,12 @@ fn close_handle(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 fn get_file_size(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let handle = ctx.arg_u32(0)?;
     let high_p = ctx.arg_u32(1)?;
-    let size = ctx.kernel.vfs.size(handle).unwrap_or(0);
+    let size = ctx
+        .kernel
+        .vfs
+        .size(handle)
+        .or_else(|| ctx.kernel.vfs.mapped_source_size(handle))
+        .unwrap_or(0);
     if high_p != 0 {
         ctx.cpu
             .write_mem(high_p, &((size >> 32) as u32).to_le_bytes())?;
@@ -15248,10 +15253,28 @@ fn resolve_dynamic_export(ctx: &CallCtx<'_>, module: u32, name: &str) -> u32 {
         })
 }
 
+/// An image being read through `DecompressImageIndirect`'s callback.
+struct ImageFetch {
+    info: u32,
+    data: Vec<u8>,
+    /// Where `DecompressImageIndirect` returns once the image is in.
+    caller: u32,
+    done: bool,
+}
+
+thread_local! {
+    static IMAGE_FETCH: std::cell::RefCell<Option<ImageFetch>> = const { std::cell::RefCell::new(None) };
+}
+
 fn decompress_image_indirect(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     const E_INVALIDARG: u32 = 0x8007_0057;
     const IMGDECOMP_E_NOIMAGE: u32 = 0x800b_0100;
-    let info = ctx.arg_u32(0)?;
+    // Coming back from the data callback, r0 holds its byte count, so the
+    // info block is the one this call saved before jumping there.
+    let info = match IMAGE_FETCH.with(|f| f.borrow().as_ref().map(|s| s.info)) {
+        Some(info) => info,
+        None => ctx.arg_u32(0)?,
+    };
     if info == 0 {
         return Ok(DispatchOutcome::ReturnedR0(E_INVALIDARG));
     }
@@ -15261,25 +15284,74 @@ fn decompress_image_indirect(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, K
     let buffer_current = u32::from_le_bytes(header[12..16].try_into().unwrap());
     let bitmap_out = u32::from_le_bytes(header[16..20].try_into().unwrap());
     let bit_depth = i32::from_le_bytes(header[24..28].try_into().unwrap());
+    let lparam = u32::from_le_bytes(header[28..32].try_into().unwrap());
     let max_width = u32::from_le_bytes(header[40..44].try_into().unwrap());
     let max_height = u32::from_le_bytes(header[44..48].try_into().unwrap());
+    let get_data = u32::from_le_bytes(header[48..52].try_into().unwrap());
     if buffer == 0 || bitmap_out == 0 {
         return Ok(DispatchOutcome::ReturnedR0(E_INVALIDARG));
     }
-    let available = if buffer_current == 0 {
-        buffer_max
+    // The image can come through a callback, `pfnGetData(buffer, max,
+    // lParam)` returning how many bytes it wrote, instead of sitting in the
+    // buffer. PocketSol reads its card pictures that way, a chunk at a time
+    // from a file; reading the empty buffer instead found no image and the
+    // game crashed on the missing bitmap. Each chunk is fetched by jumping
+    // into the callback with the return address set to this call, which
+    // runs again when the callback returns.
+    // A buffer that already holds a whole image is decoded as it is, even
+    // when a callback is also given: DevilDarts fills the buffer and passes
+    // a callback that has nothing more to say.
+    let preloaded = buffer_current.min(buffer_max).min(16 * 1024 * 1024);
+    let in_buffer = preloaded > 0
+        && IMAGE_FETCH.with(|f| f.borrow().is_none())
+        && ctx
+            .cpu
+            .read_mem(buffer, preloaded.min(16))
+            .ok()
+            .is_some_and(|head| image::guess_format(&head).is_ok());
+    let bytes = if get_data != 0 && !in_buffer {
+        let thunk_va = ctx.thunk.thunk_va;
+        let state = IMAGE_FETCH.with(|f| f.borrow_mut().take());
+        let mut state = match state {
+            Some(s) => {
+                let got = ctx.cpu.read_reg(ArmReg::R0)?.min(buffer_max);
+                let mut s = s;
+                if got > 0 {
+                    let chunk = ctx.cpu.read_mem(buffer, got)?;
+                    s.data.extend_from_slice(&chunk);
+                }
+                s.done = got == 0 || s.data.len() >= 16 * 1024 * 1024;
+                s
+            }
+            _ => ImageFetch { info, data: Vec::new(), caller: ctx.cpu.read_reg(ArmReg::Lr)?, done: false },
+        };
+        if !state.done {
+            ctx.cpu.write_reg(ArmReg::R0, buffer)?;
+            ctx.cpu.write_reg(ArmReg::R1, buffer_max)?;
+            ctx.cpu.write_reg(ArmReg::R2, lparam)?;
+            ctx.cpu.write_reg(ArmReg::Lr, thunk_va)?;
+            IMAGE_FETCH.with(|f| *f.borrow_mut() = Some(state));
+            return Ok(DispatchOutcome::JumpTo(get_data));
+        }
+        // Back to the program that asked for the image.
+        ctx.cpu.write_reg(ArmReg::Lr, state.caller)?;
+        std::mem::take(&mut state.data)
     } else {
-        buffer_current.min(buffer_max)
-    }
-    .min(16 * 1024 * 1024);
-    if available == 0 {
-        return Ok(DispatchOutcome::ReturnedR0(IMGDECOMP_E_NOIMAGE));
-    }
-    let bytes = ctx.cpu.read_mem(buffer, available)?;
+        let available = if buffer_current == 0 {
+            buffer_max
+        } else {
+            buffer_current.min(buffer_max)
+        }
+        .min(16 * 1024 * 1024);
+        if available == 0 {
+            return Ok(DispatchOutcome::ReturnedR0(IMGDECOMP_E_NOIMAGE));
+        }
+        ctx.cpu.read_mem(buffer, available)?
+    };
     let decoded = match image::load_from_memory(&bytes) {
         Ok(image) => image,
         Err(error) => {
-            log::debug!("DecompressImageIndirect: image decode failed: {error}");
+            log::warn!("DecompressImageIndirect: image decode failed: {error} (first bytes {:02x?})", &bytes[..bytes.len().min(8)]);
             return Ok(DispatchOutcome::ReturnedR0(IMGDECOMP_E_NOIMAGE));
         }
     };
@@ -15292,18 +15364,40 @@ fn decompress_image_indirect(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, K
         decoded
     };
     let rgba = decoded.to_rgba8();
-    let handle = ctx.kernel.gdi.create_compatible_bitmap(width, height);
-    if let Some(bitmap) = ctx.kernel.gdi.bitmap_mut(handle) {
-        bitmap.bpp = if bit_depth > 0 { bit_depth as u16 } else { 16 };
-        for y in 0..height {
-            for x in 0..width {
-                let pixel = rgba.get_pixel(x, y).0;
-                let rgb565 = pocket_kernel::framebuffer::pack_rgb565(pixel[0], pixel[1], pixel[2]);
-                let offset = ((y * width + x) * 2) as usize;
-                bitmap.pixels[offset..offset + 2].copy_from_slice(&rgb565.to_le_bytes());
+    // A DIB section, as the real decoder returns: its pixels sit in guest
+    // memory, so a program that reads them through GetObjectW's bmBits sees
+    // the picture. BugLord did, and crashed on the NULL it used to get.
+    let bpp: u32 = match bit_depth {
+        16 => 16,
+        32 => 32,
+        _ => 24,
+    };
+    let stride = (width * bpp / 8 + 3) & !3;
+    let Some(bits) = ctx.kernel.heap.alloc(stride * height) else {
+        return Ok(DispatchOutcome::ReturnedR0(IMGDECOMP_E_NOIMAGE));
+    };
+    let mut guest = vec![0u8; (stride * height) as usize];
+    let mut host = vec![0u8; (width * height * 2) as usize];
+    for y in 0..height {
+        // Bottom-up rows, as Windows lays out a DIB with a positive height.
+        let row = ((height - 1 - y) * stride) as usize;
+        for x in 0..width {
+            let [r, g, b, _] = rgba.get_pixel(x, y).0;
+            let rgb565 = pocket_kernel::framebuffer::pack_rgb565(r, g, b);
+            let at = ((y * width + x) * 2) as usize;
+            host[at..at + 2].copy_from_slice(&rgb565.to_le_bytes());
+            let at = row + (x * bpp / 8) as usize;
+            match bpp {
+                16 => guest[at..at + 2].copy_from_slice(&rgb565.to_le_bytes()),
+                24 => guest[at..at + 3].copy_from_slice(&[b, g, r]),
+                _ => guest[at..at + 4].copy_from_slice(&[b, g, r, 0]),
             }
         }
     }
+    ctx.cpu.write_mem(bits, &guest)?;
+    let mut dib = pocket_kernel::gdi::Bitmap::new_dib(width, height, bpp as u16, bits, stride, true, Vec::new(), false);
+    dib.pixels = host;
+    let handle = ctx.kernel.gdi.register_dib(dib);
     ctx.cpu.write_mem(bitmap_out, &handle.to_le_bytes())?;
     log::debug!("DecompressImageIndirect decoded {width}x{height} -> 0x{handle:08x}");
     Ok(DispatchOutcome::ReturnedR0(0))
@@ -22379,6 +22473,10 @@ fn register_common_gaps(d: &mut WinCeDispatcher, dll: &str) {
         ("StringCchLengthW", string_cch_length_w), ("GetMonitorInfo", get_monitor_info),
         ("MonitorFromWindow", returns_true), ("GetMouseMovePoints", returns_zero),
         ("GetDlgItemTextW", get_dlg_item_text_w), ("CheckMenuRadioItem", check_menu_radio_item),
+        ("CeFindFirstDatabase", cedb_find_first), ("CeFindFirstDatabaseEx", cedb_find_first),
+        ("CeFindNextDatabase", returns_zero), ("CeFindNextDatabaseEx", returns_zero),
+        ("CeMountDBVol", cedb_mount), ("CeUnmountDBVol", returns_true), ("CeFlushDBVol", returns_true),
+        ("CeOidGetInfo", returns_zero), ("CeOidGetInfoEx", returns_zero),
         ("CreatePalette", create_palette), ("GetPaletteEntries", get_palette_entries),
         ("SetPaletteEntries", set_palette_entries), ("GetSystemPaletteEntries", get_system_palette_entries),
     ];
@@ -22395,7 +22493,9 @@ fn register_common_gaps(d: &mut WinCeDispatcher, dll: &str) {
 
 thread_local! {
     static PALETTES: std::cell::RefCell<std::collections::HashMap<u32, Vec<u32>>> = std::cell::RefCell::new(std::collections::HashMap::new());
-    static NEXT_PALETTE: std::cell::Cell<u32> = const { std::cell::Cell::new(0xDEAD_5700) };
+    // Away from the stock objects at 0xDEAD_57xx: palette 0xDEAD_5701 was
+    // STOCK_WHITE_BRUSH, and DevilDarts crashed after selecting it.
+    static NEXT_PALETTE: std::cell::Cell<u32> = const { std::cell::Cell::new(0xDEAD_6A00) };
 }
 
 /// The 256-colour system palette: the 20 static Windows colours around a
@@ -22477,4 +22577,145 @@ fn get_system_palette_entries(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, 
     let take: Vec<u8> = entries.iter().skip(start as usize).take(count as usize).flat_map(|e| e.to_le_bytes()).collect();
     ctx.cpu.write_mem(out, &take)?;
     Ok(DispatchOutcome::ReturnedR0(take.len() as u32 / 4))
+}
+
+// ---------- oleaut32.dll ----------
+//
+// The few OLE Automation calls ordinary programs use. PocketSol only needs
+// SystemTimeToVariantTime; without the DLL it stopped before drawing.
+
+/// Days from the OLE epoch (1899-12-30) to the civil date.
+fn ole_days(year: i64, month: i64, day: i64) -> i64 {
+    let (y, m) = if month <= 2 { (year - 1, month + 9) } else { (year, month - 3) };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * m + 2) / 5 + day - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146097 + doe - 719468 + 25569 // to 1970-01-01, then to 1899-12-30
+}
+
+/// `SystemTimeToVariantTime(const SYSTEMTIME*, double*)`.
+fn system_time_to_variant_time(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let (st, out) = (ctx.arg_u32(0)?, ctx.arg_u32(1)?);
+    if st == 0 || out == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let t = read_systemtime(ctx, st)?;
+    if t[1] == 0 || t[1] > 12 || t[3] == 0 || t[3] > 31 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let days = ole_days(t[0] as i64, t[1] as i64, t[3] as i64) as f64;
+    let fraction = (t[4] as f64 * 3600.0 + t[5] as f64 * 60.0 + t[6] as f64) / 86400.0;
+    ctx.cpu.write_mem(out, &(days + fraction).to_le_bytes())?;
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+/// `VariantTimeToSystemTime(double, SYSTEMTIME*)`: the double in r0:r1.
+fn variant_time_to_system_time(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let bits = ctx.arg_u32(0)? as u64 | (ctx.arg_u32(1)? as u64) << 32;
+    let out = ctx.arg_u32(2)?;
+    let v = f64::from_bits(bits);
+    if out == 0 || !v.is_finite() {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let days = v.floor() as i64 - 25569 + 719468;
+    let era = days.div_euclid(146097);
+    let doe = days - era * 146097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    let secs = ((v - v.floor()) * 86400.0).round() as i64;
+    let dow = (v.floor() as i64 + 6).rem_euclid(7); // 1899-12-30 was a Saturday
+    let fields = [year, month, dow, day, secs / 3600, secs / 60 % 60, secs % 60, 0];
+    let bytes: Vec<u8> = fields.iter().flat_map(|f| (*f as u16).to_le_bytes()).collect();
+    ctx.cpu.write_mem(out, &bytes)?;
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+/// `SysAllocString(const OLECHAR*)`: a BSTR, with its byte length before it.
+fn sys_alloc_string(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let src = ctx.arg_u32(0)?;
+    if src == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let text = read_wstr(ctx, src, 0x10000)?;
+    let bytes = text.len() as u32 * 2;
+    let Some(block) = ctx.kernel.heap.alloc(bytes + 6) else {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    };
+    let mut data = bytes.to_le_bytes().to_vec();
+    data.extend(text.iter().flat_map(|u| u.to_le_bytes()));
+    data.extend_from_slice(&[0, 0]);
+    ctx.cpu.write_mem(block, &data)?;
+    Ok(DispatchOutcome::ReturnedR0(block + 4))
+}
+
+fn sys_free_string(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let b = ctx.arg_u32(0)?;
+    if b != 0 {
+        ctx.kernel.heap.free(b - 4);
+    }
+    Ok(DispatchOutcome::ReturnedR0(0))
+}
+
+fn sys_string_len(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let b = ctx.arg_u32(0)?;
+    if b == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    Ok(DispatchOutcome::ReturnedR0(ctx.cpu.read_u32_le(b - 4)? / 2))
+}
+
+/// `VariantInit(VARIANT*)` / `VariantClear`: VT_EMPTY.
+fn variant_init(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let v = ctx.arg_u32(0)?;
+    if v != 0 {
+        ctx.cpu.write_mem(v, &[0u8; 16])?;
+    }
+    Ok(DispatchOutcome::ReturnedR0(0))
+}
+
+pub(crate) fn register_oleaut32(d: &mut WinCeDispatcher) {
+    let dll = "oleaut32.dll";
+    d.register_handler(dll, "SystemTimeToVariantTime", system_time_to_variant_time);
+    d.register_handler(dll, "VariantTimeToSystemTime", variant_time_to_system_time);
+    d.register_handler(dll, "SysAllocString", sys_alloc_string);
+    d.register_handler(dll, "SysFreeString", sys_free_string);
+    d.register_handler(dll, "SysStringLen", sys_string_len);
+    d.register_handler(dll, "VariantInit", variant_init);
+    d.register_handler(dll, "VariantClear", variant_init);
+}
+
+#[cfg(test)]
+mod ole_date_tests {
+    #[test]
+    fn ole_dates_count_days_from_1899_12_30() {
+        assert_eq!(super::ole_days(1899, 12, 30), 0);
+        assert_eq!(super::ole_days(1900, 1, 1), 2);
+        assert_eq!(super::ole_days(2026, 1, 1), 46023);
+    }
+}
+
+/// `CeFindFirstDatabase(Ex)`: a search handle; `CeFindNextDatabase(Ex)`
+/// then reports no databases, as on a device fresh from a reset.
+fn cedb_find_first(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(0xDEAD_DB00))
+}
+
+/// `CeMountDBVol(CEGUID*, name, flags)`: the object store is always there.
+fn cedb_mount(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let guid = ctx.arg_u32(0)?;
+    if guid != 0 {
+        ctx.cpu.write_mem(guid, &[0u8; 16])?;
+    }
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+pub(crate) fn register_imgdecmp(d: &mut WinCeDispatcher) {
+    // Imported by ordinal as well as by name; #1 is DecompressImageIndirect.
+    d.register_handler("imgdecmp.dll", "DecompressImageIndirect", decompress_image_indirect);
+    d.register_handler("imgdecmp.dll", "ord:1", decompress_image_indirect);
 }

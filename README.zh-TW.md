@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 ---
 
 > ### 👉 馬上試玩：**[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**
-> 不用安裝。從 **74 款免費的 Pocket PC 遊戲與軟體**（FreeCell、Pocket Quake、Pocket Slay、麻將、俄羅斯方塊、西洋棋……）挑一個按「下載並開始」，就會從 Internet Archive 取得、匯入並直接開始。網站上有完整新手教學：操作方式、存檔、手機上玩、MFC 系統檔怎麼取得。
+> 不用安裝。從 **75 款免費的 Pocket PC 遊戲與軟體**（FreeCell、Pocket Quake、Pocket Slay、麻將、俄羅斯方塊、西洋棋……）挑一個按「下載並開始」，就會從 Internet Archive 取得、匯入並直接開始。網站上有完整新手教學：操作方式、存檔、手機上玩、MFC 系統檔怎麼取得。
 
 <p align="center"><a href="https://szupotseng.github.io/PocketPC3630/"><img src="docs/images/website.png" alt="PocketPC3630 網站：介紹與免費遊戲牆" width="88%" /></a></p>
 
@@ -100,8 +100,8 @@ PocketPC3630 **不附任何遊戲，也不附微軟的檔案**。請使用你合
 | | 結果 | 數量 |
 |---|---|---:|
 | ✅ | **可執行**：能啟動並畫出遊戲或程式畫面 | **95** |
-| 🟡 | **部分可用**：能啟動，但畫面空白或很快停止 | 154 |
-| 🟥 | **無法啟動**：能匯入，啟動時失敗 | 390 |
+| 🟡 | **部分可用**：能啟動，但畫面空白或很快停止 | 156 |
+| 🟥 | **無法啟動**：能匯入，啟動時失敗 | 388 |
 | ⛔ | **無法匯入**：下載檔裡沒有 Pocket PC 程式 | 384 |
 | ⚪ | **未測試**：項目沒有套件，或下載失敗 | 420 |
 

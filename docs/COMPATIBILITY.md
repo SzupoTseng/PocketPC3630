@@ -7,8 +7,8 @@ Also available as [compatibility.csv](compatibility.csv). Free programs that run
 | | Result | Count |
 |---|---|---:|
 | ✅ | **Runs** — Starts and draws the game or program. | 95 |
-| 🟡 | **Partly works** — Imports and starts, but the screen stays blank, draws nothing, or stops soon. | 154 |
-| 🟥 | **Does not start** — Imports, but fails while starting (usually a missing system DLL or an API not emulated yet). | 390 |
+| 🟡 | **Partly works** — Imports and starts, but the screen stays blank, draws nothing, or stops soon. | 156 |
+| 🟥 | **Does not start** — Imports, but fails while starting (usually a missing system DLL or an API not emulated yet). | 388 |
 | ⛔ | **Not importable** — No Pocket PC program inside the download (desktop tools, ROM updates, documents). | 384 |
 | ⚪ | **Not tested** — The archive.org item has no package, or the download failed. | 420 |
 
@@ -18,26 +18,26 @@ Each program counted once. These are the next things to implement.
 
 | API | Programs |
 |---|---:|
-| `IMGDECMP.DLL!#1` | 6 |
 | `AYGSHELL.dll!#69` | 5 |
 | `DocList.dll!DocList_Create` | 5 |
 | `COREDLL.dll!SHGetShortcutTarget` | 5 |
-| `COREDLL.dll!CeFindNextDatabase` | 5 |
-| `COREDLL.dll!CeFindFirstDatabase` | 5 |
 | `COREDLL.dll!SetViewportOrgEx` | 4 |
 | `AYGSHELL.dll!#43` | 4 |
-| `COREDLL.dll!CeOidGetInfo` | 4 |
-| `AYGSHELL.dll!#112` | 3 |
-| `OFFICE.dll!RMLoadLibrary` | 3 |
-| `Mcf.DLL!McfUninitialize` | 3 |
-| `COREDLL.dll!#1877` | 3 |
 | `AYGSHELL.dll!#209` | 3 |
-| `COREDLL.dll!#1984` | 3 |
-| `AYGSHELL.dll!#310` | 3 |
+| `OFFICE.dll!RMLoadLibrary` | 3 |
+| `AYGSHELL.dll!#112` | 3 |
 | `AYGSHELL.dll!#109` | 3 |
 | `OFFICE.dll!RMFreeLibrary` | 3 |
+| `Mcf.DLL!McfUninitialize` | 3 |
+| `AYGSHELL.dll!#310` | 3 |
+| `COREDLL.dll!#1984` | 3 |
+| `COREDLL.dll!#1877` | 3 |
 | `htmlview.dll!InitHTMLControl` | 3 |
 | `COREDLL.dll!SelectPalette` | 3 |
+| `InkX.dll!InitInkX` | 3 |
+| `COREDLL.dll!EnumFontFamiliesW` | 3 |
+| `AYGSHELL.dll!#2011` | 2 |
+| `AYGSHELL.dll!#339` | 2 |
 
 73 programs need `mfcce300.dll`, a library built into the device. 13 programs need `mfcce211.dll`, a library built into the device. 6 programs need `mfcce20.dll`, a library built into the device. 2 programs need `mfcce201.dll`, a library built into the device. 1 programs need `mfcce400.dll`, a library built into the device. The website adds `mfcce300.dll` from Microsoft's Pocket PC 2000 SDK in one click.
 
@@ -57,13 +57,14 @@ Starts and draws the game or program.
 | [Bookworm for Pocket PCs](https://archive.org/details/bookworm_wm5-6) | `bookworm_wm5-6.cab` | Runs |  |
 | [Bubble Shooter](https://archive.org/details/tucows_229202_Bubble_Shooter) | `bubshootce.exe` | Runs |  |
 | [Bubble Thriller](https://archive.org/details/tucows_230188_Bubble_Thriller) | `thrillce.exe` | Runs |  |
+| [BugLord 1.0](https://archive.org/details/buglord-1.0) | `for_Pocket_PC_PPC.STRONGARM.cab` | Runs | The game stopped on something the emulator cannot do yet. |
+| [buglord-pocketpc-1.00](https://archive.org/details/buglord-pocketpc-1.00) | `for_Pocket_PC_PPC.STRONGARM.cab` | Runs | The game stopped on something the emulator cannot do yet. |
 | [Calc98](https://archive.org/details/tucows_212355_Calc98) | `c9853a.exe` | Runs |  |
 | [Calc98 5.3 WinCE (Extracted)](https://archive.org/details/calc-9853-wince) | `CALC98S.CAB` | Runs |  |
 | [Calc98 5.3 WinCE (Extracted)](https://archive.org/details/calc-9853-wince) | `CALC98A.CAB` | Runs |  |
 | [Calendar Search](https://archive.org/details/tucows_32395_Calendar_Search) | `CalendarSearchMIPS-PR2.exe` | Runs | Missing: `COREDLL.dll!PegOpenDatabase`, `COREDLL.dll!PegOidGetInfo` |
 | [CE-Star Suite](https://archive.org/details/tucows_153762_CE-Star_Suite) | `ver2PkPCARM.zip` | Runs |  |
 | [CE5250](https://archive.org/details/tucows_232364_CE5250) | `CE5250_PocketPC.zip` | Runs |  |
-| [CEDBView](https://archive.org/details/tucows_38929_CEDBView) | `cedbview.zip` | Runs | Missing: `COREDLL.dll!CeFindFirstDatabase`, `COREDLL.dll!CeFindNextDatabase` |
 | [CEniffer](https://archive.org/details/tucows_32190_CEniffer) | `CEnifferMIPS.zip.CAB` | Runs |  |
 | [CETerm](https://archive.org/details/tucows_232362_CETerm) | `CETerm_PocketPC31.zip` | Runs |  |
 | [CEVT220](https://archive.org/details/tucows_232369_CEVT220) | `CEVT220_PocketPC.zip` | Runs |  |
@@ -74,7 +75,7 @@ Starts and draws the game or program.
 | [CoolCalc](https://archive.org/details/tucows_32301_CoolCalc) | `coolcalcppc.exe` | Runs |  |
 | [Crack Game](https://archive.org/details/tucows_309982_Crack_Game) | `Crack.exe` | Runs |  |
 | [DeskClock](https://archive.org/details/tucows_32532_DeskClock) | `deskclck.zip` | Runs | Missing: `COREDLL.dll!PegHandleAppNotifications` |
-| [DevilDarts](https://archive.org/details/tucows_291799_DevilDarts) | `DevilDartsSetup_demo_arm.exe` | Runs | Missing: `IMGDECMP.DLL!#1` |
+| [DevilDarts](https://archive.org/details/tucows_291799_DevilDarts) | `DevilDartsSetup_demo_arm.exe` | Runs |  |
 | [Doodle Jump for Window Mobile 5.0](https://archive.org/details/doj_20251217) | `DOJ.zip` | Runs | Missing: `AYGSHELL.dll!#339` |
 | [dotPocket](https://archive.org/details/tucows_270214_dotPocket) | `dotpocket2003.exe` | Runs |  |
 | [Dragon Bane II](https://archive.org/details/tucows_273050_Dragon_Bane_II) | `DB2SetupARM.exe` | Runs |  |
@@ -88,21 +89,21 @@ Starts and draws the game or program.
 | [GNUChess](https://archive.org/details/tucows_309937_GNUChess) | `GNUChess.zip` | Runs | Missing: `COREDLL.dll!PtInRegion`, `COREDLL.dll!CreateRectRgnIndirect` |
 | [Handy Paint](https://archive.org/details/handy-paint) | `HandyPaint.CAB` | Runs | Missing: `COREDLL.dll!CreateAcceleratorTableW` |
 | [Hanoi Tower](https://archive.org/details/tucows_243676_Hanoi_Tower) | `CEZebra100b2.exe` | Runs |  |
-| [HPC Loan Manager](https://archive.org/details/tucows_32432_HPC_Loan_Manager) | `hpcloan.zip` | Runs | Missing: `COREDLL.dll!CeFindFirstDatabase`, `COREDLL.dll!CeFindNextDatabase`, `COREDLL.dll!CeOidGetInfo` |
-| [HPC/PPC Stock Manager](https://archive.org/details/tucows_32412_HPC_PPC_Stock_Manager) | `hpcstock.zip` | Runs | Missing: `COREDLL.dll!CeOidGetInfo`, `COREDLL.dll!CeFindFirstDatabase`, `COREDLL.dll!CeFindNextDatabase` |
+| [HPC Loan Manager](https://archive.org/details/tucows_32432_HPC_Loan_Manager) | `hpcloan.zip` | Runs |  |
+| [HPC/PPC Stock Manager](https://archive.org/details/tucows_32412_HPC_PPC_Stock_Manager) | `hpcstock.zip` | Runs |  |
 | [IntelliGOLF Par](https://archive.org/details/tucows_32414_IntelliGOLF_Par) | `igtparce.exe` | Runs |  |
 | [IrDesk](https://archive.org/details/tucows_32505_IrDesk) | `IrDesk_All.zip` | Runs |  |
 | [Klondike WAP Browser](https://archive.org/details/tucows_150885_Klondike_WAP_Browser) | `klondikewapsetup.exe` | Runs | Missing: `COREDLL.dll!sh__lshi64`, `COREDLL.dll!sh__divi64` |
 | [Lemonade Tycoon](https://archive.org/details/lemonade-tycoon_202505) | `LemonadeTycoon.ARM.CAB` | Runs |  |
 | [Line4Line](https://archive.org/details/tucows_210362_Line4Line) | `line4linearm.zip` | Runs |  |
 | [LinkSpy](https://archive.org/details/tucows_32202_LinkSpy) | `LinkSpySH3.zip` | Runs |  |
-| [Loan Manager](https://archive.org/details/tucows_222365_Loan_Manager) | `pkpcloan_setup.exe` | Runs | Missing: `COREDLL.dll!CeFindFirstDatabase`, `COREDLL.dll!CeFindNextDatabase`, `COREDLL.dll!CeOidGetInfo` |
+| [Loan Manager](https://archive.org/details/tucows_222365_Loan_Manager) | `pkpcloan_setup.exe` | Runs |  |
 | [Locker](https://archive.org/details/tucows_328115_Locker) | `LockerCE_Trial.zip` | Runs |  |
 | [Metalion ( Japan) ( ARM)](https://archive.org/details/metalion-japan-arm) | `Metalion (Japan) (ARM).zip` | Runs |  |
 | [Metalion ( USA) ( ARM)](https://archive.org/details/metalion-usa-arm) | `Metalion (USA) (ARM).zip` | Runs |  |
 | [MicroCalc Standard](https://archive.org/details/tucows_216317_MicroCalc_Standard) | `MicroCalc108.zip` | Runs |  |
 | [miniBasic](https://archive.org/details/tucows_32364_miniBasic) | `minibasic.zip` | Runs |  |
-| [Moline](https://archive.org/details/tucows_222951_Moline) | `Moline_PocketPC_Trial.exe` | Runs | Missing: `IMGDECMP.DLL!#1` |
+| [Moline](https://archive.org/details/tucows_222951_Moline) | `Moline_PocketPC_Trial.exe` | Runs |  |
 | [moongba2.4.2](https://archive.org/details/moongba2.4.2) | `moongba2.4.2.zip` | Runs | Missing: `COREDLL.dll!putchar` |
 | [Nerve](https://archive.org/details/tucows_248733_Nerve) | `NerveDemoSetup.exe` | Runs |  |
 | [PalmGB](https://archive.org/details/tucows_216709_PalmGB) | `pgbsetup.exe` | Runs | Missing: `COREDLL.dll!SelectPalette` |
@@ -112,13 +113,14 @@ Starts and draws the game or program.
 | [Pocket 15C Scientific Calculator](https://archive.org/details/tucows_294403_Pocket_15C_Scientific_Calculator) | `Pocket15CV110.exe` | Runs | Missing: `COREDLL.dll!_fpclass` |
 | [Pocket Pinball](https://archive.org/details/tucows_250021_Pocket_Pinball) | `PocketPinballSetupDemo.exe` | Runs |  |
 | [Pocket Slay](https://archive.org/details/tucows_182765_Pocket_Slay) | `PocketSlay.zip` | Runs | Tap a tree in the top-left, then OK in the New Game dialog (the shareware version only lets you pick the first two rows). |
-| [Pocket Taipei](https://archive.org/details/tucows_254025_Pocket_Taipei) | `ptaipei10.zip` | Runs | Missing: `OLEAUT32.dll!SystemTimeToVariantTime`, `OLEAUT32.dll!VariantTimeToSystemTime` |
+| [Pocket Taipei](https://archive.org/details/tucows_254025_Pocket_Taipei) | `ptaipei10.zip` | Runs |  |
 | [Pocket Tune](https://archive.org/details/tucows_252624_Pocket_Tune) | `PocketTune_2_0_5.zip` | Runs |  |
 | [Pocket Woman](https://archive.org/details/tucows_241852_Pocket_Woman) | `PocketWoman.zip` | Runs | Missing: `AYGSHELL.dll!#39` |
 | [PocketConquest](https://archive.org/details/tucows_208847_PocketConquest) | `PocketConquest.zip` | Runs | Missing: `COREDLL.dll!SelectPalette` |
 | [PocketFract](https://archive.org/details/tucows_196486_PocketFract) | `PocketFract.zip` | Runs | Missing: `AYGSHELL.dll!#88` |
 | [PocketNav](https://archive.org/details/tucows_145763_PocketNav) | `pocketnav.zip` | Runs |  |
 | [PocketNotepad](https://archive.org/details/tucows_145909_PocketNotepad) | `pocketnotepad21e.zip` | Runs |  |
+| [PocketSol](https://archive.org/details/tucows_279494_PocketSol) | `psol20.zip` | Runs |  |
 | [PocketSTM](https://archive.org/details/tucows_213457_PocketSTM) | `pocketstmfstrarm.CAB` | Runs |  |
 | [Porta-Pinball](https://archive.org/details/tucows_219512_Porta-Pinball) | `PortaPinSetup300.exe` | Runs |  |
 | [PPC Planet CE Archive](https://archive.org/details/ppc-planet-ce) | `ClockWizard.rar` | Runs |  |
@@ -127,11 +129,11 @@ Starts and draws the game or program.
 | [Primer](https://archive.org/details/tucows_76856_Primer) | `PrimerCE.exe` | Runs | Missing: `COREDLL.dll!EnumFontFamiliesW`, `COREDLL.dll!IntersectClipRect`, `COREDLL.dll!SelectClipRgn` |
 | [SEdit](https://archive.org/details/tucows_180072_SEdit) | `seditmips.zip` | Runs |  |
 | [Seven Game](https://archive.org/details/tucows_312195_Seven_Game) | `Seven.exe` | Runs |  |
-| [SnoopSoft Dashboard](https://archive.org/details/tucows_216191_SnoopSoft_Dashboard) | `dashboard.zip` | Runs | Missing: `IMGDECMP.DLL!#1` |
+| [SnoopSoft Dashboard](https://archive.org/details/tucows_216191_SnoopSoft_Dashboard) | `dashboard.zip` | Runs |  |
 | [Soccer Kid Folder](https://archive.org/details/soccer-kid-folder) | `Soccer Kid Folder.zip` | Runs |  |
 | [Sorcery PDA](https://archive.org/details/tucows_308748_Sorcery_PDA) | `InstallDXA.exe` | Runs |  |
 | [SpreadCE for Windows CE 3.12 2022-08-03](https://archive.org/details/spreadce-312-20220803) | `PPC/spreppcs.zip` | Runs | Missing: `COREDLL.dll!sh__itoi64`, `COREDLL.dll!sh__muli64`, `COREDLL.dll!sh__divi64` |
-| [Stock Manager](https://archive.org/details/tucows_222355_Stock_Manager) | `pkpcstocks_setup.exe` | Runs | Missing: `COREDLL.dll!CeOidGetInfo`, `COREDLL.dll!CeFindFirstDatabase`, `COREDLL.dll!CeFindNextDatabase` |
+| [Stock Manager](https://archive.org/details/tucows_222355_Stock_Manager) | `pkpcstocks_setup.exe` | Runs |  |
 | [TZO Dynamic DNS](https://archive.org/details/tucows_277018_TZO_Dynamic_DNS) | `tzopocketpc.zip` | Runs |  |
 | [UniversalRemoteCE](https://archive.org/details/tucows_245237_UniversalRemoteCE) | `UniversalRemote_trial.exe` | Runs |  |
 | [VoiceRecorder](https://archive.org/details/tucows_289072_VoiceRecorder) | `VoiceRecorderSetup_TRIAL_tucows.exe` | Runs | Missing: `COREDLL.dll!acmDriverEnum`, `COREDLL.dll!acmDriverOpen`, `COREDLL.dll!acmMetrics` |
@@ -140,10 +142,8 @@ Starts and draws the game or program.
 | [WinEyes](https://archive.org/details/tucows_226355_WinEyes) | `wineyesce.zip` | Runs |  |
 | [XLISP-Plus](https://archive.org/details/tucows_32693_XLISP-Plus) | `xl21gce.zip` | Runs | Missing: `COREDLL.dll!IntersectClipRect` |
 | [Yotz](https://archive.org/details/tucows_32181_Yotz) | `yotzdemo.exe` | Runs |  |
-| [ZIO Simcity 2000](https://archive.org/details/zio-simcity-2000) | `ZIO_Simcity_2000 v1.00.cab` | Runs | Missing: `COREDLL.dll!GetPaletteEntries` |
-| [ZIO Simcity 2000](https://archive.org/details/zio-simcity-2000) | `ZIO Simcity 2000 v1.01 Patched Scrollbars.cab` | Runs | Missing: `COREDLL.dll!GetPaletteEntries` |
 
-## 🟡 Partly works (154)
+## 🟡 Partly works (156)
 
 Imports and starts, but the screen stays blank, draws nothing, or stops soon.
 
@@ -159,10 +159,9 @@ Imports and starts, but the screen stays blank, draws nothing, or stops soon.
 | [Blaster](https://archive.org/details/tucows_234823_Blaster) | `BlasterDemo.zip` | No frames |  |
 | [Book Bag](https://archive.org/details/tucows_251297_Book_Bag) | `bookbag_trial_pocket.exe` | Exits at once |  |
 | [Bubblets](https://archive.org/details/tucows_32120_Bubblets) | `bubblets.zip` | Exits at once | The game stopped on something the emulator cannot do yet. |
-| [BugLord 1.0](https://archive.org/details/buglord-1.0) | `for_Pocket_PC_PPC.STRONGARM.cab` | No frames | Missing: `IMGDECMP.DLL!#1` |
-| [buglord-pocketpc-1.00](https://archive.org/details/buglord-pocketpc-1.00) | `for_Pocket_PC_PPC.STRONGARM.cab` | No frames | Missing: `IMGDECMP.DLL!#1` |
 | [CE6b](https://archive.org/details/tucows_52638_CE6b) | `ce6b_hpc.zip` | Stops later |  |
 | [CEBall](https://archive.org/details/tucows_32077_CEBall) | `CEBall_All.zip` | Blank screen |  |
+| [CEDBView](https://archive.org/details/tucows_38929_CEDBView) | `cedbview.zip` | No frames |  |
 | [CEWedge](https://archive.org/details/tucows_163947_CEWedge) | `cewedge.exe` | Exits at once |  |
 | [CEWedge](https://archive.org/details/tucows_259055_CEWedge) | `cewedge.exe` | Exits at once |  |
 | [Chinese Input](https://archive.org/details/tucows_32573_Chinese_Input) | `cimesh.zip` | Blank screen |  |
@@ -239,8 +238,9 @@ Imports and starts, but the screen stays blank, draws nothing, or stops soon.
 | [Pocket Genesis](https://archive.org/details/pocket-genesis_202607) | `PocketGenesis.exe` | Blank screen |  |
 | [Pocket Genesis 1.0](https://archive.org/details/pocketgenesis1.0b11) | `PocketGenesis1.0b1arm.zip` | Blank screen |  |
 | [Pocket Genesis 1.0](https://archive.org/details/pocketgenesis1.0b11) | `PocketGenesis1.0b2-38xx.zip` | Blank screen |  |
-| [Pocket Hockey - 2004](https://archive.org/details/tucows_332850_Pocket_Hockey_-_2004) | `pkHockey.exe` | Stops later | Missing: `OLEAUT32.dll!SystemTimeToVariantTime`, `COREDLL.dll!_ecvt` |
+| [Pocket Hockey - 2004](https://archive.org/details/tucows_332850_Pocket_Hockey_-_2004) | `pkHockey.exe` | Stops later | Missing: `COREDLL.dll!_ecvt` |
 | [Pocket Music Box Demo ( ARM)](https://archive.org/details/pocket-music-box-demo-arm) | `Pocket Music Box Demo (ARM).zip` | Exits at once | The game stopped on something the emulator cannot do yet. Missing: `COREDLL.dll!GetClipBox` |
+| [Pocket PC 2003 Upgrade for Compaq iPAQ 3970](https://archive.org/details/3970upgrade_202108) | `psshutxp_eng.xscale.cab` | Blank screen | Missing: `COREDLL.dll!SHCreateShortcut` |
 | [Pocket PC software](https://archive.org/details/spb-polish-cards.arm) | `pocket pc app/7z920-arm.cab` | No frames | Missing: `COREDLL.dll!GetDialogBaseUnits` |
 | [Pocket PC Teletype GPS Full](https://archive.org/details/appspocketpcteletypegpsfull) | `(Apps) - Pocket PC - Teletype GPS Full.zip` | Blank screen | Missing: `COREDLL.dll!GetClipBox`, `COREDLL.dll!MaskBlt`, `GPSDriver.dll!?TTGPS_GetPositionalData@@YA_NPAUTTGPS_POSITIONALDATA@@@Z` |
 | [Pocket Quake II](https://archive.org/details/tucows_315702_Pocket_Quake_II) | `pocketquake2.exe` | Exits at once | The game stopped on something the emulator cannot do yet. |
@@ -303,8 +303,10 @@ Imports and starts, but the screen stays blank, draws nothing, or stops soon.
 | [Word Search](https://archive.org/details/tucows_32179_Word_Search) | `WSDemo.exe` | Exits at once |  |
 | [Xylon GPS Data logging](https://archive.org/details/tucows_227730_Xylon_GPS_Data_logging) | `Xylon_Trial.zip` | Exits at once |  |
 | [Yacht](https://archive.org/details/tucows_168569_Yacht) | `Yacht.zip` | Exits at once |  |
+| [ZIO Simcity 2000](https://archive.org/details/zio-simcity-2000) | `ZIO_Simcity_2000 v1.00.cab` | Blank screen | 只畫出灰色的對話框底色：程式有處理重繪，但沒有畫任何東西。 Missing: `COREDLL.dll!GetPaletteEntries` |
+| [ZIO Simcity 2000](https://archive.org/details/zio-simcity-2000) | `ZIO Simcity 2000 v1.01 Patched Scrollbars.cab` | Blank screen | 只畫出灰色的對話框底色：程式有處理重繪，但沒有畫任何東西。 Missing: `COREDLL.dll!GetPaletteEntries` |
 
-## 🟥 Does not start (390)
+## 🟥 Does not start (388)
 
 Imports, but fails while starting (usually a missing system DLL or an API not emulated yet).
 
@@ -551,7 +553,6 @@ Imports, but fails while starting (usually a missing system DLL or an API not em
 | [Pocket Jongg](https://archive.org/details/tucows_32164_Pocket_Jongg) | `pjv30demo.exe` | Does not start | The game's program file cannot be loaded. |
 | [Pocket Lemmings](https://archive.org/details/pocket-lemmings) | `PocketLemmings.zip` | Does not start |  |
 | [Pocket Painter](https://archive.org/details/tucows_209445_Pocket_Painter) | `PocketPainterEnglish150.ZIP` | Does not start | The game needs a file that comes with the Pocket PC itself. Missing: `mfcce300.dll!#644` |
-| [Pocket PC 2003 Upgrade for Compaq iPAQ 3970](https://archive.org/details/3970upgrade_202108) | `psshutxp_eng.xscale.cab` | Does not start | The game needs a file that is not in the package. Missing: `COREDLL.dll!SHCreateShortcut`, `IMGDECMP.DLL!#1` |
 | [Pocket Piano](https://archive.org/details/tucows_212520_Pocket_Piano) | `PocketPianoEnglish100.ZIP` | Does not start | The game needs a file that comes with the Pocket PC itself. Missing: `mfcce300.dll!#644` |
 | [Pocket Plan](https://archive.org/details/tucows_281294_Pocket_Plan) | `pocketplan.zip` | Does not start | This is a desktop Windows program, not a Pocket PC one. |
 | [Pocket Property Manager](https://archive.org/details/tucows_239407_Pocket_Property_Manager) | `propertysetup.zip` | Does not start | This is a desktop Windows program, not a Pocket PC one. |
@@ -574,7 +575,6 @@ Imports, but fails while starting (usually a missing system DLL or an API not em
 | [PocketMarkup](https://archive.org/details/tucows_252429_PocketMarkup) | `pmu-arm-1.1.0.exe` | Does not start |  |
 | [PocketMySQLAdmin](https://archive.org/details/tucows_269775_PocketMySQLAdmin) | `PPC_PMASetup.exe` | Does not start | The game needs a file that comes with the Pocket PC itself. Missing: `mfcce300.dll!#644` |
 | [PocketRx](https://archive.org/details/tucows_328269_PocketRx) | `prx2003en.zip` | Does not start | This is a desktop Windows program, not a Pocket PC one. |
-| [PocketSol](https://archive.org/details/tucows_279494_PocketSol) | `psol20.zip` | Does not start | The game needs a file that is not in the package. |
 | [PokerHand](https://archive.org/details/tucows_220194_PokerHand) | `PokerHandInst176c.zip` | Does not start | The game stopped on something the emulator cannot do yet. |
 | [POWDER Roguelike Complete Archive](https://archive.org/details/powder-magicsam-pandora) | `WinCE/powder-setup-winCE winmo pocketpc.zip` | Does not start | The game stopped on something the emulator cannot do yet. Missing: `SDL.dll!SDL_Quit`, `SDL.dll!SDL_Init`, `SDL.dll!SDL_SetVideoMode` |
 | [POWDER Roguelike Complete Archive](https://archive.org/details/powder-magicsam-pandora) | `WinCE/powder-barebone-winCE winmo pocketpc.zip` | Does not start | The game stopped on something the emulator cannot do yet. Missing: `SDL.dll!SDL_Quit`, `SDL.dll!SDL_Init`, `SDL.dll!SDL_SetVideoMode` |

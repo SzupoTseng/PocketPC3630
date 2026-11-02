@@ -188,6 +188,36 @@
       }
     },
     {
+      "id": "missing-system-library",
+      "when_missing": [
+        "wininet",
+        "cellcore",
+        "htmlview",
+        "doclist",
+        "imgdecmp",
+        "office",
+        "cemapi",
+        "pimstore",
+        "sms.dll",
+        "tapi",
+        "phone.dll",
+        "richink",
+        "inkx",
+        "voicectl",
+        "notify",
+        "urlmon",
+        "ossvcs"
+      ],
+      "title": {
+        "en": "The program needs a part of Windows Mobile that PocketPC3630 does not emulate yet.",
+        "zh-Hant": "這個程式需要 PocketPC3630 尚未模擬的 Windows Mobile 系統元件。"
+      },
+      "hint": {
+        "en": "Missing: {missing}. These come with Windows Mobile itself and cannot be added to the package; the program cannot run for now. The compatibility list on GitHub tracks what is missing.",
+        "zh-Hant": "缺少：{missing}。這些是 Windows Mobile 系統本身的元件，無法放進遊戲包，所以這個程式暫時不能執行。GitHub 上的相容性清單會記錄缺少哪些元件。"
+      }
+    },
+    {
       "id": "missing-library",
       "when_missing": [
         ""

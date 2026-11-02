@@ -217,6 +217,8 @@ impl WinCeDispatcher {
         aygshell::register(&mut d);
         commctrl::register(&mut d);
         coredll::register_shell_folders(&mut d, "ceshell.dll");
+        coredll::register_oleaut32(&mut d);
+        coredll::register_imgdecmp(&mut d);
         game_dlls::register(&mut d);
         gles::register(&mut d);
         gx::register(&mut d);
