@@ -73,7 +73,7 @@ PocketPC3630 runs all of them:
 
 | Processor | Devices | Status |
 |---|---|---|
-| **ARM** (StrongARM, XScale, PXA, OMAP, S3C) | Compaq iPAQ, HP iPAQ, Dell Axim, HP Jornada 56x | Runs: Unicorn JIT on Windows and Android, a portable interpreter in the browser |
+| **ARM** (StrongARM, XScale, PXA, OMAP, S3C) | Compaq iPAQ, HP iPAQ, Dell Axim, HP Jornada 56x | Runs: Unicorn JIT on Windows, a portable interpreter on Android and in the browser |
 | **MIPS** (NEC VR41xx) | Casio Cassiopeia E-115/E-125, EM500 | Runs: new interpreter with delay slots, likely branches and unaligned loads |
 | **SH3** (Hitachi SuperH) | HP Jornada 54x | Runs: new interpreter, plus SH-specific runtime helpers |
 
@@ -118,8 +118,8 @@ We downloaded **every Pocket PC item we could find on archive.org**, imported ea
 
 | | Result | Count |
 |---|---|---:|
-| ✅ | **Runs** — starts and draws the game or program | **93** |
-| 🟡 | **Partly works** — starts, but the screen stays blank or it stops early | 156 |
+| ✅ | **Runs** — starts and draws the game or program | **95** |
+| 🟡 | **Partly works** — starts, but the screen stays blank or it stops early | 154 |
 | 🟥 | **Does not start** — imports, then fails while starting | 390 |
 | ⛔ | **Not importable** — no Pocket PC program in the download | 384 |
 | ⚪ | **Not tested** — no package in the item, or the download failed | 420 |
@@ -186,7 +186,6 @@ target/release/pockethle play MyGame.zip
 - .NET Compact Framework programs, Wise installers and x86 builds do not run.
 - Programs that use MFC need `mfcce300.dll`. The web version fetches it for you from Microsoft's Pocket PC 2000 SDK on the Internet Archive. By hand: open [the SDK](https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe) with 7-Zip and take `Program Files/mfc/lib/arm/mfcce300.dll` and `olece300.dll` (`mips` or `sh3` for those builds).
 - Pocket Slay runs at about 1.5 frames per second in the browser.
-- The Android app is built from this code but has only been tested with ARM games so far.
 
 ## ⚖️ Legal
 

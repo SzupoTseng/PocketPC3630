@@ -82,7 +82,7 @@ fn apply_theme(ctx: &egui::Context) {
     visuals.window_fill = Color32::from_rgb(26, 27, 30);
     visuals.extreme_bg_color = Color32::from_rgb(13, 14, 16);
     visuals.selection.bg_fill = accent.linear_multiply(0.35);
-    visuals.selection.stroke = egui::Stroke::new(1.0, accent);
+    visuals.selection.stroke = egui::Stroke::new(1.0_f32, accent);
     visuals.hyperlink_color = accent;
     visuals.window_rounding = 14.0.into();
     visuals.menu_rounding = 10.0.into();
@@ -1268,13 +1268,26 @@ impl PocketLauncher {
             if let Some(d) = last_dir {
                 dialog = dialog.set_directory(d);
             }
-            let Some(path) = dialog.pick_file() else {
+            // Several files at once (a game plus the DLLs it needs) are put
+            // into one package first, as the browser version does.
+            let Some(picked) = dialog.pick_files().filter(|p| !p.is_empty()) else {
                 let _ = tx.send(UiEvent::ImportFinished(Err("cancelled".into())));
                 return;
             };
+            let path = if picked.len() == 1 {
+                picked[0].clone()
+            } else {
+                match pocket_library::bundle::bundle_files(&picked, &library_root.join(".bundles")) {
+                    Ok(path) => path,
+                    Err(e) => {
+                        let _ = tx.send(UiEvent::ImportFinished(Err(format!("Could not put the files together: {e}"))));
+                        return;
+                    }
+                }
+            };
             let result = (|| -> Result<String, String> {
                 let mut lib = Library::open(&library_root).map_err(|e| e.to_string())?;
-                let parent = path
+                let parent = picked[0]
                     .parent()
                     .map(|p| p.to_path_buf())
                     .unwrap_or(library_root.clone());
@@ -1283,7 +1296,11 @@ impl PocketLauncher {
                 // The same importer as Android and the browser: a download that
                 // is not a package is looked into through the knowledge base,
                 // and a failure comes back explained.
-                let name = match lib.import_any(&path) {
+                let imported = lib.import_any(&path);
+                if picked.len() > 1 {
+                    let _ = std::fs::remove_file(&path);
+                }
+                let name = match imported {
                     Ok(entry) => entry.display_name.clone(),
                     Err(e) => {
                         let problem = pocket_library::import_kb::KnowledgeBase::load(&library_root)

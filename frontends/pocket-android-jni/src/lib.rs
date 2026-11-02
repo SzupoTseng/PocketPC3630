@@ -52,7 +52,13 @@ pub extern "system" fn Java_com_pockethle_app_NativeBridge_backendName<'local>(
     env: JNIEnv<'local>,
     _class: JClass<'local>,
 ) -> jstring {
-    let name = if cfg!(feature = "unicorn") { "Unicorn (ARM)" } else { "ARM interpreter" };
+    // The interpreter runs every processor; "ARM interpreter" was shown for
+    // SH3 and MIPS games too.
+    let name = if cfg!(feature = "unicorn") {
+        "Unicorn (ARM, MIPS) / interpreter (SH3)"
+    } else {
+        "interpreter (ARM, MIPS, SH3)"
+    };
     new_jstring(&env, name.to_string())
 }
 

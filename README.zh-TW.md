@@ -57,7 +57,7 @@ PocketPC3630 **不附任何遊戲，也不附微軟的檔案**。請使用你合
 
 | 處理器 | 機種 | 狀態 |
 |---|---|---|
-| **ARM**（StrongARM、XScale、PXA、OMAP、S3C） | Compaq iPAQ、HP iPAQ、Dell Axim、HP Jornada 56x | 可執行：Windows 與 Android 用 Unicorn JIT，瀏覽器用可攜式直譯器 |
+| **ARM**（StrongARM、XScale、PXA、OMAP、S3C） | Compaq iPAQ、HP iPAQ、Dell Axim、HP Jornada 56x | 可執行：Windows 用 Unicorn JIT，Android 與瀏覽器用可攜式直譯器 |
 | **MIPS**（NEC VR41xx） | Casio Cassiopeia E-115/E-125、EM500 | 可執行：新的直譯器，支援延遲槽、likely 分支與非對齊存取 |
 | **SH3**（Hitachi SuperH） | HP Jornada 54x | 可執行：新的直譯器，加上 SH 專用的執行期輔助函式 |
 
@@ -99,8 +99,8 @@ PocketPC3630 **不附任何遊戲，也不附微軟的檔案**。請使用你合
 
 | | 結果 | 數量 |
 |---|---|---:|
-| ✅ | **可執行**：能啟動並畫出遊戲或程式畫面 | **93** |
-| 🟡 | **部分可用**：能啟動，但畫面空白或很快停止 | 156 |
+| ✅ | **可執行**：能啟動並畫出遊戲或程式畫面 | **95** |
+| 🟡 | **部分可用**：能啟動，但畫面空白或很快停止 | 154 |
 | 🟥 | **無法啟動**：能匯入，啟動時失敗 | 390 |
 | ⛔ | **無法匯入**：下載檔裡沒有 Pocket PC 程式 | 384 |
 | ⚪ | **未測試**：項目沒有套件，或下載失敗 | 420 |
@@ -156,7 +156,6 @@ target/release/pockethle play MyGame.zip
 - .NET Compact Framework 程式、Wise 安裝程式、x86 版本無法執行。
 - 使用 MFC 的程式需要 `mfcce300.dll`。網頁版會自動從 Internet Archive 上微軟的 Pocket PC 2000 SDK 取得。手動方式：用 7-Zip 打開 [SDK](https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe)，取出 `Program Files/mfc/lib/arm/mfcce300.dll` 與 `olece300.dll`（MIPS、SH3 版改用 `mips`、`sh3` 資料夾）。
 - Pocket Slay 在瀏覽器中約 1.5 幀/秒。
-- Android 版已用這份程式碼建置，但目前只用 ARM 遊戲測試過。
 
 ## ⚖️ 法律聲明
 

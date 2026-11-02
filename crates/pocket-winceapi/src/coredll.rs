@@ -401,6 +401,7 @@ pub fn register(d: &mut WinCeDispatcher) {
     d.register_handler(dll, "wvsprintfW", vswprintf);
     d.register_handler(dll, "GetSystemDefaultLCID", en_us_lang_id);
     d.register_handler(dll, "ExitThread", exit_thread);
+    register_common_gaps(d, dll);
     d.register_handler(dll, "GetTextMetricsW", get_text_metrics_w);
     d.register_handler(dll, "SendDlgItemMessageW", send_dlg_item_message_w);
     d.register_handler(dll, "ShellExecuteEx", shell_execute_ex);
@@ -505,9 +506,7 @@ pub fn register(d: &mut WinCeDispatcher) {
     d.register_constant(dll, "MapWindowPoints", 1, one_returning);
     d.register_constant(dll, "ClipCursor", 1, one_returning);
     d.register_constant(dll, "SetCursorPos", 1, one_returning);
-    d.register_constant(dll, "GetSystemPaletteEntries", 0, zero_returning);
     d.register_constant(dll, "RealizePalette", 1, one_returning);
-    d.register_constant(dll, "CreatePalette", 0xDEAD_5709, one_returning);
     d.register_handler(dll, "SetWindowTextW", set_window_text_w);
     d.register_handler(dll, "SetWindowTextA", set_window_text_a);
     d.register_handler(dll, "GetWindowTextW", get_window_text_w);
@@ -22086,4 +22085,396 @@ fn register_cpu_helpers(d: &mut WinCeDispatcher, dll: &str) {
     for (name, handler) in table {
         d.register_handler(dll, name, *handler);
     }
+}
+
+// ---------- frequently missing calls ----------
+//
+// The calls the compatibility sweep found missing most often (each in 3 to
+// 9 programs). Most need only a plausible answer: there is one window, no
+// caret to blink, no shell tray and no file dialog to show.
+
+thread_local! {
+    static CARET: std::cell::Cell<(i32, i32)> = const { std::cell::Cell::new((0, 0)) };
+    static NEXT_CLIPBOARD_FORMAT: std::cell::Cell<u32> = const { std::cell::Cell::new(0xC000) };
+}
+
+fn returns_true(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+fn returns_zero(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(0))
+}
+
+/// `SetCaretPos(x, y)`; `GetCaretPos(POINT*)` reads it back.
+fn set_caret_pos(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let (x, y) = (ctx.arg_u32(0)? as i32, ctx.arg_u32(1)? as i32);
+    CARET.with(|c| c.set((x, y)));
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+fn get_caret_pos(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let p = ctx.arg_u32(0)?;
+    if p == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let (x, y) = CARET.with(|c| c.get());
+    ctx.cpu.write_mem(p, &x.to_le_bytes())?;
+    ctx.cpu.write_mem(p + 4, &y.to_le_bytes())?;
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+/// `CreatePenIndirect(const LOGPEN*)`: style, width as a POINT, colour.
+fn create_pen_indirect(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let p = ctx.arg_u32(0)?;
+    if p == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let width = ctx.cpu.read_u32_le(p + 4)?;
+    let color = ctx.cpu.read_u32_le(p + 12)?;
+    Ok(DispatchOutcome::ReturnedR0(ctx.kernel.gdi.create_pen(color, width.max(1))))
+}
+
+/// `CreatePatternBrush(hbm)`: a brush in the bitmap's average colour, which
+/// is what a fill with a small dither pattern looks like from a distance.
+fn create_pattern_brush(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let hbm = ctx.arg_u32(0)?;
+    let colour = ctx.kernel.gdi.bitmap(hbm).map_or(0x00C0_C0C0, |b| {
+        let (mut r, mut g, mut bl, mut n) = (0u64, 0u64, 0u64, 0u64);
+        for px in b.pixels.chunks_exact(2) {
+            let v = u16::from_le_bytes([px[0], px[1]]) as u64;
+            r += (v >> 11) * 255 / 31;
+            g += ((v >> 5) & 63) * 255 / 63;
+            bl += (v & 31) * 255 / 31;
+            n += 1;
+        }
+        let n = n.max(1);
+        ((bl / n) << 16 | (g / n) << 8 | (r / n)) as u32
+    });
+    Ok(DispatchOutcome::ReturnedR0(ctx.kernel.gdi.create_solid_brush(colour)))
+}
+
+/// `ImageList_ReplaceIcon(himl, i, hicon)`: icons are not drawn, but the
+/// list grows by one blank image when `i` is -1, as the caller expects.
+fn image_list_replace_icon(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let himl = ctx.arg_u32(0)?;
+    let i = ctx.arg_u32(1)?;
+    let Some(list) = ctx.kernel.image_lists.get_mut(&himl) else {
+        return Ok(DispatchOutcome::ReturnedR0(u32::MAX));
+    };
+    if i != u32::MAX {
+        return Ok(DispatchOutcome::ReturnedR0(i));
+    }
+    let n = (list.cx * list.cy) as usize;
+    list.images.push((vec![0; n], vec![true; n]));
+    Ok(DispatchOutcome::ReturnedR0(list.images.len() as u32 - 1))
+}
+
+/// `RegisterClipboardFormatW(name)`: a new format id each time.
+fn register_clipboard_format(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(NEXT_CLIPBOARD_FORMAT.with(|c| {
+        let v = c.get();
+        c.set(v + 1);
+        v
+    })))
+}
+
+/// `CompareFileTime(a, b)`: -1, 0 or 1.
+fn compare_file_time(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let (a, b) = (ctx.arg_u32(0)?, ctx.arg_u32(1)?);
+    let read = |ctx: &mut CallCtx<'_>, p: u32| -> Result<u64, KernelError> {
+        Ok(ctx.cpu.read_u32_le(p)? as u64 | (ctx.cpu.read_u32_le(p + 4)? as u64) << 32)
+    };
+    let (x, y) = (read(ctx, a)?, read(ctx, b)?);
+    Ok(DispatchOutcome::ReturnedR0(match x.cmp(&y) {
+        std::cmp::Ordering::Less => u32::MAX,
+        std::cmp::Ordering::Equal => 0,
+        std::cmp::Ordering::Greater => 1,
+    }))
+}
+
+/// Fill a caller's buffer of `cch` wide chars, or report the size needed.
+fn answer_wide(ctx: &mut CallCtx<'_>, buf: u32, cch: u32, text: &str) -> Result<DispatchOutcome, KernelError> {
+    let needed = text.encode_utf16().count() as u32 + 1;
+    if cch == 0 || buf == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(needed));
+    }
+    if cch < needed {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    write_wide_str(ctx.cpu, buf, cch, text)?;
+    Ok(DispatchOutcome::ReturnedR0(needed))
+}
+
+fn read_systemtime(ctx: &mut CallCtx<'_>, p: u32) -> Result<[u16; 8], KernelError> {
+    let b = ctx.cpu.read_mem(p, 16)?;
+    let mut t = [0u16; 8];
+    for (i, v) in t.iter_mut().enumerate() {
+        *v = u16::from_le_bytes([b[i * 2], b[i * 2 + 1]]);
+    }
+    Ok(t)
+}
+
+fn now_systemtime() -> [u16; 8] {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    // The same plausible date as GetLocalTime: 2026-01-01, the real time of day.
+    [2026, 1, 4, 1, ((secs / 3600) % 24) as u16, ((secs / 60) % 60) as u16, (secs % 60) as u16, 0]
+}
+
+/// `GetDateFormatW(lcid, flags, const SYSTEMTIME*, format, buf, cch)`, US short date.
+fn get_date_format_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let st = ctx.arg_u32(2)?;
+    let buf = ctx.arg_u32(4)?;
+    let cch = ctx.arg_u32(5)?;
+    let t = if st != 0 { read_systemtime(ctx, st)? } else { now_systemtime() };
+    answer_wide(ctx, buf, cch, &format!("{}/{}/{}", t[1], t[3], t[0]))
+}
+
+/// `GetTimeFormatW(lcid, flags, const SYSTEMTIME*, format, buf, cch)`, US time.
+fn get_time_format_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let st = ctx.arg_u32(2)?;
+    let buf = ctx.arg_u32(4)?;
+    let cch = ctx.arg_u32(5)?;
+    let t = if st != 0 { read_systemtime(ctx, st)? } else { now_systemtime() };
+    let (h, ampm) = match t[4] { 0 => (12, "AM"), 1..=11 => (t[4], "AM"), 12 => (12, "PM"), h => (h - 12, "PM") };
+    answer_wide(ctx, buf, cch, &format!("{}:{:02}:{:02} {}", h, t[5], t[6], ampm))
+}
+
+/// `GetTempPathW(cch, buf)`.
+fn get_temp_path_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let cch = ctx.arg_u32(0)?;
+    let buf = ctx.arg_u32(1)?;
+    match answer_wide(ctx, buf, cch, "\\Temp\\")? {
+        DispatchOutcome::ReturnedR0(n) if n > 0 && cch >= n => Ok(DispatchOutcome::ReturnedR0(n - 1)),
+        other => Ok(other),
+    }
+}
+
+/// `CompareStringW(lcid, flags, s1, n1, s2, n2)`: CSTR_LESS_THAN (1),
+/// CSTR_EQUAL (2) or CSTR_GREATER_THAN (3); NORM_IGNORECASE is flag 1.
+fn compare_string_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let flags = ctx.arg_u32(1)?;
+    let (p1, n1, p2, n2) = (ctx.arg_u32(2)?, ctx.arg_u32(3)? as i32, ctx.arg_u32(4)?, ctx.arg_u32(5)? as i32);
+    let read = |ctx: &mut CallCtx<'_>, p: u32, n: i32| -> Result<String, KernelError> {
+        let w = if n < 0 { read_wstr(ctx, p, 4096)? } else {
+            let b = ctx.cpu.read_mem(p, n as u32 * 2)?;
+            b.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect()
+        };
+        Ok(String::from_utf16_lossy(&w))
+    };
+    let (mut a, mut b) = (read(ctx, p1, n1)?, read(ctx, p2, n2)?);
+    if flags & 1 != 0 {
+        a = a.to_lowercase();
+        b = b.to_lowercase();
+    }
+    Ok(DispatchOutcome::ReturnedR0(match a.cmp(&b) {
+        std::cmp::Ordering::Less => 1,
+        std::cmp::Ordering::Equal => 2,
+        std::cmp::Ordering::Greater => 3,
+    }))
+}
+
+/// `towupper(c)`.
+fn tow_upper(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let c = ctx.arg_u32(0)? & 0xFFFF;
+    let up = char::from_u32(c).and_then(|ch| ch.to_uppercase().next()).map_or(c, |u| u as u32);
+    Ok(DispatchOutcome::ReturnedR0(if up <= 0xFFFF { up } else { c }))
+}
+
+/// `StringCchLengthW(psz, cchMax, size_t *pcch)`.
+fn string_cch_length_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    const STRSAFE_E_INVALID_PARAMETER: u32 = 0x8007_0057;
+    let (p, max, out) = (ctx.arg_u32(0)?, ctx.arg_u32(1)?, ctx.arg_u32(2)?);
+    if p == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(STRSAFE_E_INVALID_PARAMETER));
+    }
+    let len = read_wstr(ctx, p, max.min(0x10000))?.len() as u32;
+    if len >= max {
+        return Ok(DispatchOutcome::ReturnedR0(STRSAFE_E_INVALID_PARAMETER));
+    }
+    if out != 0 {
+        ctx.cpu.write_mem(out, &len.to_le_bytes())?;
+    }
+    Ok(DispatchOutcome::ReturnedR0(0))
+}
+
+/// `_ltow(value, buffer, radix)`.
+fn ltow(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let (v, buf, radix) = (ctx.arg_u32(0)? as i32, ctx.arg_u32(1)?, ctx.arg_u32(2)?.clamp(2, 36));
+    let mut digits = Vec::new();
+    let neg = radix == 10 && v < 0;
+    let mut n = if radix == 10 { (v as i64).unsigned_abs() } else { v as u32 as u64 };
+    loop {
+        digits.push(std::char::from_digit((n % radix as u64) as u32, radix).unwrap_or('0'));
+        n /= radix as u64;
+        if n == 0 {
+            break;
+        }
+    }
+    if neg {
+        digits.push('-');
+    }
+    let text: String = digits.into_iter().rev().collect();
+    write_wide_str(ctx.cpu, buf, 34, &text)?;
+    Ok(DispatchOutcome::ReturnedR0(buf))
+}
+
+/// `GetMonitorInfo(hmon, MONITORINFO*)`: the panel is the only monitor.
+fn get_monitor_info(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let p = ctx.arg_u32(1)?;
+    if p == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let (w, h) = (ctx.kernel.framebuffer.width, ctx.kernel.framebuffer.height);
+    let mut b = Vec::with_capacity(36);
+    for v in [0u32, 0, w, h, 0, 0, w, h, 1] {
+        b.extend_from_slice(&v.to_le_bytes());
+    }
+    ctx.cpu.write_mem(p + 4, &b)?;
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+/// `GetDlgItemTextW(hDlg, id, buf, max)` is `GetWindowTextW(GetDlgItem(...))`.
+fn get_dlg_item_text_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let (dialog, id, buf, max) = (ctx.arg_u32(0)?, ctx.arg_u32(1)?, ctx.arg_u32(2)?, ctx.arg_u32(3)?);
+    ctx.cpu.write_reg(ArmReg::R0, dialog)?;
+    ctx.cpu.write_reg(ArmReg::R1, id)?;
+    let DispatchOutcome::ReturnedR0(item) = get_dlg_item(ctx)? else {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    };
+    if item == 0 {
+        if buf != 0 && max != 0 {
+            ctx.cpu.write_mem(buf, &[0, 0])?;
+        }
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    for (reg, v) in [(ArmReg::R0, item), (ArmReg::R1, buf), (ArmReg::R2, max)] {
+        ctx.cpu.write_reg(reg, v)?;
+    }
+    get_window_text_w(ctx)
+}
+
+/// `CheckMenuRadioItem(hmenu, first, last, check, flags)`: no menu is drawn.
+fn check_menu_radio_item(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+fn register_common_gaps(d: &mut WinCeDispatcher, dll: &str) {
+    type H = fn(&mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError>;
+    let table: &[(&str, H)] = &[
+        ("CreateCaret", returns_true), ("DestroyCaret", returns_true), ("ShowCaret", returns_true),
+        ("HideCaret", returns_true), ("SetCaretPos", set_caret_pos), ("GetCaretPos", get_caret_pos),
+        // No file dialog to show: the user "cancelled", which programs handle.
+        ("GetOpenFileNameW", returns_zero), ("GetSaveFileNameW", returns_zero),
+        ("Shell_NotifyIcon", returns_true), ("CreatePenIndirect", create_pen_indirect),
+        ("CreatePatternBrush", create_pattern_brush), ("ImageList_ReplaceIcon", image_list_replace_icon),
+        ("ImageList_AddIcon", image_list_replace_icon), ("DestroyIcon", returns_true), ("DrawIconEx", returns_true),
+        ("RegisterClipboardFormatW", register_clipboard_format), ("GetVersionEx", get_version_ex_w),
+        ("GetDateFormatW", get_date_format_w), ("GetTimeFormatW", get_time_format_w),
+        ("CompareFileTime", compare_file_time), ("LoadLibraryExW", load_library_w),
+        ("SetScrollPos", returns_zero), ("SetScrollRange", returns_true), ("SetScrollInfo", returns_zero),
+        ("GetScrollInfo", returns_zero), ("GetTempPathW", get_temp_path_w), ("CreateRectRgn", returns_true),
+        ("ferror", returns_zero), ("_ltow", ltow), ("CompareStringW", compare_string_w), ("towupper", tow_upper),
+        ("StringCchLengthW", string_cch_length_w), ("GetMonitorInfo", get_monitor_info),
+        ("MonitorFromWindow", returns_true), ("GetMouseMovePoints", returns_zero),
+        ("GetDlgItemTextW", get_dlg_item_text_w), ("CheckMenuRadioItem", check_menu_radio_item),
+        ("CreatePalette", create_palette), ("GetPaletteEntries", get_palette_entries),
+        ("SetPaletteEntries", set_palette_entries), ("GetSystemPaletteEntries", get_system_palette_entries),
+    ];
+    for (name, handler) in table {
+        d.register_handler(dll, name, *handler);
+    }
+}
+
+// ---------- palettes ----------
+//
+// A palette keeps the colours its creator gave it, so a program that reads
+// them back (SimCity 2000 calls GetPaletteEntries right after
+// CreatePalette) gets real colours instead of a failure.
+
+thread_local! {
+    static PALETTES: std::cell::RefCell<std::collections::HashMap<u32, Vec<u32>>> = std::cell::RefCell::new(std::collections::HashMap::new());
+    static NEXT_PALETTE: std::cell::Cell<u32> = const { std::cell::Cell::new(0xDEAD_5700) };
+}
+
+/// The 256-colour system palette: the 20 static Windows colours around a
+/// 6x6x6 colour cube, as PALETTEENTRY values (red, green, blue, flags).
+fn system_palette() -> Vec<u32> {
+    let mut p = vec![0u32; 256];
+    let statics: [(u8, u8, u8); 20] = [
+        (0, 0, 0), (128, 0, 0), (0, 128, 0), (128, 128, 0), (0, 0, 128), (128, 0, 128), (0, 128, 128), (192, 192, 192),
+        (192, 220, 192), (166, 202, 240), (255, 251, 240), (160, 160, 164), (128, 128, 128), (255, 0, 0), (0, 255, 0),
+        (255, 255, 0), (0, 0, 255), (255, 0, 255), (0, 255, 255), (255, 255, 255),
+    ];
+    for (i, (r, g, b)) in statics.iter().enumerate() {
+        let at = if i < 10 { i } else { 236 + i };
+        p[at] = *r as u32 | (*g as u32) << 8 | (*b as u32) << 16;
+    }
+    for i in 0..216u32 {
+        let (r, g, b) = (i % 6 * 51, i / 6 % 6 * 51, i / 36 * 51);
+        p[10 + i as usize] = r | g << 8 | b << 16;
+    }
+    p
+}
+
+/// `CreatePalette(const LOGPALETTE*)`: version, count, then the entries.
+fn create_palette(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let p = ctx.arg_u32(0)?;
+    if p == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let count = (ctx.cpu.read_u32_le(p)? >> 16).min(1024);
+    let bytes = ctx.cpu.read_mem(p + 4, count * 4)?;
+    let entries = bytes.chunks_exact(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect();
+    let handle = NEXT_PALETTE.with(|n| {
+        let h = n.get();
+        n.set(h + 1);
+        h
+    });
+    PALETTES.with(|t| t.borrow_mut().insert(handle, entries));
+    Ok(DispatchOutcome::ReturnedR0(handle))
+}
+
+/// `GetPaletteEntries(hpal, start, count, PALETTEENTRY*)`: entries copied.
+fn get_palette_entries(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let (hpal, start, count, out) = (ctx.arg_u32(0)?, ctx.arg_u32(1)?, ctx.arg_u32(2)?, ctx.arg_u32(3)?);
+    let entries = PALETTES.with(|t| t.borrow().get(&hpal).cloned()).unwrap_or_else(system_palette);
+    if out == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(entries.len() as u32));
+    }
+    let take: Vec<u8> = entries.iter().skip(start as usize).take(count as usize).flat_map(|e| e.to_le_bytes()).collect();
+    ctx.cpu.write_mem(out, &take)?;
+    Ok(DispatchOutcome::ReturnedR0(take.len() as u32 / 4))
+}
+
+/// `SetPaletteEntries(hpal, start, count, const PALETTEENTRY*)`.
+fn set_palette_entries(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let (hpal, start, count, src) = (ctx.arg_u32(0)?, ctx.arg_u32(1)?, ctx.arg_u32(2)?.min(1024), ctx.arg_u32(3)?);
+    let bytes = ctx.cpu.read_mem(src, count * 4)?;
+    let n = PALETTES.with(|t| {
+        let mut t = t.borrow_mut();
+        let Some(entries) = t.get_mut(&hpal) else { return 0 };
+        let mut n = 0;
+        for (i, c) in bytes.chunks_exact(4).enumerate() {
+            if let Some(e) = entries.get_mut(start as usize + i) {
+                *e = u32::from_le_bytes([c[0], c[1], c[2], c[3]]);
+                n += 1;
+            }
+        }
+        n
+    });
+    Ok(DispatchOutcome::ReturnedR0(n))
+}
+
+/// `GetSystemPaletteEntries(hdc, start, count, PALETTEENTRY*)`.
+fn get_system_palette_entries(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let (start, count, out) = (ctx.arg_u32(1)?, ctx.arg_u32(2)?, ctx.arg_u32(3)?);
+    let entries = system_palette();
+    if out == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(256));
+    }
+    let take: Vec<u8> = entries.iter().skip(start as usize).take(count as usize).flat_map(|e| e.to_le_bytes()).collect();
+    ctx.cpu.write_mem(out, &take)?;
+    Ok(DispatchOutcome::ReturnedR0(take.len() as u32 / 4))
 }

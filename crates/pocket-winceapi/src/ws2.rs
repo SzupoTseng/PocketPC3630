@@ -12,7 +12,8 @@ const WSA_VERSION_2_2: u16 = 0x0202;
 const SOCKADDR_IN_SIZE: u32 = 16;
 
 pub fn register(dispatcher: &mut WinCeDispatcher) {
-    for dll in ["ws2.dll", "ws2_32.dll"] {
+    // winsock.dll is the Windows CE 1.1 interface with the same calls.
+    for dll in ["ws2.dll", "ws2_32.dll", "winsock.dll"] {
         dispatcher.register_handler(dll, "WSAStartup", wsa_startup);
         dispatcher.register_handler(dll, "WSACleanup", wsa_cleanup);
         dispatcher.register_handler(dll, "WSAGetLastError", wsa_get_last_error);

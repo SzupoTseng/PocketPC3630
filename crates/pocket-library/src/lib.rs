@@ -32,6 +32,7 @@ use rars::ArchiveReader;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub mod bundle;
 pub mod import_kb;
 pub mod import_problem;
 pub mod keybindings;

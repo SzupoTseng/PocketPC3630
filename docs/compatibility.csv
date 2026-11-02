@@ -1,26 +1,26 @@
 status,group,title,archive_org,file,reason,details,missing_apis
-Runs,Runs,AlarMe,https://archive.org/details/tucows_32528_AlarMe,AlarMe_HPC.exe,,,COREDLL.dll!CreatePenIndirect COREDLL.dll!CompareFileTime COREDLL.dll!RegDeleteKeyW COREDLL.dll!CeRunAppAtTime
+Runs,Runs,AlarMe,https://archive.org/details/tucows_32528_AlarMe,AlarMe_HPC.exe,,,COREDLL.dll!RegDeleteKeyW COREDLL.dll!CeRunAppAtTime
 Runs,Runs,AW RoadLingua,https://archive.org/details/tucows_272210_AW_RoadLingua,rl_ppc.zip,,,
 Runs,Runs,BasiCE,https://archive.org/details/tucows_32347_BasiCE,basice.zip,,,
 Runs,Runs,Bejeweled 2 for Pocket PCs,https://archive.org/details/bejeweled2-ppc,bejeweled2-ppc-v1-30-wm5.cab,,,
 Runs,Runs,Block Breaker Deluxe 2 HD (windows mobile 240x400),https://archive.org/details/block-breaker-deluxe-2-hd,Block Breaker Deluxe 2 HD.cab,,,
 Runs,Runs,Blocks,https://archive.org/details/tucows_240055_Blocks_extracted,Blocks/install.PPC_ARM.CAB,,,
 Runs,Runs,Bomberman '08,https://archive.org/details/bomberman-08,Bomberman'08.cab,,,COREDLL.dll!CryptAcquireContextW COREDLL.dll!ImmSetOpenStatus COREDLL.dll!NLedGetDeviceInfo
-Runs,Runs,Bookworm for Pocket PCs,https://archive.org/details/bookworm_wm5-6,bookworm_wm5-6.cab,,,COREDLL.dll!GetTimeFormatW
+Runs,Runs,Bookworm for Pocket PCs,https://archive.org/details/bookworm_wm5-6,bookworm_wm5-6.cab,,,
 Runs,Runs,Bubble Shooter,https://archive.org/details/tucows_229202_Bubble_Shooter,bubshootce.exe,,,
 Runs,Runs,Bubble Thriller,https://archive.org/details/tucows_230188_Bubble_Thriller,thrillce.exe,,,
-Runs,Runs,Calc98,https://archive.org/details/tucows_212355_Calc98,c9853a.exe,,,COREDLL.dll!SetScrollRange COREDLL.dll!SetScrollPos
-Runs,Runs,Calc98 5.3 WinCE (Extracted),https://archive.org/details/calc-9853-wince,CALC98S.CAB,,,COREDLL.dll!SetScrollRange COREDLL.dll!SetScrollPos
-Runs,Runs,Calc98 5.3 WinCE (Extracted),https://archive.org/details/calc-9853-wince,CALC98A.CAB,,,COREDLL.dll!SetScrollRange COREDLL.dll!SetScrollPos
+Runs,Runs,Calc98,https://archive.org/details/tucows_212355_Calc98,c9853a.exe,,,
+Runs,Runs,Calc98 5.3 WinCE (Extracted),https://archive.org/details/calc-9853-wince,CALC98S.CAB,,,
+Runs,Runs,Calc98 5.3 WinCE (Extracted),https://archive.org/details/calc-9853-wince,CALC98A.CAB,,,
 Runs,Runs,Calendar Search,https://archive.org/details/tucows_32395_Calendar_Search,CalendarSearchMIPS-PR2.exe,,,COREDLL.dll!PegOpenDatabase COREDLL.dll!PegOidGetInfo
-Runs,Runs,CE-Star Suite,https://archive.org/details/tucows_153762_CE-Star_Suite,ver2PkPCARM.zip,,,COREDLL.dll!Shell_NotifyIcon
+Runs,Runs,CE-Star Suite,https://archive.org/details/tucows_153762_CE-Star_Suite,ver2PkPCARM.zip,,,
 Runs,Runs,CE5250,https://archive.org/details/tucows_232364_CE5250,CE5250_PocketPC.zip,,,
 Runs,Runs,CEDBView,https://archive.org/details/tucows_38929_CEDBView,cedbview.zip,,,COREDLL.dll!CeFindFirstDatabase COREDLL.dll!CeFindNextDatabase
 Runs,Runs,CEniffer,https://archive.org/details/tucows_32190_CEniffer,CEnifferMIPS.zip.CAB,,,
 Runs,Runs,CETerm,https://archive.org/details/tucows_232362_CETerm,CETerm_PocketPC31.zip,,,
 Runs,Runs,CEVT220,https://archive.org/details/tucows_232369_CEVT220,CEVT220_PocketPC.zip,,,
 Runs,Runs,Chat,https://archive.org/details/tucows_32183_Chat,CHAT.zip,,,
-Runs,Runs,CodeWallet,https://archive.org/details/tucows_32399_CodeWallet,cwppcev101.exe,,,COREDLL.dll!SetScrollInfo COREDLL.dll!GetScrollInfo InkX.dll!InitInkX COREDLL.dll!GetSaveFileNameW
+Runs,Runs,CodeWallet,https://archive.org/details/tucows_32399_CodeWallet,cwppcev101.exe,,,InkX.dll!InitInkX
 Runs,Runs,CommLog,https://archive.org/details/tucows_358883_CommLog,CommLogCEDesktopSetup.zip,,,
 Runs,Runs,Connex,https://archive.org/details/tucows_304510_Connex,Connex_PPC_Setup.exe,,,
 Runs,Runs,CoolCalc,https://archive.org/details/tucows_32301_CoolCalc,coolcalcppc.exe,,,
@@ -33,45 +33,45 @@ Runs,Runs,Dragon Bane II,https://archive.org/details/tucows_273050_Dragon_Bane_I
 Runs,Runs,dsFORTH,https://archive.org/details/tucows_32354_dsFORTH,ds2_b3_Setup.exe,,,
 Runs,Runs,dTree,https://archive.org/details/tucows_32496_dTree,dTree.exe,,,
 Runs,Runs,Elevens Game,https://archive.org/details/tucows_314055_Elevens_Game,Elevens.exe,,,
-Runs,Runs,ELFView - The Extremely Large File Viewer,https://archive.org/details/tucows_330232_ELFView_-_The_Extremely_Large_File_Viewer,ELFViewARM.CAB,,,COREDLL.dll!GetScrollInfo COREDLL.dll!SetScrollInfo
+Runs,Runs,ELFView - The Extremely Large File Viewer,https://archive.org/details/tucows_330232_ELFView_-_The_Extremely_Large_File_Viewer,ELFViewARM.CAB,,,
 Runs,Runs,Fedot's Adventures,https://archive.org/details/fedots-adventures,Fedot's Adventures.cab,,,
 Runs,Runs,Free Cell,https://archive.org/details/tucows_200089_Free_Cell,FreeCell_ARM.zip,,,
 Runs,Runs,Gem Slider,https://archive.org/details/tucows_250046_Gem_Slider,gslidece.exe,,,
 Runs,Runs,GNUChess,https://archive.org/details/tucows_309937_GNUChess,GNUChess.zip,,,COREDLL.dll!PtInRegion COREDLL.dll!CreateRectRgnIndirect
 Runs,Runs,Handy Paint,https://archive.org/details/handy-paint,HandyPaint.CAB,,,COREDLL.dll!CreateAcceleratorTableW
-Runs,Runs,Hanoi Tower,https://archive.org/details/tucows_243676_Hanoi_Tower,CEZebra100b2.exe,,,COREDLL.dll!ferror
-Runs,Runs,HPC Loan Manager,https://archive.org/details/tucows_32432_HPC_Loan_Manager,hpcloan.zip,,,COREDLL.dll!CeFindFirstDatabase COREDLL.dll!CeFindNextDatabase COREDLL.dll!CeOidGetInfo COREDLL.dll!GetDateFormatW COREDLL.dll!GetTimeFormatW
-Runs,Runs,HPC/PPC Stock Manager,https://archive.org/details/tucows_32412_HPC_PPC_Stock_Manager,hpcstock.zip,,,COREDLL.dll!CeOidGetInfo COREDLL.dll!CeFindFirstDatabase COREDLL.dll!CeFindNextDatabase COREDLL.dll!GetDateFormatW COREDLL.dll!GetTimeFormatW
-Runs,Runs,IntelliGOLF Par,https://archive.org/details/tucows_32414_IntelliGOLF_Par,igtparce.exe,,,COREDLL.dll!GetDateFormatW
+Runs,Runs,Hanoi Tower,https://archive.org/details/tucows_243676_Hanoi_Tower,CEZebra100b2.exe,,,
+Runs,Runs,HPC Loan Manager,https://archive.org/details/tucows_32432_HPC_Loan_Manager,hpcloan.zip,,,COREDLL.dll!CeFindFirstDatabase COREDLL.dll!CeFindNextDatabase COREDLL.dll!CeOidGetInfo
+Runs,Runs,HPC/PPC Stock Manager,https://archive.org/details/tucows_32412_HPC_PPC_Stock_Manager,hpcstock.zip,,,COREDLL.dll!CeOidGetInfo COREDLL.dll!CeFindFirstDatabase COREDLL.dll!CeFindNextDatabase
+Runs,Runs,IntelliGOLF Par,https://archive.org/details/tucows_32414_IntelliGOLF_Par,igtparce.exe,,,
 Runs,Runs,IrDesk,https://archive.org/details/tucows_32505_IrDesk,IrDesk_All.zip,,,
-Runs,Runs,Klondike WAP Browser,https://archive.org/details/tucows_150885_Klondike_WAP_Browser,klondikewapsetup.exe,,,COREDLL.dll!SetScrollInfo COREDLL.dll!sh__lshi64 COREDLL.dll!sh__divi64 COREDLL.dll!GetScrollInfo WINSOCK.dll!WSAStartup
+Runs,Runs,Klondike WAP Browser,https://archive.org/details/tucows_150885_Klondike_WAP_Browser,klondikewapsetup.exe,,,COREDLL.dll!sh__lshi64 COREDLL.dll!sh__divi64
 Runs,Runs,Lemonade Tycoon,https://archive.org/details/lemonade-tycoon_202505,LemonadeTycoon.ARM.CAB,,,
-Runs,Runs,Line4Line,https://archive.org/details/tucows_210362_Line4Line,line4linearm.zip,,,COREDLL.dll!CheckMenuRadioItem
+Runs,Runs,Line4Line,https://archive.org/details/tucows_210362_Line4Line,line4linearm.zip,,,
 Runs,Runs,LinkSpy,https://archive.org/details/tucows_32202_LinkSpy,LinkSpySH3.zip,,,
-Runs,Runs,Loan Manager,https://archive.org/details/tucows_222365_Loan_Manager,pkpcloan_setup.exe,,,COREDLL.dll!CeFindFirstDatabase COREDLL.dll!CeFindNextDatabase COREDLL.dll!CeOidGetInfo COREDLL.dll!GetDateFormatW COREDLL.dll!GetTimeFormatW
+Runs,Runs,Loan Manager,https://archive.org/details/tucows_222365_Loan_Manager,pkpcloan_setup.exe,,,COREDLL.dll!CeFindFirstDatabase COREDLL.dll!CeFindNextDatabase COREDLL.dll!CeOidGetInfo
 Runs,Runs,Locker,https://archive.org/details/tucows_328115_Locker,LockerCE_Trial.zip,,,
 Runs,Runs,Metalion ( Japan) ( ARM),https://archive.org/details/metalion-japan-arm,Metalion (Japan) (ARM).zip,,,
 Runs,Runs,Metalion ( USA) ( ARM),https://archive.org/details/metalion-usa-arm,Metalion (USA) (ARM).zip,,,
 Runs,Runs,MicroCalc Standard,https://archive.org/details/tucows_216317_MicroCalc_Standard,MicroCalc108.zip,,,
-Runs,Runs,miniBasic,https://archive.org/details/tucows_32364_miniBasic,minibasic.zip,,,COREDLL.dll!SetCaretPos COREDLL.dll!CreateCaret COREDLL.dll!ShowCaret
+Runs,Runs,miniBasic,https://archive.org/details/tucows_32364_miniBasic,minibasic.zip,,,
 Runs,Runs,Moline,https://archive.org/details/tucows_222951_Moline,Moline_PocketPC_Trial.exe,,,IMGDECMP.DLL!#1
 Runs,Runs,moongba2.4.2,https://archive.org/details/moongba2.4.2,moongba2.4.2.zip,,,COREDLL.dll!putchar
 Runs,Runs,Nerve,https://archive.org/details/tucows_248733_Nerve,NerveDemoSetup.exe,,,
-Runs,Runs,PalmGB,https://archive.org/details/tucows_216709_PalmGB,pgbsetup.exe,,,COREDLL.dll!SelectPalette COREDLL.dll!GetOpenFileNameW
-Runs,Runs,PalmGB,https://archive.org/details/tucows_32646_PalmGB,pgbsetup.exe,,,COREDLL.dll!SelectPalette COREDLL.dll!GetOpenFileNameW
-Runs,Runs,PilotCE,https://archive.org/details/tucows_32648_PilotCE,PilotCE.exe,,,PilotCpuCE.dll!CPU_getlong COREDLL.dll!GetVersionEx PilotCpuCE.dll!CPU_pen PilotCpuCE.dll!CPU_init PilotCpuCE.dll!CPU_setsounds PilotCpuCE.dll!CPU_SetDisplayWindow PilotCpuCE.dll!CPU_run
-Runs,Runs,Pocket 12C,https://archive.org/details/tucows_255472_Pocket_12C,P12CV150ARM.exe,,,COREDLL.dll!CreatePenIndirect COREDLL.dll!_ltow COREDLL.dll!_fpclass
-Runs,Runs,Pocket 15C Scientific Calculator,https://archive.org/details/tucows_294403_Pocket_15C_Scientific_Calculator,Pocket15CV110.exe,,,COREDLL.dll!CreatePenIndirect COREDLL.dll!_fpclass COREDLL.dll!_ltow
+Runs,Runs,PalmGB,https://archive.org/details/tucows_216709_PalmGB,pgbsetup.exe,,,COREDLL.dll!SelectPalette
+Runs,Runs,PalmGB,https://archive.org/details/tucows_32646_PalmGB,pgbsetup.exe,,,COREDLL.dll!SelectPalette
+Runs,Runs,PilotCE,https://archive.org/details/tucows_32648_PilotCE,PilotCE.exe,,,PilotCpuCE.dll!CPU_getlong PilotCpuCE.dll!CPU_pen PilotCpuCE.dll!CPU_init PilotCpuCE.dll!CPU_setsounds PilotCpuCE.dll!CPU_SetDisplayWindow PilotCpuCE.dll!CPU_run
+Runs,Runs,Pocket 12C,https://archive.org/details/tucows_255472_Pocket_12C,P12CV150ARM.exe,,,COREDLL.dll!_fpclass
+Runs,Runs,Pocket 15C Scientific Calculator,https://archive.org/details/tucows_294403_Pocket_15C_Scientific_Calculator,Pocket15CV110.exe,,,COREDLL.dll!_fpclass
 Runs,Runs,Pocket Pinball,https://archive.org/details/tucows_250021_Pocket_Pinball,PocketPinballSetupDemo.exe,,,
 Runs,Runs,Pocket Slay,https://archive.org/details/tucows_182765_Pocket_Slay,PocketSlay.zip,"Tap a tree in the top-left, then OK in the New Game dialog (the shareware version only lets you pick the first two rows).",,
 Runs,Runs,Pocket Taipei,https://archive.org/details/tucows_254025_Pocket_Taipei,ptaipei10.zip,,,OLEAUT32.dll!SystemTimeToVariantTime OLEAUT32.dll!VariantTimeToSystemTime
-Runs,Runs,Pocket Tune,https://archive.org/details/tucows_252624_Pocket_Tune,PocketTune_2_0_5.zip,,,COREDLL.dll!SetScrollRange COREDLL.dll!SetScrollPos
+Runs,Runs,Pocket Tune,https://archive.org/details/tucows_252624_Pocket_Tune,PocketTune_2_0_5.zip,,,
 Runs,Runs,Pocket Woman,https://archive.org/details/tucows_241852_Pocket_Woman,PocketWoman.zip,,,AYGSHELL.dll!#39
 Runs,Runs,PocketConquest,https://archive.org/details/tucows_208847_PocketConquest,PocketConquest.zip,,,COREDLL.dll!SelectPalette
 Runs,Runs,PocketFract,https://archive.org/details/tucows_196486_PocketFract,PocketFract.zip,,,AYGSHELL.dll!#88
-Runs,Runs,PocketNav,https://archive.org/details/tucows_145763_PocketNav,pocketnav.zip,,,COREDLL.dll!DrawIconEx COREDLL.dll!GetTimeFormatW
+Runs,Runs,PocketNav,https://archive.org/details/tucows_145763_PocketNav,pocketnav.zip,,,
 Runs,Runs,PocketNotepad,https://archive.org/details/tucows_145909_PocketNotepad,pocketnotepad21e.zip,,,
-Runs,Runs,PocketSTM,https://archive.org/details/tucows_213457_PocketSTM,pocketstmfstrarm.CAB,,,COREDLL.dll!_ltow COREDLL.dll!DrawIconEx
+Runs,Runs,PocketSTM,https://archive.org/details/tucows_213457_PocketSTM,pocketstmfstrarm.CAB,,,
 Runs,Runs,Porta-Pinball,https://archive.org/details/tucows_219512_Porta-Pinball,PortaPinSetup300.exe,,,
 Runs,Runs,PPC Planet CE Archive,https://archive.org/details/ppc-planet-ce,ClockWizard.rar,,,
 Runs,Runs,Pretec CompactGPS,https://archive.org/details/compact-gps-lp,CompactGPS.zip,,,
@@ -79,19 +79,21 @@ Runs,Runs,Pretec CompactGPS,https://archive.org/details/compact-gps-lp,CompactGP
 Runs,Runs,Primer,https://archive.org/details/tucows_76856_Primer,PrimerCE.exe,,,COREDLL.dll!EnumFontFamiliesW COREDLL.dll!IntersectClipRect COREDLL.dll!SelectClipRgn
 Runs,Runs,SEdit,https://archive.org/details/tucows_180072_SEdit,seditmips.zip,,,
 Runs,Runs,Seven Game,https://archive.org/details/tucows_312195_Seven_Game,Seven.exe,,,
-Runs,Runs,SnoopSoft Dashboard,https://archive.org/details/tucows_216191_SnoopSoft_Dashboard,dashboard.zip,,,COREDLL.dll!CompareStringW
+Runs,Runs,SnoopSoft Dashboard,https://archive.org/details/tucows_216191_SnoopSoft_Dashboard,dashboard.zip,,,IMGDECMP.DLL!#1
 Runs,Runs,Soccer Kid Folder,https://archive.org/details/soccer-kid-folder,Soccer Kid Folder.zip,,,
 Runs,Runs,Sorcery PDA,https://archive.org/details/tucows_308748_Sorcery_PDA,InstallDXA.exe,,,
-Runs,Runs,SpreadCE for Windows CE 3.12 2022-08-03,https://archive.org/details/spreadce-312-20220803,PPC/spreppcs.zip,,,COREDLL.dll!sh__itoi64 COREDLL.dll!sh__muli64 COREDLL.dll!sh__divi64 COREDLL.dll!sh__i64toi COREDLL.dll!CreatePatternBrush COREDLL.dll!towupper COREDLL.dll!GetVersionEx COREDLL.dll!sh__uitoi64
-Runs,Runs,Stock Manager,https://archive.org/details/tucows_222355_Stock_Manager,pkpcstocks_setup.exe,,,COREDLL.dll!CeOidGetInfo COREDLL.dll!CeFindFirstDatabase COREDLL.dll!CeFindNextDatabase COREDLL.dll!GetDateFormatW COREDLL.dll!GetTimeFormatW
-Runs,Runs,TZO Dynamic DNS,https://archive.org/details/tucows_277018_TZO_Dynamic_DNS,tzopocketpc.zip,,,WINSOCK.dll!WSAStartup WINSOCK.dll!closesocket
+Runs,Runs,SpreadCE for Windows CE 3.12 2022-08-03,https://archive.org/details/spreadce-312-20220803,PPC/spreppcs.zip,,,COREDLL.dll!sh__itoi64 COREDLL.dll!sh__muli64 COREDLL.dll!sh__divi64 COREDLL.dll!sh__i64toi COREDLL.dll!sh__uitoi64 COREDLL.dll!sh__lshi64 COREDLL.dll!sh__bori64
+Runs,Runs,Stock Manager,https://archive.org/details/tucows_222355_Stock_Manager,pkpcstocks_setup.exe,,,COREDLL.dll!CeOidGetInfo COREDLL.dll!CeFindFirstDatabase COREDLL.dll!CeFindNextDatabase
+Runs,Runs,TZO Dynamic DNS,https://archive.org/details/tucows_277018_TZO_Dynamic_DNS,tzopocketpc.zip,,,
 Runs,Runs,UniversalRemoteCE,https://archive.org/details/tucows_245237_UniversalRemoteCE,UniversalRemote_trial.exe,,,
 Runs,Runs,VoiceRecorder,https://archive.org/details/tucows_289072_VoiceRecorder,VoiceRecorderSetup_TRIAL_tucows.exe,,,COREDLL.dll!acmDriverEnum COREDLL.dll!acmDriverOpen COREDLL.dll!acmMetrics COREDLL.dll!acmFormatEnum COREDLL.dll!acmDriverClose COREDLL.dll!RaiseException COREDLL.dll!waveInGetDevCaps COREDLL.dll!RegEnumKeyExW
 Runs,Runs,Windows CE 1.0 Programs,https://archive.org/details/windowsce1.0,Windows CE 1.0.zip,,,COREDLL.dll!AudioUpdateFromRegistry
-Runs,Runs,Windows mobile cabs,https://archive.org/details/tombraider_arm_hexturbation,line4setup.arm.CAB,,,COREDLL.dll!CheckMenuRadioItem
+Runs,Runs,Windows mobile cabs,https://archive.org/details/tombraider_arm_hexturbation,line4setup.arm.CAB,,,
 Runs,Runs,WinEyes,https://archive.org/details/tucows_226355_WinEyes,wineyesce.zip,,,
 Runs,Runs,XLISP-Plus,https://archive.org/details/tucows_32693_XLISP-Plus,xl21gce.zip,,,COREDLL.dll!IntersectClipRect
 Runs,Runs,Yotz,https://archive.org/details/tucows_32181_Yotz,yotzdemo.exe,,,
+Runs,Runs,ZIO Simcity 2000,https://archive.org/details/zio-simcity-2000,ZIO_Simcity_2000 v1.00.cab,,,COREDLL.dll!GetPaletteEntries
+Runs,Runs,ZIO Simcity 2000,https://archive.org/details/zio-simcity-2000,ZIO Simcity 2000 v1.01 Patched Scrollbars.cab,,,COREDLL.dll!GetPaletteEntries
 Blank screen,Partly works,"A few Games, Software and Themes for PocketPC",https://archive.org/details/game_20260818,Game.rar,,,DocList.dll!DocList_Create AYGSHELL.dll!#88
 Exits at once,Partly works,AI Baseball,https://archive.org/details/tucows_249836_AI_Baseball,aibaseballdemo_100.zip,,,
 Exits at once,Partly works,AI Football,https://archive.org/details/tucows_223136_AI_Football,aifootballdemo_120.zip,,,
@@ -108,20 +110,20 @@ Stops later,Partly works,CE6b,https://archive.org/details/tucows_52638_CE6b,ce6b
 Blank screen,Partly works,CEBall,https://archive.org/details/tucows_32077_CEBall,CEBall_All.zip,,,
 Exits at once,Partly works,CEWedge,https://archive.org/details/tucows_163947_CEWedge,cewedge.exe,,,
 Exits at once,Partly works,CEWedge,https://archive.org/details/tucows_259055_CEWedge,cewedge.exe,,,
-Blank screen,Partly works,Chinese Input,https://archive.org/details/tucows_32573_Chinese_Input,cimesh.zip,,,COREDLL.dll!GetVersionEx COREDLL.dll!Shell_NotifyIcon
-Stops later,Partly works,CHM eBook Reader,https://archive.org/details/tucows_371821_CHM_eBook_Reader,chm_ebook_reader_trial.zip,The game needs a file that is not in the package.,,AYGSHELL.dll!#188 COREDLL.dll!Shell_NotifyIcon COREDLL.dll!GetTempPathW COREDLL.dll!GetCPInfo
-Exits at once,Partly works,CnetX Pocket Slideshow 1.51 for Windows CE (Extracted),https://archive.org/details/ss151aze-extracted,SS.PROARM.CAB,The game needs a file that is not in the package.,,ole32.dll!StringFromGUID2 htmlview.dll!InitHTMLControl COREDLL.dll!GetDlgItemTextW COREDLL.dll!GetOpenFileNameW
-Exits at once,Partly works,CnetX Pocket Slideshow 1.51 for Windows CE (Extracted),https://archive.org/details/ss151aze-extracted,SS.H2KARM.CAB,The game needs a file that is not in the package.,,ole32.dll!StringFromGUID2 htmlview.dll!InitHTMLControl COREDLL.dll!GetDlgItemTextW COREDLL.dll!GetOpenFileNameW
+Blank screen,Partly works,Chinese Input,https://archive.org/details/tucows_32573_Chinese_Input,cimesh.zip,,,
+Stops later,Partly works,CHM eBook Reader,https://archive.org/details/tucows_371821_CHM_eBook_Reader,chm_ebook_reader_trial.zip,The game needs a file that is not in the package.,,AYGSHELL.dll!#188 COREDLL.dll!GetCPInfo
+Stops later,Partly works,CnetX Pocket Slideshow 1.51 for Windows CE (Extracted),https://archive.org/details/ss151aze-extracted,SS.PROARM.CAB,The game needs a file that is not in the package.,,ole32.dll!StringFromGUID2 htmlview.dll!InitHTMLControl
+Stops later,Partly works,CnetX Pocket Slideshow 1.51 for Windows CE (Extracted),https://archive.org/details/ss151aze-extracted,SS.H2KARM.CAB,The game needs a file that is not in the package.,,ole32.dll!StringFromGUID2 htmlview.dll!InitHTMLControl
 Stops later,Partly works,COD 2 Windows Mobile (3D-accelerated),https://archive.org/details/cod-2-WM3D,COD2SOInstaller.cab,The game stopped on something the emulator cannot do yet.,,
 Exits at once,Partly works,Conduits Copilot CE for Palm-size PCs,https://archive.org/details/pilotce-conduits,pilotce.zip,,,pilotcpu.dll!CPU_init
 Stops later,Partly works,CoverMe,https://archive.org/details/tucows_32484_CoverMe,CoverMePro.exe,,,
 No frames,Partly works,CreativeNotes,https://archive.org/details/tucows_377348_CreativeNotes,cnsetupv120.exe,,,richink.dll!InitRichInkDLL InkX.dll!InitInkX
 Exits at once,Partly works,Crosswords,https://archive.org/details/tucows_372047_Crosswords,xwords_406.zip,,,
 Exits at once,Partly works,CVsuite,https://archive.org/details/CVsuite,CVsuite.zip,,,
-Blank screen,Partly works,Decuma,https://archive.org/details/Decuma,Decuma.zip,,,COREDLL.dll!GetMouseMovePoints COREDLL.dll!CreateRectRgn
-Blank screen,Partly works,Decuma OnSpot for Pocket PC and Palm OS,https://archive.org/details/decuma-onspot-ppc-palmos,decuma_onspot_handwriting_recognition_3_01_ppc.exe,,,COREDLL.dll!GetMouseMovePoints COREDLL.dll!CreateRectRgn
+Blank screen,Partly works,Decuma,https://archive.org/details/Decuma,Decuma.zip,,,
+Blank screen,Partly works,Decuma OnSpot for Pocket PC and Palm OS,https://archive.org/details/decuma-onspot-ppc-palmos,decuma_onspot_handwriting_recognition_3_01_ppc.exe,,,
 Exits at once,Partly works,Dell Axim X5 Pocket PC 2003 Upgrade CD,https://archive.org/details/wmx5dell,wmx5dell.rar,,,
-No frames,Partly works,DialupMaster,https://archive.org/details/tucows_32191_DialupMaster,DialupMaster100.zip,,,COREDLL.dll!RasEnumConnections COREDLL.dll!Shell_NotifyIcon
+No frames,Partly works,DialupMaster,https://archive.org/details/tucows_32191_DialupMaster,DialupMaster100.zip,,,COREDLL.dll!RasEnumConnections
 Blank screen,Partly works,drivers,https://archive.org/details/drivers_forsocketandsymboleWLANwm5PPC,drivers.zip,,,CEWDM.dll!CEDeviceIoControl CEWDM.dll!CECreateFile
 No frames,Partly works,dTree,https://archive.org/details/tucows_183459_dTree,idTree.exe,,,
 Stops later,Partly works,E6 Calculator,https://archive.org/details/tucows_32304_E6_Calculator,e6demo.zip,,,
@@ -138,13 +140,12 @@ Blank screen,Partly works,GPSeasyCE,https://archive.org/details/tucows_199278_GP
 Exits at once,Partly works,HandyCash,https://archive.org/details/tucows_146871_HandyCash,HandyCash.zip,,,
 No frames,Partly works,HP Jornada 720 jLime,https://archive.org/details/hp-jornada-720-jlime,jlinexec.exe,,,COREDLL.dll!VirtualCopy
 Exits at once,Partly works,HTML Editor,https://archive.org/details/tucows_32361_HTML_Editor,html_hpc.zip,The game needs a file that is not in the package.,,htmlview.dll!InitHTMLControl
-Exits at once,Partly works,I Presentation Mobile Player ARM,https://archive.org/details/i-presentation-mobile-player-arm,iPresentation Mobile Player ARM.zip,,,coredll.dll!LoadLibraryExW
 Exits at once,Partly works,Internal Specsavers software (stock management) for Windows mobile,https://archive.org/details/specsavers-hht,Specsavers HHT.zip,,,
 Exits at once,Partly works,JETCET PRINT,https://archive.org/details/tucows_32283_JETCET_PRINT,jetcet.exe,,,
-Blank screen,Partly works,Jimmy Quick Menu,https://archive.org/details/tucows_32285_Jimmy_Quick_Menu,JQMSH3.ZIP,,,COREDLL.dll!Shell_NotifyIcon
-No frames,Partly works,K-ForCE,https://archive.org/details/tucows_210588_K-ForCE,K-ForCE.v10S.zip,,,COREDLL.dll!SetScrollInfo COREDLL.dll!SetScrollPos COREDLL.dll!CreatePatternBrush
+Blank screen,Partly works,Jimmy Quick Menu,https://archive.org/details/tucows_32285_Jimmy_Quick_Menu,JQMSH3.ZIP,,,
+No frames,Partly works,K-ForCE,https://archive.org/details/tucows_210588_K-ForCE,K-ForCE.v10S.zip,,,
 Exits at once,Partly works,M3 Mobile OX10 drivers (CE and WM),https://archive.org/details/M3_OX10,M3OX10_WM_FlashDisk.zip,,,
-Exits at once,Partly works,MapFactor Free 21 Windows CE and Windows NT,https://archive.org/details/mapfactorfree21,MapFactor21/Install/pnd_app.rar,,,COREDLL.dll!fwprintf COREDLL.dll!GetTempPathW COREDLL.dll!LoadLibraryExW
+Blank screen,Partly works,MapFactor Free 21 Windows CE and Windows NT,https://archive.org/details/mapfactorfree21,MapFactor21/Install/pnd_app.rar,,,coredll.dll!GradientFill COREDLL.dll!SetViewportOrgEx COREDLL.dll!fwprintf
 Exits at once,Partly works,Microsoft Hearts for Pocket PC & Windows Mobile,https://archive.org/details/hearts_202601,Hearts.cab,,,
 Exits at once,Partly works,Microsoft Money 2003 for Pocket PC,https://archive.org/details/microsoft-money-2003-for-pocket-pc,arm720.cab,,,
 Exits at once,Partly works,Microsoft Money 2003 for Pocket PC,https://archive.org/details/microsoft-money-2003-for-pocket-pc,sa1100.cab,,,
@@ -154,27 +155,27 @@ Exits at once,Partly works,Microsoft Money 2005 for Pocket PC,https://archive.or
 Exits at once,Partly works,Microsoft Money for Handheld PC 1.0,https://archive.org/details/microsoft-money-for-handheld-pc-1.0,HPCArmP.CAB,,,
 Exits at once,Partly works,Microsoft Money for Handheld PC 1.0,https://archive.org/details/microsoft-money-for-handheld-pc-1.0,HPCMips.CAB,,,
 Exits at once,Partly works,Microsoft Pocket Streets 2002 English GPS Update (Extracted),https://archive.org/details/p.-rap-mips,P.RAP_ARM.CAB,,,
-Exits at once,Partly works,Microsoft Pocket Streets for Pocket PC 2005 (Extracted),https://archive.org/details/pocket-streets-2005-cabs,Microsoft Pocket Streets for Pocket PC - 2005/PocketStreets.PPCArm.CAB,,,COREDLL.dll!GetOpenFileNameW
-Exits at once,Partly works,Microsoft Pocket Streets for Pocket PC 2006 (Extracted),https://archive.org/details/pocket-streets-2006-pocketpc,Microsoft Pocket Streets for Pocket PC/PocketStreets.PPCArm.CAB,,,COREDLL.dll!GetOpenFileNameW
+Exits at once,Partly works,Microsoft Pocket Streets for Pocket PC 2005 (Extracted),https://archive.org/details/pocket-streets-2005-cabs,Microsoft Pocket Streets for Pocket PC - 2005/PocketStreets.PPCArm.CAB,,,
+Exits at once,Partly works,Microsoft Pocket Streets for Pocket PC 2006 (Extracted),https://archive.org/details/pocket-streets-2006-pocketpc,Microsoft Pocket Streets for Pocket PC/PocketStreets.PPCArm.CAB,,,
 Stops later,Partly works,Mobile Administrator,https://archive.org/details/tucows_77262_Mobile_Administrator,madmin.zip,The game needs a file that is not in the package.,,
 Exits at once,Partly works,Multi Window Notepad,https://archive.org/details/tucows_209428_Multi_Window_Notepad,mwnsetup.exe,,,
 Exits at once,Partly works,Multi Window Notepad,https://archive.org/details/tucows_209429_Multi_Window_Notepad,mwnsetup.exe,,,
 Exits at once,Partly works,My Books,https://archive.org/details/tucows_222632_My_Books,MyBooks_Trial_Version10.zip,,,
-No frames,Partly works,MyMobiler 1.2.5 for Windows Mobile,https://archive.org/details/MyMobiler,MyMobiler_WM_1.2.5.zip,,,AYGSHELL.dll!#339 COREDLL.dll!Shell_NotifyIcon
-Exits at once,Partly works,nPOPuk 3.05 Windows Mobile/Windows CE,https://archive.org/details/npopuk3.05,npopuk305_wce50arm (1).zip,The game needs a file that is not in the package.,,COREDLL.dll!ImageList_ReplaceIcon COREDLL.dll!DestroyIcon COREDLL.dll!ImageList_SetOverlayImage WINSOCK.dll!WSAStartup
-Exits at once,Partly works,nPOPuk 3.05 Windows Mobile/Windows CE,https://archive.org/details/npopuk3.05,npopuk305ssl_wce50arm.zip,The game needs a file that is not in the package.,,COREDLL.dll!ImageList_ReplaceIcon COREDLL.dll!DestroyIcon COREDLL.dll!ImageList_SetOverlayImage WINSOCK.dll!WSAStartup
+No frames,Partly works,MyMobiler 1.2.5 for Windows Mobile,https://archive.org/details/MyMobiler,MyMobiler_WM_1.2.5.zip,,,AYGSHELL.dll!#339
+Stops later,Partly works,nPOPuk 3.05 Windows Mobile/Windows CE,https://archive.org/details/npopuk3.05,npopuk305_wce50arm (1).zip,The game needs a file that is not in the package.,,COREDLL.dll!ImageList_SetOverlayImage
+Stops later,Partly works,nPOPuk 3.05 Windows Mobile/Windows CE,https://archive.org/details/npopuk3.05,npopuk305ssl_wce50arm.zip,The game needs a file that is not in the package.,,COREDLL.dll!ImageList_SetOverlayImage
 Exits at once,Partly works,OmniSolve,https://archive.org/details/tucows_220911_OmniSolve,OmniSolvePPC_Install.exe,The game stopped on something the emulator cannot do yet.,,
-Exits at once,Partly works,Outliner,https://archive.org/details/tucows_32421_Outliner,hpcoutliner.zip,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!RegisterClipboardFormatW
+Exits at once,Partly works,Outliner,https://archive.org/details/tucows_32421_Outliner,hpcoutliner.zip,The game stopped on something the emulator cannot do yet.,,
 Blank screen,Partly works,PalmFlash,https://archive.org/details/tucows_32645_PalmFlash,PalmFlash.exe,,,
 No frames,Partly works,Panda Vs. UFO,https://archive.org/details/tucows_78647_Panda_Vs._UFO,PandaVSUFO_Trial_PPC_SH3.exe,,,
 Exits at once,Partly works,ParaWinCE,https://archive.org/details/tucows_214659_ParaWinCE,pg50101t.exe,,,
-Blank screen,Partly works,pDiveLog,https://archive.org/details/tucows_302095_pDiveLog,pDiveLogPPC300Setup.exe,,,InkX.dll!InitInkX COREDLL.dll!CreateRectRgn
-No frames,Partly works,PHM registry editor v0.70,https://archive.org/details/phm-registry-editor.0.70,phm-registry-editor.0.70.cab,,,COREDLL.dll!RegisterClipboardFormatW
+Blank screen,Partly works,pDiveLog,https://archive.org/details/tucows_302095_pDiveLog,pDiveLogPPC300Setup.exe,,,InkX.dll!InitInkX
+No frames,Partly works,PHM registry editor v0.70,https://archive.org/details/phm-registry-editor.0.70,phm-registry-editor.0.70.cab,,,
 Blank screen,Partly works,phoneME Windows CE rev20547 2013-08-15 cabs,https://archive.org/details/phoneme-windows-ce-rev20547-2013-08-15-cabs,CLDC-phoneme_feature_mr4-win32_arm_wm5-bin-rev20547-20130815.cab,,,
 Blank screen,Partly works,phoneME Windows CE rev20547 2013-08-15 cabs,https://archive.org/details/phoneme-windows-ce-rev20547-2013-08-15-cabs,CLDC-phoneme_feature_mr4-win32_arm_wm6-bin-rev20547-20130815.cab,,,
 Exits at once,Partly works,PhoneTone,https://archive.org/details/tucows_222934_PhoneTone,PhoneTonePKT30Day.exe,The game needs a file that is not in the package.,,
-No frames,Partly works,Pico Drive (GX.DDL INCLUDED!!),https://archive.org/details/pico-drive_202607,PicoDrive.exe,,,COREDLL.dll!GetOpenFileNameW
-Stops later,Partly works,Pocket Artist,https://archive.org/details/tucows_47245_Pocket_Artist,PocketArtist10.exe,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!SetFileTime COREDLL.dll!GetMouseMovePoints
+No frames,Partly works,Pico Drive (GX.DDL INCLUDED!!),https://archive.org/details/pico-drive_202607,PicoDrive.exe,,,
+Stops later,Partly works,Pocket Artist,https://archive.org/details/tucows_47245_Pocket_Artist,PocketArtist10.exe,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!SetFileTime
 Blank screen,Partly works,Pocket BizCalc Pocket PC,https://archive.org/details/Pocket-BizCalc-1999-02-22-ce-ppc,pbizcalc.sh3.CAB,,,
 Exits at once,Partly works,Pocket Chord Finder,https://archive.org/details/tucows_232040_Pocket_Chord_Finder,pcf15.zip,,,
 Exits at once,Partly works,Pocket Cool-O-Meter,https://archive.org/details/tucows_145485_Pocket_Cool-O-Meter,pocketcm.zip,,,
@@ -183,11 +184,11 @@ Blank screen,Partly works,Pocket Explorer,https://archive.org/details/tucows_212
 Blank screen,Partly works,Pocket Genesis,https://archive.org/details/pocket-genesis_202607,PocketGenesis.exe,,,
 Blank screen,Partly works,Pocket Genesis 1.0,https://archive.org/details/pocketgenesis1.0b11,PocketGenesis1.0b1arm.zip,,,
 Blank screen,Partly works,Pocket Genesis 1.0,https://archive.org/details/pocketgenesis1.0b11,PocketGenesis1.0b2-38xx.zip,,,
-Stops later,Partly works,Pocket Hockey - 2004,https://archive.org/details/tucows_332850_Pocket_Hockey_-_2004,pkHockey.exe,,,COREDLL.dll!GetDateFormatW OLEAUT32.dll!SystemTimeToVariantTime COREDLL.dll!_ecvt COREDLL.dll!ferror
+Stops later,Partly works,Pocket Hockey - 2004,https://archive.org/details/tucows_332850_Pocket_Hockey_-_2004,pkHockey.exe,,,OLEAUT32.dll!SystemTimeToVariantTime COREDLL.dll!_ecvt
 Exits at once,Partly works,Pocket Music Box Demo ( ARM),https://archive.org/details/pocket-music-box-demo-arm,Pocket Music Box Demo (ARM).zip,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!GetClipBox
 No frames,Partly works,Pocket PC software,https://archive.org/details/spb-polish-cards.arm,pocket pc app/7z920-arm.cab,,,COREDLL.dll!GetDialogBaseUnits
-Blank screen,Partly works,Pocket PC Teletype GPS Full,https://archive.org/details/appspocketpcteletypegpsfull,(Apps) - Pocket PC - Teletype GPS Full.zip,,,COREDLL.dll!GetClipBox COREDLL.dll!MaskBlt GPSDriver.dll!?TTGPS_GetPositionalData@@YA_NPAUTTGPS_POSITIONALDATA@@@Z GPSDriver.dll!?TTGPS_RegGetAppVal@@YAJPAG0KPAXK@Z COREDLL.dll!DrawIconEx GPSDriver.dll!?TTGPS_CreateStatusWnd@@YAPAUHWND__@@PAU1@@Z GPSDriver.dll!?TTGPS_StartReading@@YAPAXPAUHWND__@@IK@Z COREDLL.dll!CreatePenIndirect
-Exits at once,Partly works,Pocket Quake II,https://archive.org/details/tucows_315702_Pocket_Quake_II,pocketquake2.exe,The game needs a file that is not in the package.,,WINSOCK.dll!WSAStartup
+Blank screen,Partly works,Pocket PC Teletype GPS Full,https://archive.org/details/appspocketpcteletypegpsfull,(Apps) - Pocket PC - Teletype GPS Full.zip,,,COREDLL.dll!GetClipBox COREDLL.dll!MaskBlt GPSDriver.dll!?TTGPS_GetPositionalData@@YA_NPAUTTGPS_POSITIONALDATA@@@Z GPSDriver.dll!?TTGPS_RegGetAppVal@@YAJPAG0KPAXK@Z GPSDriver.dll!?TTGPS_CreateStatusWnd@@YAPAUHWND__@@PAU1@@Z GPSDriver.dll!?TTGPS_StartReading@@YAPAXPAUHWND__@@IK@Z
+Exits at once,Partly works,Pocket Quake II,https://archive.org/details/tucows_315702_Pocket_Quake_II,pocketquake2.exe,The game stopped on something the emulator cannot do yet.,,
 No frames,Partly works,Pocket Rockets Pro,https://archive.org/details/tucows_328941_Pocket_Rockets_Pro,PRP_Trial.zip,,,gd201b.dll!?BltFast@CGapiSurface@@QAAJKKPAV1@PAUtagRECT@@KPAU_GDBLTFASTFX@@@Z gd201b.dll!?Flip@CGapiDisplay@@QAAJXZ gd201b.dll!?WaitForNextFrame@CGapiTimer@@QAAJXZ gd201b.dll!?SurfacesAreLost@CGapiDisplay@@QAAJXZ gd201b.dll!?Blt@CGapiSurface@@QAAJPAUtagRECT@@PAV1@0KPAU_GDBLTFX@@@Z COREDLL.dll!RectInRegion COREDLL.dll!GetRgnBox COREDLL.dll!OffsetRgn
 Exits at once,Partly works,Pocket Solitaire Engine,https://archive.org/details/tucows_301930_Pocket_Solitaire_Engine,SolitaireEngineDemo.exe,,,
 Blank screen,Partly works,Pocket Spark Handheld PC (Extracted),https://archive.org/details/pocket-spark-hpc,PocketSparkHPC.HPC2K_ARM.CAB,,,
@@ -197,9 +198,10 @@ Exits at once,Partly works,PocketPad,https://archive.org/details/tucows_145908_P
 Exits at once,Partly works,PocketPixPrint,https://archive.org/details/tucows_173478_PocketPixPrint,PocketPixPrint_Install.exe,,,
 Exits at once,Partly works,PocketSuspendFX,https://archive.org/details/tucows_300345_PocketSuspendFX,PocketSuspendFXSetup.exe,,,
 Exits at once,Partly works,Poker Sol,https://archive.org/details/tucows_32166_Poker_Sol,PokerSol_HPC.exe,The game stopped on something the emulator cannot do yet.,,
-Exits at once,Partly works,PowerTime,https://archive.org/details/tucows_32539_PowerTime,PT11ev.exe,,,COREDLL.dll!GetVersionEx
-Exits at once,Partly works,PowerTime,https://archive.org/details/tucows_32540_PowerTime,PT11ev.exe,,,COREDLL.dll!GetVersionEx
-Stops later,Partly works,PowerVR Demos,https://archive.org/details/pvr-racer,OGLESParticles.zip,,,COREDLL.dll!MonitorFromWindow COREDLL.dll!GetMonitorInfo
+Exits at once,Partly works,PowerTime,https://archive.org/details/tucows_32539_PowerTime,PT11ev.exe,,,
+Exits at once,Partly works,PowerTime,https://archive.org/details/tucows_32540_PowerTime,PT11ev.exe,,,
+Stops later,Partly works,PowerVR Demos,https://archive.org/details/pvr-racer,OGLESParticles.zip,,,
+Stops later,Partly works,PowerVR Racer (Ridge Racer OpenGL MBX ES 1.1 tech demo) for Dell Axim x50v x51v,https://archive.org/details/powervr-racer,PVR_Racer.zip,,,
 Stops later,Partly works,PPToools,https://archive.org/details/tucows_199958_PPToools,pptools.zip,,,CSFileView.dll!#1
 Blank screen,Partly works,ProgramMenu,https://archive.org/details/tucows_183690_ProgramMenu,pmenu14.zip,,,AYGSHELL.dll!#2
 No frames,Partly works,ProxiWeb,https://archive.org/details/tucows_32654_ProxiWeb,PrxWebCE3B1.exe,,,WINSOCK.dll!__WSAFDIsSet WINSOCK.dll!select WINSOCK.dll!htonl WINSOCK.dll!htons WINSOCK.dll!socket WINSOCK.dll!ioctlsocket WINSOCK.dll!bind WINSOCK.dll!inet_addr
@@ -208,7 +210,7 @@ Stops later,Partly works,QISndFx,https://archive.org/details/tucows_32373_QISndF
 Exits at once,Partly works,QRemote,https://archive.org/details/tucows_216286_QRemote,qr_arm.cab,,,
 Blank screen,Partly works,Quake 3 PocketPC [q3ce-1.0],https://archive.org/details/q3ce-1.0-release-armv4ppc2003,q3ce-1.0-release-armv4ppc2003.exe,,,
 Stops later,Partly works,racePro,https://archive.org/details/tucows_32437_racePro,racePro.zip,,,
-Stops later,Partly works,Registry Explorer,https://archive.org/details/tucows_32379_Registry_Explorer,RExplrhCE.exe,,,COREDLL.dll!ImageList_ReplaceIcon COREDLL.dll!CreatePatternBrush COREDLL.dll!GetDlgItemTextW
+Stops later,Partly works,Registry Explorer,https://archive.org/details/tucows_32379_Registry_Explorer,RExplrhCE.exe,,,
 Exits at once,Partly works,ROMExtractor,https://archive.org/details/ROMExtractor,ROMExtractor.exe,,,coredll.dll!SetProcPermissions coredll.dll!KernelLibIoControl
 Exits at once,Partly works,S-Calc,https://archive.org/details/tucows_230457_S-Calc,Pocket_S-Calc.zip,,,
 Exits at once,Partly works,Sharp EM ONE Update Files,https://archive.org/details/sharp-em-one-update-files,Sharp EM-One Updates.zip,,,
@@ -218,40 +220,38 @@ Exits at once,Partly works,Starbuck,https://archive.org/details/tucows_32617_Sta
 No frames,Partly works,Stardock PocketBlinds v1.0 ARM,https://archive.org/details/pb10-arm,pb10-arm.cab,,,coredll.dll!IsAPIReady
 Exits at once,Partly works,Startler,https://archive.org/details/tucows_32543_Startler,StInstall.exe,,,COREDLL.dll!CeRunAppAtTime
 Exits at once,Partly works,Stealth GPS,https://archive.org/details/tucows_246238_Stealth_GPS,StealthGPS.zip,,,
-Stops later,Partly works,STRegedit,https://archive.org/details/tucows_305971_STRegedit,stexplorer_arm.zip,,,COREDLL.dll!GetDateFormatW COREDLL.dll!CompareFileTime
+Stops later,Partly works,STRegedit,https://archive.org/details/tucows_305971_STRegedit,stexplorer_arm.zip,,,
 Blank screen,Partly works,Stupid PIM Tricks,https://archive.org/details/tucows_32443_Stupid_PIM_Tricks,CEBall_sh3_hpc.zip,,,
 Exits at once,Partly works,Symbol MC50 mc50_ppc2003_wm5_0_upgrade_r1.4,https://archive.org/details/mc50_ppc2003_wm5_0_upgrade_r1.4,mc50_ppc2003_wm5_0_upgrade_r1.4.zip,,,
-Blank screen,Partly works,Tascal RegEdit,https://archive.org/details/tucows_32381_Tascal_RegEdit,reg050m.zip,,,COREDLL.dll!ImageList_ReplaceIcon COREDLL.dll!DestroyIcon COREDLL.dll!GetScrollInfo COREDLL.dll!GetVersionEx
+Blank screen,Partly works,Tascal RegEdit,https://archive.org/details/tucows_32381_Tascal_RegEdit,reg050m.zip,,,
 Exits at once,Partly works,TCPMP Core Desktop Installer Extracted,https://archive.org/details/tcpmp-cabs,TCPMP/tcpmp.arm_ce2.cab,,,
 Exits at once,Partly works,Technician Assistant,https://archive.org/details/tucows_50861_Technician_Assistant,TAppc11.zip,,,
 Exits at once,Partly works,Terminal Services Client for Pocket PC 2002,https://archive.org/details/terminal-services-client-for-pocket-pc-2002,tsc.PPC_SA1100.CAB,,,AYGSHELL.dll!#43
 Blank screen,Partly works,Tested software for Windows Mobile 2003,https://archive.org/details/ppc-2003,PocketGnuboy/pgnuboy.ppc3_arm.CAB,,,
 Exits at once,Partly works,TextMaker,https://archive.org/details/tucows_315355_TextMaker,tmpw02ev.exe,,,
 Exits at once,Partly works,TimeTracker 2000,https://archive.org/details/tucows_78965_TimeTracker_2000,TTT.PPC.MIPS.exe,,,
-Blank screen,Partly works,TrayDate,https://archive.org/details/tucows_32627_TrayDate,TrayDate.exe,,,COREDLL.dll!Shell_NotifyIcon COREDLL.dll!DestroyIcon COREDLL.dll!CreateIconIndirect
+Blank screen,Partly works,TrayDate,https://archive.org/details/tucows_32627_TrayDate,TrayDate.exe,,,COREDLL.dll!CreateIconIndirect
 No frames,Partly works,UKEditor,https://archive.org/details/UKEditor,UKEditor.zip,,,COREDLL.dll!ExtractIconExW
 Exits at once,Partly works,Ultima Underworld for Pocket PC,https://archive.org/details/ultima-underworld-for-pocket-pc,Ultima Underworld PPC cabs -iTLcCc-.zip,,,
 Exits at once,Partly works,Unfinished Business,https://archive.org/details/unfinished-business_202610,Unfinished Business.zip,The game stopped on something the emulator cannot do yet.,,alib.dll!#22 alib.dll!#19 alib.dll!#20
 Exits at once,Partly works,Update WS 011 SH SP 5a,https://archive.org/details/update-ws-011-sh-sp-5a,Update-WS011SH-SP5a.exe,,,
 Exits at once,Partly works,VBirthday GOLD Edition,https://archive.org/details/tucows_265958_VBirthday_GOLD_Edition,VBirthday21GoldTrialSetup.exe,The game needs a file that is not in the package.,,
-Exits at once,Partly works,vxPage,https://archive.org/details/tucows_32689_vxPage,vxPage.zip,,,COREDLL.dll!EnumFontFamiliesW COREDLL.dll!_ltow COREDLL.dll!lineInitialize COREDLL.dll!lineShutdown
+Stops later,Partly works,vxPage,https://archive.org/details/tucows_32689_vxPage,vxPage.zip,,,COREDLL.dll!EnumFontFamiliesW COREDLL.dll!lineInitialize COREDLL.dll!lineShutdown
 Exits at once,Partly works,vxSniffer,https://archive.org/details/tucows_283090_vxSniffer,vxSniffer.zip,,,COREDLL.dll!RegisterDevice
-Exits at once,Partly works,vxWeb,https://archive.org/details/tucows_32232_vxWeb,vxWeb.zip,,,WINSOCK.dll!WSAStartup
+Exits at once,Partly works,vxWeb,https://archive.org/details/tucows_32232_vxWeb,vxWeb.zip,,,
 Exits at once,Partly works,wincecabs3,https://archive.org/details/wincecabs3,Pocket MBA-Calc/pmba.arm.CAB,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!_fcvt
 Exits at once,Partly works,Windows Media Player for Pocket PC - Technology Preview Edition 2,https://archive.org/details/windowsmediaplayerforpocketpc-technologypreviewedition12extracted,Windows Media Player for Pocket PC - Technology Preview Edition/WMP.PPC_SA1100.CAB,,,COREDLL.dll!UnregisterClassW
-No frames,Partly works,Windows Mobile application archive,https://archive.org/details/windowsmobile,GPRSMonitor_PPC12.cab,,,COREDLL.dll!CompareFileTime
+No frames,Partly works,Windows Mobile application archive,https://archive.org/details/windowsmobile,GPRSMonitor_PPC12.cab,,,
 Exits at once,Partly works,Windows mobile cabs,https://archive.org/details/tombraider_arm_hexturbation,psc.ARM.CAB,,,
 Blank screen,Partly works,WinMobile Lens,https://archive.org/details/tucows_371685_WinMobile_Lens,WinMobileLens_SetupADS_Arm.exe,,,
 Exits at once,Partly works,WinPopup,https://archive.org/details/tucows_32691_WinPopup,winpopupce.zip,,,
 Exits at once,Partly works,Word Search,https://archive.org/details/tucows_32179_Word_Search,WSDemo.exe,,,
 Exits at once,Partly works,Xylon GPS Data logging,https://archive.org/details/tucows_227730_Xylon_GPS_Data_logging,Xylon_Trial.zip,,,
 Exits at once,Partly works,Yacht,https://archive.org/details/tucows_168569_Yacht,Yacht.zip,,,
-Stops later,Partly works,ZIO Simcity 2000,https://archive.org/details/zio-simcity-2000,ZIO_Simcity_2000 v1.00.cab,,,COREDLL.dll!CreatePenIndirect COREDLL.dll!GetPaletteEntries
-Stops later,Partly works,ZIO Simcity 2000,https://archive.org/details/zio-simcity-2000,ZIO Simcity 2000 v1.01 Patched Scrollbars.cab,,,COREDLL.dll!CreatePenIndirect COREDLL.dll!GetPaletteEntries
 Does not start,Does not start,.net Compact Frame Work 1.0 Sp 3,https://archive.org/details/net-compact-frame-work-1.0-sp-3,.net compact frame work 1.0 sp3.msi.zip,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,.NET Compact Framework 2.0 (& SR),https://archive.org/details/netcompact2.0,NETCFv2.wm.armv4i.cab,"This is a .NET Compact Framework program, which PocketPC3630 cannot run.",Look for a native ARM version of this program.｜mapping image into CPU: loader error: managed PE requires a .NET Compact Framework runtime (v2.0.50727); PocketPC3630 currently executes native ARM/MIPS WinCE images only,
 Does not start,Does not start,.NET Compact Framework 2.0 (& SR),https://archive.org/details/netcompact2.0,NETCFv2.wce5.armv4i.cab,,,
-Does not start,Does not start,2nR-Musiker Wireless MP3 Client and Server,https://archive.org/details/tucows_217288_2nR-Musiker_Wireless_MP3_Client_and_Server,2nR-ipaq.zip,The game needs a file that is not in the package.,,WINSOCK.dll!socket WINSOCK.dll!inet_addr WINSOCK.dll!WSAStartup WINSOCK.dll!gethostname WINSOCK.dll!gethostbyname WINSOCK.dll!WSACleanup
+Does not start,Does not start,2nR-Musiker Wireless MP3 Client and Server,https://archive.org/details/tucows_217288_2nR-Musiker_Wireless_MP3_Client_and_Server,2nR-ipaq.zip,The game stopped on something the emulator cannot do yet.,,
 Does not start,Does not start,Abacus.pocketpc 2002 Arm,https://archive.org/details/abacus.pocketpc-2002-arm,Abacus.pocketpc2002_arm.zip,The game stopped on something the emulator cannot do yet.,,
 Does not start,Does not start,Adobe Acrobat Reader for Pocket PC 1.0,https://archive.org/details/adobe-acrobat-reader-for-pocket-pc-1.0,arceARMr.PPC_2577.cab,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,Adobe Acrobat Reader for Pocket PC 2.0 (ARM Only CAB),https://archive.org/details/arceARMen20,arceARMen_usr.PPC_2577.CAB,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
@@ -273,7 +273,7 @@ Does not start,Does not start,Back Up and Strip,https://archive.org/details/tuco
 Does not start,Does not start,BCL VoiceMP3,https://archive.org/details/tucows_291109_BCL_VoiceMP3,voicemp3demo.exe,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,Belkin Thumb Keyboard for Dell Axim X50/X51 Handhelds Drivers,https://archive.org/details/f8d0502,f8d0502/thumbboard.MS.PocketPC.CAB,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,Belkin Thumb Keyboard for Dell Axim X50/X51 Handhelds Drivers,https://archive.org/details/f8d0502,Original Disc Files/thumbboard.MS.PocketPC.CAB,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
-Does not start,Does not start,BijiWriter,https://archive.org/details/tucows_159829_BijiWriter,bijiwriter-hpc-sh3.zip,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!GetCaretPos
+Does not start,Does not start,BijiWriter,https://archive.org/details/tucows_159829_BijiWriter,bijiwriter-hpc-sh3.zip,The game stopped on something the emulator cannot do yet.,,
 Does not start,Does not start,Bingo Island,https://archive.org/details/bingo-island,Bingo Island.zip,The game needs a file that is not in the package.,,
 Does not start,Does not start,Blueprint Software NetTools,https://archive.org/details/tucows_294919_Blueprint_Software_NetTools,RSC_MT_05.zip,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,Brain Stadium,https://archive.org/details/tucows_240096_Brain_Stadium,BrainStadiumEnglish100.ZIP,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
@@ -284,7 +284,7 @@ Does not start,Does not start,Cashman,https://archive.org/details/tucows_32397_C
 Does not start,Does not start,CCExplore,https://archive.org/details/tucows_32472_CCExplore,cd003-0a.zip,The game needs a file that comes with the Pocket PC itself.,,mfcce211.dll!#631
 Does not start,Does not start,CCNetTools,https://archive.org/details/tucows_50387_CCNetTools,ccnet-tools.zip,The game needs a file that comes with the Pocket PC itself.,,mfcce211.dll!#631
 Does not start,Does not start,CCRegEdit,https://archive.org/details/tucows_32473_CCRegEdit,cd008-0a.zip,The game needs a file that comes with the Pocket PC itself.,,mfcce211.dll!#631
-Does not start,Does not start,CE Task Manager,https://archive.org/details/tucows_59033_CE_Task_Manager,cetaskmanager.exe,The game needs a file that is not in the package.,,COREDLL.dll!GetCaretPos
+Does not start,Does not start,CE Task Manager,https://archive.org/details/tucows_59033_CE_Task_Manager,cetaskmanager.exe,The game needs a file that is not in the package.,,
 Does not start,Does not start,CeCAD,https://archive.org/details/tucows_182640_CeCAD,CeCAD.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,CEdit,https://archive.org/details/tucows_368959_CEdit,CEdit_ARM_PPC_2003.zip,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,Centro de Dispositivos de Windows Mobile,https://archive.org/details/wmdc_for_Win10_and_oward,WMDC.zip,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜loading PE: unsupported machine: 0x8664",
@@ -319,11 +319,11 @@ Does not start,Does not start,English-Hungarian and Hungarian-English dictionary
 Does not start,Does not start,EuroCalculator WinCE (Extracted),https://archive.org/details/EuroCalculator-1999-06-27-ce-hpcpro,EuroCalculator.ARM.CAB,The game needs a file that comes with the Pocket PC itself.,,mfcce211.dll!#612
 Does not start,Does not start,EuroCalculator WinCE (Extracted),https://archive.org/details/EuroCalculator-1999-06-27-ce-hpcpro,GetSetGo!!!.CAB,The game needs a file that comes with the Pocket PC itself.,,mfcce211.dll!#612
 Does not start,Does not start,Events,https://archive.org/details/tucows_203075_Events,EventsARM.exe,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
-Does not start,Does not start,eWallet,https://archive.org/details/tucows_222152_eWallet,eWalletPEK30.exe,,,COREDLL.dll!RegisterClipboardFormatW COREDLL.dll!SHGetShortcutTarget
+Does not start,Does not start,eWallet,https://archive.org/details/tucows_222152_eWallet,eWalletPEK30.exe,,,COREDLL.dll!SHGetShortcutTarget
 Does not start,Does not start,Exclusive Gameloft games for Samsung Omnia i900 (WiTu),https://archive.org/details/omnia-loft,Asphalt4.exe,,,
 Does not start,Does not start,Exclusive Gameloft games for Samsung Omnia i900 (WiTu),https://archive.org/details/omnia-loft,Prince_Of_Persia_HD__Omnia_.cab,The game stopped on something the emulator cannot do yet.,,
-Does not start,Does not start,Facebook for Windows Mobile 6.x,https://archive.org/details/facebook-windows-mobile-6-x,Facebook_v1.0.0.7.CAB,The game needs a file that is not in the package.,,COREDLL.dll!LoadLibraryExW HTMLVIEW.DLL!#1 COREDLL.dll!CompareStringW
-Does not start,Does not start,Facebook for Windows Mobile 6.x,https://archive.org/details/facebook-windows-mobile-6-x,Facebook_v1.0.0.7p.CAB,The game needs a file that is not in the package.,,COREDLL.dll!LoadLibraryExW HTMLVIEW.DLL!#1 COREDLL.dll!CompareStringW
+Does not start,Does not start,Facebook for Windows Mobile 6.x,https://archive.org/details/facebook-windows-mobile-6-x,Facebook_v1.0.0.7.CAB,The game needs a file that is not in the package.,,HTMLVIEW.DLL!#1
+Does not start,Does not start,Facebook for Windows Mobile 6.x,https://archive.org/details/facebook-windows-mobile-6-x,Facebook_v1.0.0.7p.CAB,The game needs a file that is not in the package.,,HTMLVIEW.DLL!#1
 Does not start,Does not start,Ferrari GT: Evolution - HTC HD2/Toshiba Tsunagi Port (Android/Windows),https://archive.org/details/ferrari_gt_port_aw,FerrariGT_Win.zip,,,
 Does not start,Does not start,Ferrari GT: Evolution HD+ for HTC HD2 and Toshiba Tsunagi,https://archive.org/details/ferrari-gt-hd2-wm,FGTH_FerrariGT.exe,,,
 Does not start,Does not start,FFtp,https://archive.org/details/tucows_32192_FFtp,ffp018.zip,,,
@@ -354,9 +354,9 @@ Does not start,Does not start,Google Maps Mobile (v3.0.1.6) (Windows Mobile Port
 Does not start,Does not start,GoogleNavigator for Windows Mobile,https://archive.org/details/googlenavWM,NETCFv2.wm.armv4i.cab,"This is a .NET Compact Framework program, which PocketPC3630 cannot run.",Look for a native ARM version of this program.｜mapping image into CPU: loader error: managed PE requires a .NET Compact Framework runtime (v2.0.50727); PocketPC3630 currently executes native ARM/MIPS WinCE images only,
 Does not start,Does not start,GoogleNavigator for Windows Mobile,https://archive.org/details/googlenavWM,GlobalNavigator.cab,"This is a .NET Compact Framework program, which PocketPC3630 cannot run.",Look for a native ARM version of this program.｜mapping image into CPU: loader error: managed PE requires a .NET Compact Framework runtime (v2.0.50727); PocketPC3630 currently executes native ARM/MIPS WinCE images only,
 Does not start,Does not start,GOST Scheduler,https://archive.org/details/tucows_277177_GOST_Scheduler,timetable.zip,,,
-Does not start,Does not start,Graphic-Plotter,https://archive.org/details/Graphic-Plotter-1999-04-13-ce-hpc,Plot.hpc_mips.CAB,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!GetCaretPos
-Does not start,Does not start,Graphic-Plotter,https://archive.org/details/Graphic-Plotter-1999-04-13-ce-hpc,Plot.hpc_sh3.CAB,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!GetCaretPos
-Does not start,Does not start,GraphIt,https://archive.org/details/tucows_32312_GraphIt,GraphIt_HPC_2_2s.zip,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!GetCaretPos
+Does not start,Does not start,Graphic-Plotter,https://archive.org/details/Graphic-Plotter-1999-04-13-ce-hpc,Plot.hpc_mips.CAB,The game stopped on something the emulator cannot do yet.,,
+Does not start,Does not start,Graphic-Plotter,https://archive.org/details/Graphic-Plotter-1999-04-13-ce-hpc,Plot.hpc_sh3.CAB,The game stopped on something the emulator cannot do yet.,,
+Does not start,Does not start,GraphIt,https://archive.org/details/tucows_32312_GraphIt,GraphIt_HPC_2_2s.zip,The game stopped on something the emulator cannot do yet.,,
 Does not start,Does not start,Griff Music Sequencer for PocketPC,https://archive.org/details/griff-setup,griff.arm.CAB,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,Guitar Hero Mobile 3 V 1.1.0,https://archive.org/details/guitar-hero-mobile-3-v-1.1.0,Guitar Hero Mobile 3 v1.1.0.zip,,,
 Does not start,Does not start,Haali Reader 2.0b227 - a book reader for Windows CE,https://archive.org/details/haali-reader-2.0b227-a-book-reader-for-windows-ce,CE.NET/HaaliReader.NET.ARMV4.zip,The game needs a file that comes with the Pocket PC itself.,,mfcce400.dll!#648
@@ -382,8 +382,9 @@ Does not start,Does not start,HTC MAX 4G firmware and files collection,https://a
 Does not start,Does not start,HTC S620/HTC Excalibur/HTC EXCA100/200 - ROM/Misc. archive,https://archive.org/details/HTC_S620_Archive,T-Mobile_DASH_WM5_V_1.11.531.1.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,HTC S620/HTC Excalibur/HTC EXCA100/200 - ROM/Misc. archive,https://archive.org/details/HTC_S620_Archive,RUU_Excalibur_HTC_WWE_Brightpoint_US_1.33.422.1_4.1.13.51_03.07.90_Ship.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,htc_charmer_noid,https://archive.org/details/htccharmernoid,HTC_Charmer_noid.zip,,,
-Does not start,Does not start,Hum MP3 Player,https://archive.org/details/tucows_32280_Hum_MP3_Player,Hum1_6e.zip,The game needs a file that is not in the package.,,COREDLL.dll!CreatePenIndirect
+Does not start,Does not start,Hum MP3 Player,https://archive.org/details/tucows_32280_Hum_MP3_Player,Hum1_6e.zip,The game needs a file that is not in the package.,,
 Does not start,Does not start,Hybrid Rasteroid 3.1,https://archive.org/details/hybrid-rasteroid-3.1,rasteroid3.1.zip,,,libEGL.dll!eglBindAPI libEGL.dll!eglGetDisplay libEGL.dll!eglGetError
+Does not start,Does not start,I Presentation Mobile Player ARM,https://archive.org/details/i-presentation-mobile-player-arm,iPresentation Mobile Player ARM.zip,The game needs a file that is not in the package.,,
 Does not start,Does not start,IA Presenter,https://archive.org/details/tucows_200345_IA_Presenter,IAPresenter210EN.zip,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,IA ScreenShot,https://archive.org/details/tucows_196426_IA_ScreenShot,IAScreenShot20EN.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,iCal Parser for Pocket PCs,https://archive.org/details/ical-parser-ppc,CalParseAppInstaller2.1.1.CAB,"This is a .NET Compact Framework program, which PocketPC3630 cannot run.",Look for a native ARM version of this program.｜mapping image into CPU: loader error: managed PE requires a .NET Compact Framework runtime (v2.0.50727); PocketPC3630 currently executes native ARM/MIPS WinCE images only,
@@ -393,12 +394,12 @@ Does not start,Does not start,iPAQ Image Zone,https://archive.org/details/i-paq-
 Does not start,Does not start,iSignIt,https://archive.org/details/tucows_254321_iSignIt,iSignItARM.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,iStopWatch,https://archive.org/details/tucows_214016_iStopWatch,iStopWatch.exe,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,J9 JVM MIDP 2.0 For Windows Mobile 2003 (ARM),https://archive.org/details/j9-midp20-wm2003-arm_221,j9-midp20-wm2003-arm_22.zip,The game stopped on something the emulator cannot do yet.,,J9VMALL22.dll!j9port_create_library J9VMALL22.dll!j9port_startup_library
-Does not start,Does not start,Kara-O-Pocket,https://archive.org/details/tucows_359702_Kara-O-Pocket,karaopocket-211-unregistered-setup.exe,The game stopped on something the emulator cannot do yet.,,GD104b.dll!??0CGapiSurface@@QAA@XZ GD104b.dll!?SetColorKey@CGapiSurface@@QAAJK@Z GD104b.dll!?CreateSurface@CGapiSurface@@QAAJPAEK@Z GD104b.dll!??0CGapiDisplay@@QAA@XZ GD104b.dll!??0CGapiInput@@QAA@XZ GD104b.dll!??0CGapiTimer@@QAA@XZ GD104b.dll!??0CGapiBitmapFont@@QAA@XZ COREDLL.dll!ferror
+Does not start,Does not start,Kara-O-Pocket,https://archive.org/details/tucows_359702_Kara-O-Pocket,karaopocket-211-unregistered-setup.exe,The game stopped on something the emulator cannot do yet.,,GD104b.dll!??0CGapiSurface@@QAA@XZ GD104b.dll!?SetColorKey@CGapiSurface@@QAAJK@Z GD104b.dll!?CreateSurface@CGapiSurface@@QAAJPAEK@Z GD104b.dll!??0CGapiDisplay@@QAA@XZ GD104b.dll!??0CGapiInput@@QAA@XZ GD104b.dll!??0CGapiTimer@@QAA@XZ GD104b.dll!??0CGapiBitmapFont@@QAA@XZ GD104b.dll!?SetDisplayMode@CGapiDisplay@@QAAJK@Z
 Does not start,Does not start,Kilmist Registry Editor,https://archive.org/details/tucows_274481_Kilmist_Registry_Editor,KilmistRegEdit.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,KingKanji,https://archive.org/details/tucows_32287_KingKanji,kkhpc20_jpn.exe,The game stopped on something the emulator cannot do yet.,,
 Does not start,Does not start,KJV Bible Reader,https://archive.org/details/tucows_32288_KJV_Bible_Reader,bible_211hand_mips.zip,The game needs a file that is not in the package.,,
 Does not start,Does not start,ListMan,https://archive.org/details/tucows_208716_ListMan,ListMan.zip,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
-Does not start,Does not start,ListPro,https://archive.org/details/tucows_222110_ListPro,ListProPKT30Day.exe,,,COREDLL.dll!RegisterClipboardFormatW COREDLL.dll!SHGetShortcutTarget AYGSHELL.dll!#69 DocList.dll!DocList_Create
+Does not start,Does not start,ListPro,https://archive.org/details/tucows_222110_ListPro,ListProPKT30Day.exe,,,COREDLL.dll!SHGetShortcutTarget AYGSHELL.dll!#69 DocList.dll!DocList_Create
 Does not start,Does not start,LogicStar,https://archive.org/details/tucows_216836_LogicStar,LogicStar.zip,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,lokiwiz,https://archive.org/details/lokiwiz,lokiwiz02.zip,,,
 Does not start,Does not start,LowFat Invoice,https://archive.org/details/tucows_289830_LowFat_Invoice,lowfatinvoice.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
@@ -407,7 +408,7 @@ Does not start,Does not start,MakeFaces,https://archive.org/details/tucows_36689
 Does not start,Does not start,MAPinPocket,https://archive.org/details/tucows_51457_MAPinPocket,maps1210.exe,The game needs a file that is not in the package.,,mfcce201.dll!#649
 Does not start,Does not start,Marble Alley,https://archive.org/details/tucows_226737_Marble_Alley,MarbleAlleyDemo.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,Maze Master CE,https://archive.org/details/tucows_32092_Maze_Master_CE,Maze.zip,The game stopped on something the emulator cannot do yet.,,
-Does not start,Does not start,Maze Wrangler,https://archive.org/details/tucows_52386_Maze_Wrangler,MazeWranglerMIPS.zip,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!GetCaretPos
+Does not start,Does not start,Maze Wrangler,https://archive.org/details/tucows_52386_Maze_Wrangler,MazeWranglerMIPS.zip,The game stopped on something the emulator cannot do yet.,,
 Does not start,Does not start,Mazera,https://archive.org/details/Mazera,Mazera.zip,,,
 Does not start,Does not start,MC70 Clean boot package,https://archive.org/details/MC70-reset,70XXCLEANBOOT.zip,,,AYGSHELL.dll!#2011
 Does not start,Does not start,MC70 Clean boot package,https://archive.org/details/MC70-reset,70XXCLEANBOOTANDBLANK.zip,,,AYGSHELL.dll!#2011
@@ -419,9 +420,9 @@ Does not start,Does not start,Microsoft Device Emulator builds,https://archive.o
 Does not start,Does not start,Microsoft Device Emulator builds,https://archive.org/details/microsoft_emulators,Microsoft Device Emulator 2.0 - Standalone Release/vs_emulator.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,Microsoft Device Emulator for Windows Mobile 5,https://archive.org/details/MS_DeviceEmulator,DeviceEmulator-1.zip,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,Microsoft Entertainment Pocket Pak Anoter Pak,https://archive.org/details/microsoft-entertainment-pocket-pak-anoter-pak,Microsoft Entertainment PocketPak anoter pak.zip,,,
-Does not start,Does not start,Microsoft Office Mobile (v6.1) (Windows Mobile Port),https://archive.org/details/office2007_202610,office2007.CAB,The game needs a file that is not in the package.,,COREDLL.dll!LoadLibraryExW AYGSHELL.dll!#310 OFFICE.dll!RMLoadLibrary AYGSHELL.dll!#209 COREDLL.dll!StringCchLengthW COREDLL.dll!__CxxThrowException
-Does not start,Does not start,Microsoft Office Mobile 6.1: Upgrade for Microsoft Office 2007 file formats ARM,https://archive.org/details/officemobile_licensed_0409_us_arm,Microsoft Office Mobile/Office_wpc_WM5.CAB,The game needs a file that is not in the package.,,COREDLL.dll!LoadLibraryExW AYGSHELL.dll!#310 OFFICE.dll!RMLoadLibrary AYGSHELL.dll!#209 COREDLL.dll!StringCchLengthW COREDLL.dll!__CxxThrowException
-Does not start,Does not start,Microsoft Office Mobile 6.1: Upgrade for Microsoft Office 2007 file formats ARM,https://archive.org/details/officemobile_licensed_0409_us_arm,Microsoft Office Mobile/office_wpc_WM6.CAB,The game needs a file that is not in the package.,,COREDLL.dll!__CxxThrowException COREDLL.dll!LoadLibraryExW AYGSHELL.dll!#310 OFFICE.dll!RMLoadLibrary AYGSHELL.dll!#209 COREDLL.dll!StringCchLengthW
+Does not start,Does not start,Microsoft Office Mobile (v6.1) (Windows Mobile Port),https://archive.org/details/office2007_202610,office2007.CAB,,,COREDLL.dll!#1877 AYGSHELL.dll!#310 OFFICE.dll!RMLoadLibrary AYGSHELL.dll!#209 COREDLL.dll!SetViewportOrgEx COREDLL.dll!#1984 AYGSHELL.dll!#43 AYGSHELL.dll!#109
+Does not start,Does not start,Microsoft Office Mobile 6.1: Upgrade for Microsoft Office 2007 file formats ARM,https://archive.org/details/officemobile_licensed_0409_us_arm,Microsoft Office Mobile/Office_wpc_WM5.CAB,,,COREDLL.dll!#1877 AYGSHELL.dll!#310 OFFICE.dll!RMLoadLibrary AYGSHELL.dll!#209 COREDLL.dll!SetViewportOrgEx COREDLL.dll!#1984 AYGSHELL.dll!#43 AYGSHELL.dll!#109
+Does not start,Does not start,Microsoft Office Mobile 6.1: Upgrade for Microsoft Office 2007 file formats ARM,https://archive.org/details/officemobile_licensed_0409_us_arm,Microsoft Office Mobile/office_wpc_WM6.CAB,,,COREDLL.dll!#1877 AYGSHELL.dll!#310 OFFICE.dll!RMLoadLibrary AYGSHELL.dll!#209 COREDLL.dll!SetViewportOrgEx COREDLL.dll!#1984 AYGSHELL.dll!#43 AYGSHELL.dll!#109
 Does not start,Does not start,Microsoft Pocket Expense Powertoy for Pocket PC,https://archive.org/details/microsoft-pocket-expense,PocketExpense.Arm 1100 (4K) v3.00.CAB,,,
 Does not start,Does not start,Microsoft Pocket Expense Powertoy for Pocket PC,https://archive.org/details/microsoft-pocket-expense,PocketExpense.SH 3 (1K) v3.00.CAB,The game stopped on something the emulator cannot do yet.,,
 Does not start,Does not start,Microsoft Pocket PC 2002 Games Arcade Pocket Pak,https://archive.org/details/microsoft-pocket-pc-2002-games-arcade-pocket-pak,Microsoft Pocket PC 2002 Games Arcade Pocket Pak.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
@@ -433,8 +434,8 @@ Does not start,Does not start,Microsoft Windows Mobile Device Center 6.1,https:/
 Does not start,Does not start,MindSoft Pocket CleanUp,https://archive.org/details/tucows_313452_MindSoft_Pocket_CleanUp,mpcueng.zip,,,
 Does not start,Does not start,Mixtikl PPC,https://archive.org/details/mixtikl-ppc,Mixtikl_PPC.zip,The game stopped on something the emulator cannot do yet.,,
 Does not start,Does not start,Mobile Channel Viewer,https://archive.org/details/tucows_32206_Mobile_Channel_Viewer,HPCChan.EXE,The game's program file cannot be loaded.,The program inside may be damaged or packed. Try another copy of the game.｜loading PE: not a PE: Malformed entity: PE header is malformed (signature 0x3c05454e),
-Does not start,Does not start,Mobile Web Server 3.1 (Windows Mobile),https://archive.org/details/mobilewebserver,MWS-PPC.CAB,The game needs a file that is not in the package.,,COREDLL.dll!ConvertDefaultLocale COREDLL.dll!CreatePatternBrush
-Does not start,Does not start,Mobile Web Server 3.1 (Windows Mobile),https://archive.org/details/mobilewebserver,MWS+PPC.CAB,The game needs a file that is not in the package.,,COREDLL.dll!ConvertDefaultLocale COREDLL.dll!CreatePatternBrush
+Does not start,Does not start,Mobile Web Server 3.1 (Windows Mobile),https://archive.org/details/mobilewebserver,MWS-PPC.CAB,The game needs a file that is not in the package.,,COREDLL.dll!ConvertDefaultLocale
+Does not start,Does not start,Mobile Web Server 3.1 (Windows Mobile),https://archive.org/details/mobilewebserver,MWS+PPC.CAB,The game needs a file that is not in the package.,,COREDLL.dll!ConvertDefaultLocale
 Does not start,Does not start,MobiPassword,https://archive.org/details/tucows_291984_MobiPassword,mobipassword_ppc.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,Mocha VNC for Windows Mobile (v1.1) (Windows Mobile Port),https://archive.org/details/smtvnc,smtvnc.cab,"This is a .NET Compact Framework program, which PocketPC3630 cannot run.",Look for a native ARM version of this program.｜mapping image into CPU: loader error: managed PE requires a .NET Compact Framework runtime (v2.0.50727); PocketPC3630 currently executes native ARM/MIPS WinCE images only,
 Does not start,Does not start,MxCalculator,https://archive.org/details/tucows_150376_MxCalculator,mxcalculator.zip,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
@@ -451,16 +452,16 @@ Does not start,Does not start,NFS Shift 3D and NFS Hot Pursuit 3D (Windows Mobil
 Does not start,Does not start,NFS Shift 3D and NFS Hot Pursuit 3D (Windows Mobile),https://archive.org/details/nfss-hp-3d-wm,NFS2011.E101.Retail_Pantamorph.cab,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!?_set_new_handler@@YAP6AHI@ZP6AHI@Z@Z COREDLL.dll!?_set_new_mode@@YAHH@Z
 Does not start,Does not start,NFS Undercover HD (Windows Mobile),https://archive.org/details/nfsuc-wm-hd,NFS_Undercover.cab,The game needs a file that is not in the package.,,
 Does not start,Does not start,Novii Remote Deluxe,https://archive.org/details/NRDeluxe,NRDeluxe.CAB,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
-Does not start,Does not start,obBASE,https://archive.org/details/tucows_32344_obBASE,obhpcmips.zip,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!GetCaretPos
+Does not start,Does not start,obBASE,https://archive.org/details/tucows_32344_obBASE,obhpcmips.zip,The game stopped on something the emulator cannot do yet.,,
 Does not start,Does not start,OmniChex Web,https://archive.org/details/tucows_365573_OmniChex_Web,omnichex.zip,"This is a .NET Compact Framework program, which PocketPC3630 cannot run.",Look for a native ARM version of this program.｜mapping image into CPU: loader error: managed PE requires a .NET Compact Framework runtime (v1.1.4322); PocketPC3630 currently executes native ARM/MIPS WinCE images only,
-Does not start,Does not start,OpTrax,https://archive.org/details/tucows_32317_OpTrax,optrax.zip,The game needs a file that is not in the package.,,COREDLL.dll!GetCaretPos
+Does not start,Does not start,OpTrax,https://archive.org/details/tucows_32317_OpTrax,optrax.zip,The game stopped on something the emulator cannot do yet.,,
 Does not start,Does not start,Other OEM Windows Phone ROM Archive,https://archive.org/details/wpdb_archive,Tools/HTC/ACDU.rar,,,
 Timed out,Does not start,PADD,https://archive.org/details/tucows_168414_PADD,padd12.zip,Did not finish starting within 120 seconds,,
 Does not start,Does not start,Palbum Picture Optimizer,https://archive.org/details/tucows_256366_Palbum_Picture_Optimizer,palbumpo_setup.exe,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#35 mfcce300.dll!#644
 Does not start,Does not start,Palbum Picture Viewer,https://archive.org/details/tucows_256577_Palbum_Picture_Viewer,palbumpv_setup.exe,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,Palm GB 101 Windows CE,https://archive.org/details/palm-gb-101-windows-ce,keypad.exe,,,
 Does not start,Does not start,Patient Tracker,https://archive.org/details/tucows_70256_Patient_Tracker,ptce51.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
-Does not start,Does not start,pdsCONTACTS,https://archive.org/details/tucows_32597_pdsCONTACTS,pdsContactss.zip,The game needs a file that is not in the package.,,COREDLL.dll!GetCaretPos
+Does not start,Does not start,pdsCONTACTS,https://archive.org/details/tucows_32597_pdsCONTACTS,pdsContactss.zip,The game needs a file that is not in the package.,,
 Does not start,Does not start,PE Encrypt,https://archive.org/details/tucows_208768_PE_Encrypt,peencrypt50.zip,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,PE Zip Explorer,https://archive.org/details/tucows_228729_PE_Zip_Explorer,pezip50.zip,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#121 mfcce300.dll!#184 mfcce300.dll!#644
 Does not start,Does not start,Penokio OutLynk,https://archive.org/details/tucows_302448_Penokio_OutLynk,Outlynk4.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
@@ -486,7 +487,7 @@ Does not start,Does not start,Pocket Game Trainer,https://archive.org/details/tu
 Does not start,Does not start,Pocket Goo,https://archive.org/details/tucows_226729_Pocket_Goo,PocketGooDemo.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,Pocket Image,https://archive.org/details/tucows_216359_Pocket_Image,pkim20sa.zip,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,Pocket Jongg,https://archive.org/details/tucows_32164_Pocket_Jongg,pjv30demo.exe,The game's program file cannot be loaded.,The program inside may be damaged or packed. Try another copy of the game.｜loading PE: not a PE: Malformed entity: PE header is malformed (signature 0x3c05454e),
-Does not start,Does not start,Pocket Lemmings,https://archive.org/details/pocket-lemmings,PocketLemmings.zip,,,COREDLL.dll!GetOpenFileNameW
+Does not start,Does not start,Pocket Lemmings,https://archive.org/details/pocket-lemmings,PocketLemmings.zip,,,
 Does not start,Does not start,Pocket Painter,https://archive.org/details/tucows_209445_Pocket_Painter,PocketPainterEnglish150.ZIP,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,Pocket PC 2003 Upgrade for Compaq iPAQ 3970,https://archive.org/details/3970upgrade_202108,psshutxp_eng.xscale.cab,The game needs a file that is not in the package.,,COREDLL.dll!SHCreateShortcut IMGDECMP.DLL!#1
 Does not start,Does not start,Pocket Piano,https://archive.org/details/tucows_212520_Pocket_Piano,PocketPianoEnglish100.ZIP,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
@@ -498,13 +499,13 @@ Does not start,Does not start,Pocket Streets 2001 for Windows CE,https://archive
 Does not start,Does not start,Pocket Text Finder,https://archive.org/details/tucows_315290_Pocket_Text_Finder,PocketTextFinderSetup.exe,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,Pocket TurboDoc Electronic Medical Record,https://archive.org/details/tucows_365541_Pocket_TurboDoc_Electronic_Medical_Record,All_TurboDocPPC_2003Free.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,Pocket TV Pro ACER EN,https://archive.org/details/pocket-tv-pro-acer-en,PocketTV Pro ACER EN.zip,The game needs a file that is not in the package.,,coredll.dll!CeGetThreadQuantum
-Does not start,Does not start,Pocket Wallet,https://archive.org/details/tucows_54499_Pocket_Wallet,PWalletPPCSetup.exe,,,COREDLL.dll!RegisterClipboardFormatW COREDLL.dll!ImageList_ReplaceIcon COREDLL.dll!SHGetShortcutTarget
+Does not start,Does not start,Pocket Wallet,https://archive.org/details/tucows_54499_Pocket_Wallet,PWalletPPCSetup.exe,,,COREDLL.dll!SHGetShortcutTarget
 Does not start,Does not start,PocketBar 1.2,https://archive.org/details/pocketbar12,pocketbar1.2.zip,"This is a .NET Compact Framework program, which PocketPC3630 cannot run.",Look for a native ARM version of this program.｜mapping image into CPU: loader error: managed PE requires a .NET Compact Framework runtime (v2.0.50727); PocketPC3630 currently executes native ARM/MIPS WinCE images only,
 Does not start,Does not start,PocketChess,https://archive.org/details/tucows_32162_PocketChess,PocketChessForPPC.exe,,,
 Does not start,Does not start,PocketCommander,https://archive.org/details/tucows_251950_PocketCommander,pocketcommander0441b.zip,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,PocketDOS,https://archive.org/details/tucows_49074_PocketDOS,PocketDOS_107.exe,The game needs a file that is not in the package.,,
 Does not start,Does not start,PocketDOS 1.12.2. ARM PPC,https://archive.org/details/pocket-dos-1.12.2,PocketDOS.v1.12.2.ARM.PPC.Cracked-Sarge.zip,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!CharUpperBuffW
-Does not start,Does not start,PocketGCC,https://archive.org/details/src_all-20040803-gcc-3.3.3-binutils-2.13.2.1-newlib-1.11.0-pthreads-20021104,pocketgcc-1.50-20031108-arm.zip,,,COREDLL.dll!GetStdioPathW COREDLL.dll!towupper COREDLL.dll!fputwc COREDLL.dll!fwprintf COREDLL.dll!IsAPIReady COREDLL.dll!ferror
+Does not start,Does not start,PocketGCC,https://archive.org/details/src_all-20040803-gcc-3.3.3-binutils-2.13.2.1-newlib-1.11.0-pthreads-20021104,pocketgcc-1.50-20031108-arm.zip,,,COREDLL.dll!GetStdioPathW COREDLL.dll!fwprintf COREDLL.dll!fputwc COREDLL.dll!IsAPIReady
 Does not start,Does not start,PocketGCC,https://archive.org/details/src_all-20040803-gcc-3.3.3-binutils-2.13.2.1-newlib-1.11.0-pthreads-20021104,src_all-20040803-gcc-3.3.3-binutils-2.13.2.1-newlib-1.11.0-pthreads-20021104.rar,,,libc.dll!_startup
 Does not start,Does not start,PocketJam,https://archive.org/details/tucows_299367_PocketJam,PocketJam_Install.exe,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,PocketMap Annual Premiere Nationwide,https://archive.org/details/tucows_223424_PocketMap_Annual_Premiere_Nationwide,PocketMapTrial102.exe,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
@@ -517,8 +518,7 @@ Does not start,Does not start,POWDER Roguelike Complete Archive,https://archive.
 Does not start,Does not start,POWDER Roguelike Complete Archive,https://archive.org/details/powder-magicsam-pandora,WinCE/powder-barebone-winCE winmo pocketpc.zip,The game stopped on something the emulator cannot do yet.,,SDL.dll!SDL_Quit SDL.dll!SDL_Init SDL.dll!SDL_SetVideoMode SDL.dll!SDL_GetError SDL.dll!SDL_WM_SetCaption SDL.dll!SDL_strlcpy SDL.dll!SDL_SetModuleHandle SDL.dll!SDL_CreateRGBSurfaceFrom
 Does not start,Does not start,Power Supply Properties,https://archive.org/details/tucows_32605_Power_Supply_Properties,PowerSupplyHPC.zip,,,
 Does not start,Does not start,PowerOff,https://archive.org/details/tucows_218943_PowerOff,PowerOff10.zip,,,
-Does not start,Does not start,PowerVR Demos,https://archive.org/details/pvr-racer,OGLESLighting.zip,,,COREDLL.dll!MonitorFromWindow COREDLL.dll!GetMonitorInfo
-Does not start,Does not start,PowerVR Racer (Ridge Racer OpenGL MBX ES 1.1 tech demo) for Dell Axim x50v x51v,https://archive.org/details/powervr-racer,PVR_Racer.zip,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!MonitorFromWindow COREDLL.dll!GetMonitorInfo
+Does not start,Does not start,PowerVR Demos,https://archive.org/details/pvr-racer,OGLESLighting.zip,,,
 Does not start,Does not start,PrinterOn PocketWhere,https://archive.org/details/tucows_274453_PrinterOn_PocketWhere,pwce_install.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,Psion Workabout Pro G1 firmware,https://archive.org/details/psion-workabout-pro-g1-firmware,Windows Mobile 2003-H146p.zip,,,
 Does not start,Does not start,QuickContacts,https://archive.org/details/tucows_214829_QuickContacts,QuickContacts.zip,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
@@ -531,7 +531,7 @@ Does not start,Does not start,Rayman 2002 arm CD ver full En & Jp,https://archiv
 Timed out,Does not start,Rayman Ultimate WM2003 & WM5,https://archive.org/details/rayman-ultimate-wm-5,RaymanUltimateARM wm2003.zip,Did not finish starting within 120 seconds,,zlib.dll!gzopen zlib.dll!gzread zlib.dll!gzclose
 Timed out,Does not start,Rayman Ultimate WM2003 & WM5,https://archive.org/details/rayman-ultimate-wm-5,Rayman_Ultimate_WM5.rar,Did not finish starting within 120 seconds,,
 Does not start,Does not start,Reckless Thief ARM,https://archive.org/details/reckless-thief-arm,RecklessThief ARM.zip,The game stopped on something the emulator cannot do yet.,,
-Does not start,Does not start,Recordian,https://archive.org/details/tucows_32438_Recordian,RecordianPPC30Day.exe,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!ImageList_ReplaceIcon COREDLL.dll!SHGetShortcutTarget COREDLL.dll!GetTextFaceW
+Does not start,Does not start,Recordian,https://archive.org/details/tucows_32438_Recordian,RecordianPPC30Day.exe,The game stopped on something the emulator cannot do yet.,,COREDLL.dll!SHGetShortcutTarget COREDLL.dll!GetTextFaceW
 Does not start,Does not start,Resco Explorer 2010 8.10,https://archive.org/details/RescoExplorer_201810,Resco Explorer.cab,The game needs a file that is not in the package.,,AYGSHELL.dll!#69
 Does not start,Does not start,Rosesams Screen Shooter,https://archive.org/details/rsss_20200914,RSSS.zip,"This is a .NET Compact Framework program, which PocketPC3630 cannot run.",Look for a native ARM version of this program.｜mapping image into CPU: loader error: managed PE requires a .NET Compact Framework runtime (v2.0.50727); PocketPC3630 currently executes native ARM/MIPS WinCE images only,
 Does not start,Does not start,RUU Excalibur HTC WWE 1.11.405.4 4.1.13.28 02.63.90,https://archive.org/details/ruu-excalibur-htc-wwe-1.11.405.4-4.1.13.28-02.63.90,RUU_Excalibur_HTC_WWE_1.11.405.4_4.1.13.28_02.63.90_Ship.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
@@ -554,7 +554,7 @@ Does not start,Does not start,Spanish-English and English-Spanish dictionary,htt
 Does not start,Does not start,Spb Full Screen Keyboard,https://archive.org/details/tucows_281220_Spb_Full_Screen_Keyboard,fullscreenkeyboard2_setup.exe,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,Spb Lines,https://archive.org/details/tucows_254251_Spb_Lines,lines_setup.exe,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,Spb Pocket Plus,https://archive.org/details/tucows_302503_Spb_Pocket_Plus,pocketplus_setup.exe,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
-Does not start,Does not start,SpreadCE 3.14 2023-06-10,https://archive.org/details/spreadce-3.14-2023-06-10,spreppcs.zip,The game needs a file that is not in the package.,,COREDLL.dll!towupper COREDLL.dll!GetVersionEx
+Does not start,Does not start,SpreadCE 3.14 2023-06-10,https://archive.org/details/spreadce-3.14-2023-06-10,spreppcs.zip,The game needs a file that is not in the package.,,
 Does not start,Does not start,Sprite Backup Premium v3.1.4 cracked,https://archive.org/details/sprite_backup_premium_3.1.4,sprite_backup_premium_v3.1.4_reg.rar,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Timed out,Does not start,sshCE,https://archive.org/details/tucows_56835_sshCE,sshCE1pro.exe,Did not finish starting within 120 seconds,,
 Does not start,Does not start,Star Tap ARM,https://archive.org/details/star-tap-arm,StarTap ARM.zip,,,
@@ -574,7 +574,7 @@ Does not start,Does not start,TimeReporter,https://archive.org/details/tucows_32
 Does not start,Does not start,TimeReporter for Timeslips,https://archive.org/details/tucows_32449_TimeReporter_for_Timeslips,tr4ts.exe,The game's program file cannot be loaded.,The program inside may be damaged or packed. Try another copy of the game.｜loading PE: not a PE: Malformed entity: PE header is malformed (signature 0x3c05454e),
 Does not start,Does not start,Tiny TeamTalk,https://archive.org/details/tucows_353860_Tiny_TeamTalk,TinyTeamTalk_v1.1.exe,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,Tome Raider 3 ARM,https://archive.org/details/tome-raider-3-arm,TomeRaider3 ARM.zip,The game needs a file that comes with the Pocket PC itself.,,coredll.dll!AFS_CreateDirectoryW
-Does not start,Does not start,TOSHIBA GENIO-SPEECH Version 1.11 cab,https://archive.org/details/genio-speech,GENIO-SPEECH.cab,The game needs a file that is not in the package.,,COREDLL.dll!ImageList_ReplaceIcon COREDLL.dll!DestroyIcon SpeechOut.dll!??0SpeakOut@@QAA@XZ SpeechOut.dll!?Init@SpeakOut@@QAAHPAUHWND__@@0I@Z CEMAPI.dll!MAPIInitialize CEMAPI.dll!MAPILogonEx
+Does not start,Does not start,TOSHIBA GENIO-SPEECH Version 1.11 cab,https://archive.org/details/genio-speech,GENIO-SPEECH.cab,The game needs a file that is not in the package.,,SpeechOut.dll!??0SpeakOut@@QAA@XZ SpeechOut.dll!?Init@SpeakOut@@QAAHPAUHWND__@@0I@Z CEMAPI.dll!MAPIInitialize CEMAPI.dll!MAPILogonEx
 Does not start,Does not start,TrueTerm CE Culinary Dictionary English/Dutch,https://archive.org/details/tucows_180913_TrueTerm_CE_Culinary_Dictionary_English_Dutch,TTWinCEEnglishDutchEnglish.zip,The game stopped on something the emulator cannot do yet.,,mfcce211.dll!#612
 Does not start,Does not start,TrueTerm CE Culinary Dictionary English/French,https://archive.org/details/tucows_180918_TrueTerm_CE_Culinary_Dictionary_English_French,TTWinCEEnglishFrench.zip,The game stopped on something the emulator cannot do yet.,,mfcce211.dll!#612
 Does not start,Does not start,TrueTerm CE Culinary Dictionary English/Italian,https://archive.org/details/tucows_180924_TrueTerm_CE_Culinary_Dictionary_English_Italian,TTWinCEEnglishItalianEnglish.zip,The game stopped on something the emulator cannot do yet.,,mfcce211.dll!#612
@@ -598,19 +598,19 @@ Does not start,Does not start,wincecabs3,https://archive.org/details/wincecabs3,
 Does not start,Does not start,WinceZip,https://archive.org/details/tucows_267215_WinceZip,WinceZipEnglish100.zip,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,Windows 10 SDK (Version 10.0.16299.91) and Microsoft Emulator for Windows 10 Mobile (Version 10.0.15254.1),https://archive.org/details/windows10sdkmsewindows10mobile,EmulatorSetup.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,Windows 10 SDK (Version 10.0.16299.91) and Microsoft Emulator for Windows 10 Mobile (Version 10.0.15254.1),https://archive.org/details/windows10sdkmsewindows10mobile,winsdksetup.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
-Does not start,Does not start,Windows CE Japanese Pocket PC Programs,https://archive.org/details/windows-ce-japanese-pocket-pc-programs,Windows CE Japanese Pocket PC Programs.zip,,,COREDLL.dll!RegisterClipboardFormatW COREDLL.dll!SHGetShortcutTarget AYGSHELL.dll!#69 DocList.dll!DocList_Create
+Does not start,Does not start,Windows CE Japanese Pocket PC Programs,https://archive.org/details/windows-ce-japanese-pocket-pc-programs,Windows CE Japanese Pocket PC Programs.zip,,,COREDLL.dll!SHGetShortcutTarget AYGSHELL.dll!#69 DocList.dll!DocList_Create
 Does not start,Does not start,Windows CE Services v2.x to v2.1,https://archive.org/details/tucows_32563_Windows_CE_Services_v2.x_to_v2.1,wces21.exe,The game's program file cannot be loaded.,The program inside may be damaged or packed. Try another copy of the game.｜loading PE: not a PE: Malformed entity: PE header is malformed (signature 0x3c05454e),
 Does not start,Does not start,Windows CE Services v2.x to v2.2,https://archive.org/details/tucows_32564_Windows_CE_Services_v2.x_to_v2.2,WindowsCEServices22.zip,The game's program file cannot be loaded.,The program inside may be damaged or packed. Try another copy of the game.｜loading PE: not a PE: Malformed entity: PE header is malformed (signature 0x3c05454e),
 Does not start,Does not start,Windows Device Recovery Tool,https://archive.org/details/wdrtinstaller_202512,FFULoaderDriver.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,Windows Device Recovery Tool,https://archive.org/details/wdrtinstaller_202512,WindowsDeviceRecoveryToolInstaller.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
 Does not start,Does not start,Windows Media Player 1.2 for Handheld PC,https://archive.org/details/WMNAll-HPC,naut640x240.ARM.CAB,The game stopped on something the emulator cannot do yet.,,
 Does not start,Does not start,Windows Media Player 1.2 for Handheld PC,https://archive.org/details/WMNAll-HPC,naut640x480.ARM.CAB,The game stopped on something the emulator cannot do yet.,,
-Does not start,Does not start,Windows Media Player 7.1 for Pocket PC 3.0,https://archive.org/details/windows-media-player-7.1-for-pocket-pc-3.0,wolf.ARM.CAB,,,COREDLL.dll!GetTempPathW
+Does not start,Does not start,Windows Media Player 7.1 for Pocket PC 3.0,https://archive.org/details/windows-media-player-7.1-for-pocket-pc-3.0,wolf.ARM.CAB,,,
 Does not start,Does not start,Windows Media Player for Palm-size PC (Extracted),https://archive.org/details/windows-media-player-for-palm-size-pc,wyvrncpq.mips.CAB,The game stopped on something the emulator cannot do yet.,,
 Does not start,Does not start,Windows Media Player for Palm-size PC (Extracted),https://archive.org/details/windows-media-player-for-palm-size-pc,wyvrncso.mips.CAB,The game stopped on something the emulator cannot do yet.,,
 Does not start,Does not start,Windows Media Player for Pocket PC - Technology Preview Edition 2,https://archive.org/details/windowsmediaplayerforpocketpc-technologypreviewedition12extracted,Windows Media Player for Pocket PC - Technology Preview Edition/WMPPPC.exe,"This is a desktop Windows program, not a Pocket PC one.","Do not run it. If it is an installer, open it with 7-Zip, take out the ARM .cab and import that.｜mapping image into CPU: loader error: unsupported executable machine 0x014c; PocketPC3630's CPU backend executes ARM and MIPS WinCE images only",
-Does not start,Does not start,Windows Media Player for Pocket PC 8.0 (Extracted),https://archive.org/details/windows-media-player-for-pocket-pc-8.0,wolfRAM.ARM.CAB,,,COREDLL.dll!GetTempPathW
-Does not start,Does not start,Windows Media Player for Pocket PC 8.0 (Extracted),https://archive.org/details/windows-media-player-for-pocket-pc-8.0,wolfROM.ARM.CAB,,,COREDLL.dll!GetTempPathW
+Does not start,Does not start,Windows Media Player for Pocket PC 8.0 (Extracted),https://archive.org/details/windows-media-player-for-pocket-pc-8.0,wolfRAM.ARM.CAB,,,
+Does not start,Does not start,Windows Media Player for Pocket PC 8.0 (Extracted),https://archive.org/details/windows-media-player-for-pocket-pc-8.0,wolfROM.ARM.CAB,,,
 Does not start,Does not start,Windows Mobile application archive,https://archive.org/details/windowsmobile,CapSure_PPC_v1.11g.cab,"This is a .NET Compact Framework program, which PocketPC3630 cannot run.",Look for a native ARM version of this program.｜mapping image into CPU: loader error: managed PE requires a .NET Compact Framework runtime (v2.0.50727); PocketPC3630 currently executes native ARM/MIPS WinCE images only,
 Does not start,Does not start,Windows mobile apps,https://archive.org/details/windows_mobile_apps,windows mobile apps/AntiqueTetrisCE.ARM.PocketPC (Version 3.0) (English).CAB,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
 Does not start,Does not start,Windows mobile apps,https://archive.org/details/windows_mobile_apps,windows mobile apps/SploitDemo.Arm.Cab,The game needs a file that comes with the Pocket PC itself.,,mfcce300.dll!#644
