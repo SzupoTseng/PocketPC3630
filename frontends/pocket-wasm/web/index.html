@@ -84,7 +84,10 @@ body.playing #stage { display: flex; }
 .bar button:hover { background: rgb(255 255 255 / 8%); }
 #hud { color: #7f7d77; font-variant-numeric: tabular-nums; }
 .screen { flex: 1; min-height: 0; width: 100%; display: grid; place-items: center; padding: 0 8px; }
-canvas { display: block; touch-action: none; image-rendering: pixelated; background: #000; outline: none; max-width: 100%; max-height: 100%; height: 100%; }
+canvas { display: block; touch-action: none; image-rendering: pixelated; background: #000; outline: none; transform-origin: center;
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.screen { overflow: hidden; position: relative; align-self: stretch; }
+.bar-right { display: flex; gap: 4px; }
 
 /* Touch controls, the same keys as the Android version's pad. */
 .pad { display: none; width: 100%; max-width: 26rem; justify-content: space-between; align-items: center; padding: 14px 20px 18px; touch-action: none; user-select: none; -webkit-user-select: none; }
@@ -273,6 +276,7 @@ kbd { font: 12px/1 ui-monospace, Consolas, monospace; border: 1px solid var(--li
           <li><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 方向、<kbd>Enter</kbd> 動作鍵、<kbd>Esc</kbd> 返回</li>
           <li>手機上會出現方向鍵與 A／B／C 按鈕</li>
           <li>進度自動保存；「⋯」選單可下載、匯入或重置存檔</li>
+          <li>畫面是躺著的？按上方「旋轉畫面」，當年的橫向遊戲要把機器轉過來玩</li>
         </ul>
       </div>
     </div>
@@ -335,7 +339,10 @@ kbd { font: 12px/1 ui-monospace, Consolas, monospace; border: 1px solid var(--li
   <div class="bar">
     <button type="button" id="leave">‹ 遊戲庫</button>
     <span id="hud"></span>
-    <button type="button" id="save-now">下載存檔</button>
+    <span class="bar-right">
+      <button type="button" id="rotate" title="遊戲畫面是躺著的？轉過來">旋轉畫面</button>
+      <button type="button" id="save-now">下載存檔</button>
+    </span>
   </div>
   <div class="fix" id="fix" hidden>
     <span id="fix-text">這個遊戲需要 Pocket PC 內建的 MFC 系統檔。</span>
@@ -609,12 +616,30 @@ function release(vk) {
   else pendingUp.set(vk, setTimeout(() => keyUp(vk), shortest - held));
 }
 
+// Landscape games of the time drew sideways on the portrait screen and the
+// player turned the device. The page turns the canvas
+// instead: 0, 90 or 270 degrees, remembered per game, with taps mapped back.
+let rotation = 0;
+function fitCanvas() {
+  const canvas = $('screen');
+  const area = canvas.parentElement.getBoundingClientRect();
+  const [w, h] = [canvas.width, canvas.height];
+  const turned = rotation !== 0;
+  const scale = 0.98 * Math.max(0.1, Math.min(area.width / (turned ? h : w), area.height / (turned ? w : h)));
+  canvas.style.width = `${w * scale}px`;
+  canvas.style.height = `${h * scale}px`;
+  canvas.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+}
+window.addEventListener('resize', () => { if (running) fitCanvas(); });
+
 function attachInput(canvas, width, height) {
   const at = (event) => {
     const box = canvas.getBoundingClientRect();
+    const u = (event.clientX - box.left) / box.width, v = (event.clientY - box.top) / box.height;
+    const [x, y] = rotation === 90 ? [v, 1 - u] : rotation === 270 ? [1 - v, u] : [u, v];
     return [
-      Math.floor((event.clientX - box.left) * width / box.width),
-      Math.floor((event.clientY - box.top) * height / box.height),
+      Math.min(width - 1, Math.max(0, Math.floor(x * width))),
+      Math.min(height - 1, Math.max(0, Math.floor(y * height))),
     ];
   };
   let stylus = false;
@@ -665,8 +690,16 @@ function start(index) {
   const [width, height] = [M._pocket_width(), M._pocket_height()];
   canvas.width = width;
   canvas.height = height;
-  canvas.style.aspectRatio = `${width} / ${height}`;
   document.body.classList.add('playing');
+  try { rotation = Number(localStorage.getItem(`rotate:${gameId(index)}`)) || 0; } catch { rotation = 0; }
+  fitCanvas();
+  $('rotate').onclick = () => {
+    // 0 -> 270 -> 90 -> 0: games drawn for a device held sideways usually
+    // need the anticlockwise turn, so that comes first.
+    rotation = rotation === 0 ? 270 : rotation === 270 ? 90 : 0;
+    try { localStorage.setItem(`rotate:${gameId(index)}`, String(rotation)); } catch {}
+    fitCanvas();
+  };
   canvas.focus();
   attachInput(canvas, width, height);
   startAudio();

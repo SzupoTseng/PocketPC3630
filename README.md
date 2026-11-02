@@ -181,6 +181,8 @@ target/release/pockethle play MyGame.zip
 
 ## 🚧 Known limitations
 
+- Games written straight into the Compaq iPAQ's sideways framebuffer (Pocket Hustler) draw their text and table transposed; emulating that memory layout is not done yet. Games that are simply drawn sideways can be turned with *Rotate screen* in the browser version.
+- SimCity 2000 (ZIO) opens its window but never draws into it.
 - A few rarely used MIPS and SH3 helpers (64-bit maths on SH3, `setjmp` on both) are not implemented yet.
 - MIPS16 code (some MIPS builds) and SH-4 floating point instructions are not supported yet.
 - .NET Compact Framework programs, Wise installers and x86 builds do not run.

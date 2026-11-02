@@ -151,6 +151,8 @@ target/release/pockethle play MyGame.zip
 
 ## 🚧 已知限制
 
+- 直接寫入 Compaq iPAQ 側向影格緩衝區的遊戲（Pocket Hustler），文字與球桌會畫成轉置的樣子，這種記憶體排列尚未模擬。單純畫成側躺的遊戲，可以用網頁版的「旋轉畫面」轉正。
+- SimCity 2000（ZIO 版）會開啟視窗，但從不在裡面繪圖。
 - 少數較少用的 MIPS 與 SH3 輔助函式（SH3 的 64 位元運算、兩者的 `setjmp`）尚未實作。
 - 尚不支援 MIPS16 程式碼（部分 MIPS 版）與 SH-4 浮點指令。
 - .NET Compact Framework 程式、Wise 安裝程式、x86 版本無法執行。
