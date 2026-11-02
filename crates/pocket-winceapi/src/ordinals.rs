@@ -68,22 +68,45 @@ pub fn lookup(dll: &str, ordinal: u16) -> Option<String> {
         .and_then(|m| m.get(&ordinal).cloned())
 }
 
-/// SuperH builds of `coredll.dll` put their own compiler helpers on some
-/// of the ordinals the ARM table gives to `__rt_*` routines. Read from the
-/// SH3 FreeCell that ships with Pocket PC 2000: it computes
-/// `Random() % count` through ordinal 2006 and card ranks through 2005
-/// (`x % 13`) and 2001 (`x / 13`), each with the dividend in r4 and the
-/// divisor in r5 — the Hitachi `__divls` / `__modls` / `__modlu` pattern.
-/// Taking them as the ARM helpers divided the wrong way round, so the
-/// shuffle loop never ended.
-const SH_COREDLL: &[(u16, &str)] = &[(2001, "__divls"), (2005, "__modls"), (2006, "__modlu")];
+const COREDLL_MIPS_JSON: &str = include_str!("../data/coredll-ordinals-mips.json");
+const COREDLL_SH_JSON: &str = include_str!("../data/coredll-ordinals-sh.json");
+
+/// MIPS and SuperH builds of `coredll.dll` number their compiler runtime
+/// helpers (2000 and up) differently from ARM: on SH3 ordinal 2005 is
+/// `__modls` (`x % n`, dividend first) where ARM has `__rt_sdiv`, and 2008
+/// is the single-precision `__adds`. Resolving them with the ARM table sent
+/// FreeCell's shuffle into an endless loop and stopped Pocket Slay's MIPS
+/// and SH3 builds while generating a map. These tables come from the
+/// Pocket PC 2000 SDK's per-CPU `coredll.lib`.
+static CPU_HELPER_TABLES: Lazy<[HashMap<u16, String>; 2]> = Lazy::new(|| {
+    [COREDLL_MIPS_JSON, COREDLL_SH_JSON].map(|json| {
+        serde_json::from_str::<OrdinalFile>(json)
+            .map(|file| {
+                file.map
+                    .into_iter()
+                    .filter_map(|(k, v)| k.parse::<u16>().ok().map(|o| (o, v)))
+                    .collect()
+            })
+            .unwrap_or_else(|e| {
+                log::error!("failed to parse a per-CPU coredll ordinal table: {e}");
+                HashMap::new()
+            })
+    })
+});
 
 /// Look up `ordinal` for a program built for `machine` (a PE machine
-/// value). Only the SuperH helpers differ from the shared table.
+/// value). Only coredll's runtime helpers differ between processors.
 pub fn lookup_for_machine(machine: u16, dll: &str, ordinal: u16) -> Option<String> {
-    if matches!(machine, 0x01a2 | 0x01a3 | 0x01a6) && dll.eq_ignore_ascii_case("coredll.dll") {
-        if let Some((_, name)) = SH_COREDLL.iter().find(|(ord, _)| *ord == ordinal) {
-            return Some((*name).to_string());
+    if dll.eq_ignore_ascii_case("coredll.dll") {
+        let table = match machine {
+            0x0162 | 0x0166 | 0x0168 | 0x0169 | 0x0266 | 0x0366 | 0x0466 => Some(0),
+            0x01a2 | 0x01a3 | 0x01a4 | 0x01a6 => Some(1),
+            _ => None,
+        };
+        if let Some(index) = table {
+            if let Some(name) = CPU_HELPER_TABLES[index].get(&ordinal) {
+                return Some(name.clone());
+            }
         }
     }
     lookup(dll, ordinal)
@@ -102,9 +125,17 @@ pub fn entry_count(dll: &str) -> usize {
 mod tests {
     #[test]
     fn superh_division_helpers_have_their_own_ordinals() {
-        assert_eq!(super::lookup_for_machine(0x01a2, "COREDLL.dll", 2006).as_deref(), Some("__modlu"));
+        let sh = |o| super::lookup_for_machine(0x01a2, "COREDLL.dll", o);
+        let mips = |o| super::lookup_for_machine(0x0166, "COREDLL.dll", o);
+        assert_eq!(sh(2005).as_deref(), Some("__modls"));
+        assert_eq!(sh(2006).as_deref(), Some("__modlu"));
+        assert_eq!(sh(2008).as_deref(), Some("__adds"));
+        assert_eq!(sh(2027).as_deref(), Some("sh__itod"));
+        assert_eq!(mips(2022).as_deref(), Some("__fpadd"));
+        assert_eq!(mips(2005).as_deref(), Some("__ll_div"));
         assert_eq!(super::lookup_for_machine(0x01c0, "COREDLL.dll", 2006).as_deref(), Some("__rt_sdiv10"));
-        assert_eq!(super::lookup_for_machine(0x01a2, "COREDLL.dll", 2008).as_deref(), Some("__rt_udiv"));
+        // Ordinary APIs share the ARM numbering on every processor.
+        assert_eq!(sh(2).as_deref(), Some("InitializeCriticalSection"));
     }
 
     use super::*;

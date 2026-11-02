@@ -80,7 +80,7 @@ PocketPC3630 **不附任何遊戲，也不附微軟的檔案**。請使用你合
 ### 一塊一塊重建 Windows CE
 這個 fork 在 PocketHLE 之上新增的重點：
 
-- **SuperH 執行期輔助函式：** SH3 的 `coredll` 用和 ARM 相同的序號代表*不同*的函式，而且參數順序相反。直接從 SH3 版 FreeCell 讀出來：序號 2005 在 SH 上是 `x % n`，在 ARM 上卻是 `n / x`。在載入器改成依 CPU 解析序號之前，FreeCell 的洗牌永遠不會結束。
+- **依 CPU 解析的執行期輔助函式：** MIPS 與 SH3 版的 `coredll` 對編譯器輔助函式（整數除法、浮點運算、64 位元運算）的編號都和 ARM 不同，SH3 的雙精度還用指標傳遞。序號 2005 在 SH 是 `x % n`、在 MIPS 是 `__ll_div`、在 ARM 卻是 `n / x`。現在載入器依 CPU 解析序號，序號表取自 Pocket PC 2000 SDK 各 CPU 版本的 `coredll.lib`。在此之前，SH3 版 FreeCell 的洗牌永遠不會結束，Pocket Slay 的 MIPS 與 SH3 版會在產生地圖時停住。
 - **多個計時器：** 以前 `SetTimer` 只會保留最後一個計時器。Pocket Slay 用兩個，所以遊戲一直沒開始。現在所有計時器都會執行，而且永遠先送出最早到期的。
 - **單色點陣圖：** 1 位元點陣圖複製到彩色畫面時，會套用目的端的文字色與背景色，和真機一樣。Pocket Slay 的每一塊領地都是這樣上色的。
 - **正確的模態對話框：** 對話框開著時底下的視窗仍會重繪；對話框會等你操作；靜態文字會依換行斷行。
@@ -110,7 +110,7 @@ PocketPC3630 **不附任何遊戲，也不附微軟的檔案**。請使用你合
 |---|---|---|
 | **EverQuest for the Pocket PC** | ARM | 建立角色、進入世界、存檔與讀檔，三個平台都驗證過 |
 | **Pocket Quake** | ARM | 在瀏覽器中操作選單與遊玩，附螢幕按鍵 |
-| **Pocket Slay** | ARM | 點一下樹，在 *New Game* 按 OK。完整彩色地圖 |
+| **Pocket Slay** | ARM · MIPS · SH3 | 點一下樹，在 *New Game* 按 OK。三個版本都有完整彩色地圖 |
 | **FreeCell**（Pocket-G） | ARM · MIPS · SH3 | 三個版本發出完全相同的牌局 |
 
 ## 🔧 運作方式
@@ -145,7 +145,8 @@ target/release/pockethle play MyGame.zip
 
 ## 🚧 已知限制
 
-- **SH 的浮點輔助函式：** SH3 的 `coredll` 浮點輔助函式有自己的序號，目前只對應了整數的部分。用到浮點運算的 SH3 程式（例如 Pocket Slay 的 SH3 版）會在那裡停住，請改用 ARM 版。
+- Pocket Slay 的 MIPS 與 SH3 版能畫出地圖並遊玩，但一段時間後會停止（跳到無效位址）；ARM 版不會。
+- 少數較少用的 MIPS 與 SH3 輔助函式（SH3 的 64 位元運算、兩者的 `setjmp`）尚未實作。
 - 尚不支援 MIPS16 程式碼（部分 MIPS 版）與 SH-4 浮點指令。
 - .NET Compact Framework 程式、Wise 安裝程式、x86 版本無法執行。
 - 使用 MFC 的程式需要你自己裝置上的 `mfcce300.dll`。

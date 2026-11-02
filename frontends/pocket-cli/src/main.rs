@@ -1674,7 +1674,7 @@ mod display_window {
             let w = width as usize;
             let h = height as usize;
             let window = Window::new(
-                "PocketHLE",
+                "PocketPC3630",
                 w,
                 h,
                 WindowOptions {

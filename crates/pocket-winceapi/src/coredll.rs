@@ -392,7 +392,9 @@ pub fn register(d: &mut WinCeDispatcher) {
     d.register_handler(dll, "__rt_srem64", rt_srem64);
     d.register_handler(dll, "__rt_urem", rt_urem);
     d.register_handler(dll, "__rt_srem", rt_srem);
-    // SuperH helpers (see `ordinals::SH_COREDLL`): dividend first.
+    // SuperH and MIPS runtime helpers (see `ordinals::lookup_for_machine`).
+    register_cpu_helpers(d, dll);
+    // SuperH 32-bit division: dividend first.
     register_image_lists(d, dll);
     d.register_handler(dll, "GetProcessIndexFromID", get_process_index_from_id);
     // `wvsprintfW(out, fmt, va_list)` takes the same arguments as `vswprintf`.
@@ -21936,4 +21938,152 @@ fn bring_due_timer_forward(k: &mut pocket_kernel::KernelState) {
     k.synthetic_timer_proc = proc_;
     k.synthetic_timer_interval_ms = interval;
     k.synthetic_timer_next_ms = next;
+}
+
+// ---------- MIPS and SuperH runtime helpers ----------
+//
+// Their ordinals come from `data/coredll-ordinals-{mips,sh}.json`.
+//
+// MIPS passes floats and doubles in registers exactly like the ARM helpers
+// (a double in a0:a1, low word first; results in v0 or v0:v1), so most of
+// its helpers are the ARM implementations under their MIPS names.
+//
+// SuperH passes single-precision values in registers but doubles by
+// pointer, with the result written through the first argument. Read from
+// Pocket Slay's SH3 build: `__itod(&d, n)`, `__ltd(&a, &b)`,
+// `__subd(&out, &a, &b)`, `__dtoi(&d)`.
+
+fn sh_read_f64(ctx: &mut CallCtx<'_>, ptr: u32) -> Result<f64, KernelError> {
+    let b = ctx.cpu.read_mem(ptr, 8)?;
+    Ok(f64::from_le_bytes(b[..8].try_into().expect("8 bytes")))
+}
+
+fn sh_write_f64(ctx: &mut CallCtx<'_>, ptr: u32, v: f64) -> Result<(), KernelError> {
+    ctx.cpu.write_mem(ptr, &v.to_le_bytes())?;
+    Ok(())
+}
+
+fn sh_binary_d(ctx: &mut CallCtx<'_>, op: fn(f64, f64) -> f64) -> Result<DispatchOutcome, KernelError> {
+    let out = ctx.arg_u32(0)?;
+    let a = ctx.arg_u32(1)?;
+    let b = ctx.arg_u32(2)?;
+    let v = op(sh_read_f64(ctx, a)?, sh_read_f64(ctx, b)?);
+    sh_write_f64(ctx, out, v)?;
+    Ok(DispatchOutcome::ReturnedR0(out))
+}
+
+fn sh_compare_d(ctx: &mut CallCtx<'_>, op: fn(f64, f64) -> bool) -> Result<DispatchOutcome, KernelError> {
+    let a = ctx.arg_u32(0)?;
+    let b = ctx.arg_u32(1)?;
+    let r = op(sh_read_f64(ctx, a)?, sh_read_f64(ctx, b)?);
+    Ok(DispatchOutcome::ReturnedR0(u32::from(r)))
+}
+
+fn sh_addd(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_binary_d(ctx, |a, b| a + b) }
+fn sh_subd(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_binary_d(ctx, |a, b| a - b) }
+fn sh_muld(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_binary_d(ctx, |a, b| a * b) }
+fn sh_divd(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_binary_d(ctx, |a, b| a / b) }
+fn sh_eqd(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_compare_d(ctx, |a, b| a == b) }
+fn sh_ned(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_compare_d(ctx, |a, b| a != b) }
+fn sh_gtd(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_compare_d(ctx, |a, b| a > b) }
+fn sh_ged(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_compare_d(ctx, |a, b| a >= b) }
+fn sh_ltd(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_compare_d(ctx, |a, b| a < b) }
+fn sh_led(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_compare_d(ctx, |a, b| a <= b) }
+
+/// `__negd(double *out, const double *a)`.
+fn sh_negd(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let out = ctx.arg_u32(0)?;
+    let a = ctx.arg_u32(1)?;
+    let v = -sh_read_f64(ctx, a)?;
+    sh_write_f64(ctx, out, v)?;
+    Ok(DispatchOutcome::ReturnedR0(out))
+}
+
+/// `__itod(double *out, int)`, `__utod(double *out, unsigned)`,
+/// `__stod(double *out, float)`.
+fn sh_to_d(ctx: &mut CallCtx<'_>, convert: fn(u32) -> f64) -> Result<DispatchOutcome, KernelError> {
+    let out = ctx.arg_u32(0)?;
+    let v = convert(ctx.arg_u32(1)?);
+    sh_write_f64(ctx, out, v)?;
+    Ok(DispatchOutcome::ReturnedR0(out))
+}
+fn sh_itod(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_to_d(ctx, |v| v as i32 as f64) }
+fn sh_utod(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_to_d(ctx, |v| v as f64) }
+fn sh_stod(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_to_d(ctx, |v| f32::from_bits(v) as f64) }
+
+/// `__dtoi(const double *)`, `__dtou`, `__dtos` (to float).
+fn sh_from_d(ctx: &mut CallCtx<'_>, convert: fn(f64) -> u32) -> Result<DispatchOutcome, KernelError> {
+    let a = ctx.arg_u32(0)?;
+    let v = sh_read_f64(ctx, a)?;
+    Ok(DispatchOutcome::ReturnedR0(convert(v)))
+}
+fn sh_dtoi(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_from_d(ctx, |v| v as i32 as u32) }
+fn sh_dtou(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_from_d(ctx, |v| v as u32) }
+fn sh_dtos(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> { sh_from_d(ctx, |v| (v as f32).to_bits()) }
+
+/// SuperH `__divlu(unsigned dividend, unsigned divisor)`.
+fn sh_divlu(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let n = ctx.arg_u32(0)?;
+    let d = ctx.arg_u32(1)?;
+    Ok(DispatchOutcome::ReturnedR0(if d == 0 { 0 } else { n / d }))
+}
+
+fn read_u64(ctx: &mut CallCtx<'_>, lo: u8) -> Result<u64, KernelError> {
+    Ok(ctx.arg_u32(lo)? as u64 | (ctx.arg_u32(lo + 1)? as u64) << 32)
+}
+
+fn ret_u64(v: u64) -> DispatchOutcome {
+    DispatchOutcome::ReturnedR0R1(v as u32, (v >> 32) as u32)
+}
+
+/// MIPS `__ll_mul(a, b)`: 64-bit operands in a0:a1 and a2:a3.
+fn mips_ll_mul(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let (a, b) = (read_u64(ctx, 0)?, read_u64(ctx, 2)?);
+    Ok(ret_u64(a.wrapping_mul(b)))
+}
+
+/// MIPS `__ll_lshift(a, n)`, `__ll_rshift`, `__ull_rshift`: the count in a2.
+fn mips_ll_lshift(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let (a, n) = (read_u64(ctx, 0)?, ctx.arg_u32(2)? & 63);
+    Ok(ret_u64(a << n))
+}
+fn mips_ll_rshift(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let (a, n) = (read_u64(ctx, 0)? as i64, ctx.arg_u32(2)? & 63);
+    Ok(ret_u64((a >> n) as u64))
+}
+fn mips_ull_rshift(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let (a, n) = (read_u64(ctx, 0)?, ctx.arg_u32(2)? & 63);
+    Ok(ret_u64(a >> n))
+}
+
+/// MIPS `_RtlCheckStack`: a stack probe with nothing to do here.
+fn mips_check_stack(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    Ok(DispatchOutcome::ReturnedR0(0))
+}
+
+fn register_cpu_helpers(d: &mut WinCeDispatcher, dll: &str) {
+    type H = fn(&mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError>;
+    let table: &[(&str, H)] = &[
+        // SuperH, doubles by pointer.
+        ("sh__addd", sh_addd), ("sh__subd", sh_subd), ("sh__muld", sh_muld), ("sh__divd", sh_divd),
+        ("sh__negd", sh_negd), ("sh__eqd", sh_eqd), ("sh__ned", sh_ned), ("sh__gtd", sh_gtd),
+        ("sh__ged", sh_ged), ("sh__ltd", sh_ltd), ("sh__led", sh_led), ("sh__itod", sh_itod),
+        ("sh__utod", sh_utod), ("sh__stod", sh_stod), ("sh__dtoi", sh_dtoi), ("sh__dtou", sh_dtou),
+        ("sh__dtos", sh_dtos), ("__divlu", sh_divlu),
+        // MIPS, under the names its coredll.lib gives them.
+        ("__fpadd", soft_adds), ("__fpsub", soft_subs), ("__fpmul", soft_muls), ("__fpdiv", soft_divs),
+        ("__dpadd", soft_addd), ("__dpsub", soft_subd), ("__dpmul", soft_muld), ("__dpdiv", soft_divd),
+        ("__fptoli", soft_stoi), ("__fptoul", soft_stou), ("__litofp", soft_itos), ("__ultofp", soft_utos),
+        ("__dptoli", soft_dtoi), ("__dptoul", soft_dtou), ("__litodp", soft_itod), ("__ultodp", soft_utod),
+        ("__fptodp", soft_stod), ("__dptofp", soft_dtos), ("__fpcmp", soft_cmps), ("__dpcmp", soft_cmpd),
+        ("__ll_mul", mips_ll_mul), ("__ll_div", rt_sdiv64by64), ("__ll_rem", rt_srem64by64),
+        ("__ull_div", rt_udiv64by64), ("__ull_rem", rt_urem64by64),
+        ("__ll_lshift", mips_ll_lshift), ("__ll_rshift", mips_ll_rshift), ("__ull_rshift", mips_ull_rshift),
+        ("__ll_to_f", soft_i64tos), ("__ll_to_d", soft_i64tod), ("__ull_to_f", soft_u64tos),
+        ("__ull_to_d", soft_u64tod), ("__f_to_ll", soft_stoi64), ("__d_to_ll", soft_dtoi64),
+        ("__f_to_ull", soft_stou64), ("__d_to_ull", soft_dtou64), ("_RtlCheckStack", mips_check_stack),
+    ];
+    for (name, handler) in table {
+        d.register_handler(dll, name, *handler);
+    }
 }

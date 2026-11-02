@@ -1,5 +1,5 @@
 {
-  "comment": "PocketHLE import knowledge base, layered on top of the cases compiled into the importer (download zips, self-extracting archives, installers that hold cabinets). Known lists exact downloads and the steps that take their game out. Rules say how to get a Pocket PC game out of a download that does not import as it is; ranking says which of several builds to take; problems explain what still fails. A file named import_kb.json in the library root is read too: its entries go first, and games that only imported after exploring add a learned rule there. See docs/PACKAGE_FORMAT.md.",
+  "comment": "PocketPC3630 import knowledge base, layered on top of the cases compiled into the importer (download zips, self-extracting archives, installers that hold cabinets). Known lists exact downloads and the steps that take their game out. Rules say how to get a Pocket PC game out of a download that does not import as it is; ranking says which of several builds to take; problems explain what still fails. A file named import_kb.json in the library root is read too: its entries go first, and games that only imported after exploring add a learned rule there. See docs/PACKAGE_FORMAT.md.",
   "known": [],
   "rules": [],
   "ranking": {
@@ -149,8 +149,8 @@
         "managed pe"
       ],
       "title": {
-        "en": "This is a .NET Compact Framework program, which PocketHLE cannot run.",
-        "zh-Hant": "這是 .NET Compact Framework 程式，PocketHLE 目前無法執行。"
+        "en": "This is a .NET Compact Framework program, which PocketPC3630 cannot run.",
+        "zh-Hant": "這是 .NET Compact Framework 程式，PocketPC3630 目前無法執行。"
       },
       "hint": {
         "en": "Look for a native ARM version of this program.",
@@ -164,8 +164,8 @@
         "floating-point instruction"
       ],
       "title": {
-        "en": "The game uses an instruction PocketHLE does not handle yet.",
-        "zh-Hant": "遊戲用到 PocketHLE 尚未支援的指令。"
+        "en": "The game uses an instruction PocketPC3630 does not handle yet.",
+        "zh-Hant": "遊戲用到 PocketPC3630 尚未支援的指令。"
       },
       "hint": {
         "en": "MIPS16 code in MIPS builds and floating-point instructions in SH4 builds are not supported yet; try the ARM build if there is one. Otherwise please report it with the details below.",
@@ -207,12 +207,12 @@
         "unsupported machine: 0x01a"
       ],
       "title": {
-        "en": "This build is for a SuperH processor PocketHLE does not run (such as SH-3E or SH-5).",
-        "zh-Hant": "這是給 PocketHLE 不支援的 SuperH 處理器（例如 SH-3E、SH-5）的版本。"
+        "en": "This build is for a SuperH processor PocketPC3630 does not run (such as SH-3E or SH-5).",
+        "zh-Hant": "這是給 PocketPC3630 不支援的 SuperH 處理器（例如 SH-3E、SH-5）的版本。"
       },
       "hint": {
-        "en": "Import the ARM, MIPS or SH3 build instead. PocketHLE runs ARM (StrongARM, XScale/PXA, Samsung S3C, TI OMAP), MIPS (Casio Cassiopeia) and SH3 (HP Jornada 54x) builds.",
-        "zh-Hant": "請改匯入 ARM、MIPS 或 SH3 版。PocketHLE 可執行 ARM（StrongARM、XScale/PXA、Samsung S3C、TI OMAP）、MIPS（Casio Cassiopeia）與 SH3（HP Jornada 54x）版本。"
+        "en": "Import the ARM, MIPS or SH3 build instead. PocketPC3630 runs ARM (StrongARM, XScale/PXA, Samsung S3C, TI OMAP), MIPS (Casio Cassiopeia) and SH3 (HP Jornada 54x) builds.",
+        "zh-Hant": "請改匯入 ARM、MIPS 或 SH3 版。PocketPC3630 可執行 ARM（StrongARM、XScale/PXA、Samsung S3C、TI OMAP）、MIPS（Casio Cassiopeia）與 SH3（HP Jornada 54x）版本。"
       }
     },
     {

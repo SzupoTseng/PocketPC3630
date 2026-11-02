@@ -1,6 +1,6 @@
 # Browser version on GitHub Pages
 
-`pocket-wasm` is PocketHLE compiled to WebAssembly. The site holds only the
+`pocket-wasm` is PocketPC3630 compiled to WebAssembly. The site holds only the
 emulator: each player uploads their own game package, and it stays in that
 browser. There is no server, and game files must never be committed here.
 

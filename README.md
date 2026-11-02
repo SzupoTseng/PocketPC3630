@@ -99,7 +99,7 @@ See [docs/PACKAGE_FORMAT.md](docs/PACKAGE_FORMAT.md) for exactly what a package 
 ### Windows CE, rebuilt piece by piece
 Highlights of what this fork added on top of PocketHLE:
 
-- **SuperH runtime helpers.** On SH3, `coredll` uses the same ordinal numbers as ARM for *different* functions, with the operands the other way round. Read straight out of the SH3 FreeCell binary: ordinal 2005 is `x % n` on SH but `n / x` on ARM. FreeCell's shuffle looped forever until the loader learned to resolve ordinals per CPU.
+- **Per-CPU runtime helpers.** MIPS and SH3 builds of `coredll` number their compiler helpers (integer division, floating point, 64-bit maths) differently from ARM, and SH3 passes doubles by pointer. Ordinal 2005 is `x % n` on SH, `__ll_div` on MIPS and `n / x` on ARM. The loader now resolves ordinals per CPU from tables extracted out of the Pocket PC 2000 SDK's own `coredll.lib` for each processor. Before that, FreeCell's SH3 shuffle looped forever and Pocket Slay's MIPS and SH3 builds stopped while generating a map.
 - **More than one timer.** `SetTimer` used to keep only the last timer. Pocket Slay runs two, so its game never started. All timers now run, and the one due first always fires first.
 - **Monochrome bitmaps.** A 1-bit bitmap blitted to a colour screen now takes the destination's text and background colours, as on a device. That is how Pocket Slay paints every territory.
 - **Modal dialogs that behave.** The window underneath keeps repainting while a dialog is open, dialogs wait for you, and static text wraps at its line breaks.
@@ -129,7 +129,7 @@ Showcase titles, each verified by hand:
 |---|---|---|
 | **EverQuest for the Pocket PC** | ARM | Character creation, the world, saving and loading, on all three platforms |
 | **Pocket Quake** | ARM | Menus and gameplay in the browser, with on-screen controls |
-| **Pocket Slay** | ARM | Tap a tree, then OK in *New Game*. Full colour map |
+| **Pocket Slay** | ARM · MIPS · SH3 | Tap a tree, then OK in *New Game*. Full colour map on all three builds |
 | **FreeCell** (Pocket-G) | ARM · MIPS · SH3 | All three builds deal the same game |
 
 ## 🔧 How it works
@@ -175,7 +175,8 @@ target/release/pockethle play MyGame.zip
 
 ## 🚧 Known limitations
 
-- **SH floating point helpers.** On SH3, `coredll`'s floating point helpers use their own ordinals, and only the integer ones are mapped so far. SH3 programs that use floating point (such as Pocket Slay's SH3 build) stop at that point. Use the ARM build.
+- Pocket Slay's MIPS and SH3 builds draw the map and play, but stop after a while (a jump to an invalid address); the ARM build does not.
+- A few rarely used MIPS and SH3 helpers (64-bit maths on SH3, `setjmp` on both) are not implemented yet.
 - MIPS16 code (some MIPS builds) and SH-4 floating point instructions are not supported yet.
 - .NET Compact Framework programs, Wise installers and x86 builds do not run.
 - Programs that use MFC need `mfcce300.dll` from your own device.

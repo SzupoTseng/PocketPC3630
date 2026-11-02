@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111214">
-<title>PocketHLE</title>
+<title>PocketPC3630</title>
 <link rel="icon" href="data:,">
 <style>
 :root {
@@ -112,7 +112,7 @@ body.touch .pad { display: flex; }
 <body>
 <main>
   <header>
-    <h1>PocketHLE</h1>
+    <h1>PocketPC3630</h1>
     <button type="button" class="primary" id="pick">匯入遊戲</button>
   </header>
   <section class="list" id="games" aria-label="遊戲庫"></section>
@@ -538,7 +538,7 @@ function holdTabLock() {
 
 (async () => {
   if (!(await holdTabLock())) {
-    say('PocketHLE 已在另一個分頁開啟。請先關閉那個分頁再重新整理，以免進度互相覆蓋。', true);
+    say('PocketPC3630 已在另一個分頁開啟。請先關閉那個分頁再重新整理，以免進度互相覆蓋。', true);
     $('pick').hidden = true;
     return;
   }

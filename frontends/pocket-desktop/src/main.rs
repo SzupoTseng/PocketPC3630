@@ -72,10 +72,10 @@ fn main() -> Result<()> {
     if let Some(path) = log_path {
         log::info!("Logging to {}", path.display());
     }
-    let library = Library::open(&library_root).context("opening PocketHLE library")?;
+    let library = Library::open(&library_root).context("opening PocketPC3630 library")?;
 
     let icon = image::load_from_memory(include_bytes!("../assets/pockethle_logo.png"))
-        .context("decoding PocketHLE logo")?
+        .context("decoding PocketPC3630 logo")?
         .to_rgba8();
     let native_options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
@@ -87,12 +87,12 @@ fn main() -> Result<()> {
             .with_inner_size([960.0, 600.0])
             .with_min_inner_size([640.0, 420.0])
             .with_fullscreen(library.config().fullscreen)
-            .with_title("PocketHLE"),
+            .with_title("PocketPC3630"),
         ..Default::default()
     };
     let mut library_slot = Some(library);
     eframe::run_native(
-        "PocketHLE",
+        "PocketPC3630",
         native_options,
         Box::new(move |cc| {
             let lib = library_slot.take().expect("PocketLauncher built twice");

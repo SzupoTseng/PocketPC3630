@@ -1,6 +1,6 @@
 # Game package format
 
-What PocketHLE accepts when you import a game, on Windows, Android and in the
+What PocketPC3630 accepts when you import a game, on Windows, Android and in the
 browser. All three use the same importer, so a package that works on one works
 on the others.
 
@@ -47,7 +47,7 @@ Pocket PC 2000 software often shipped one build per processor. From Pocket PC
 multi-build download, and takes another processor's build only when there is
 no ARM one.
 
-| Processor | Devices | Names in downloads | PocketHLE |
+| Processor | Devices | Names in downloads | PocketPC3630 |
 |---|---|---|---|
 | ARM: StrongARM SA-1100/1110 | Compaq iPAQ 36xx/38xx/31xx, HP Jornada 56x | `ARM`, `StrongARM`, `SA`, `2577` | Runs |
 | ARM: XScale PXA25x/26x/27x | HP iPAQ, Dell Axim, ASUS MyPal | `XScale`, `PXA`, `ARMV4`, `ARMV4I` | Runs |
@@ -59,7 +59,7 @@ no ARM one.
 ## Files the device provided
 
 Some games use libraries that were part of the Pocket PC itself, not of the
-game. PocketHLE does not include them. If a game needs one, the importer still
+game. PocketPC3630 does not include them. If a game needs one, the importer still
 succeeds, and the player is told which file is missing before the game starts.
 
 | File | Used by | Where to put it |

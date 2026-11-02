@@ -403,7 +403,7 @@ impl PocketLauncher {
 
     fn ui_top_bar(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.heading(RichText::new("PocketHLE").strong());
+            ui.heading(RichText::new("PocketPC3630").strong());
             ui.add_space(16.0);
             if ui
                 .selectable_label(self.screen == Screen::Library, "Library")
