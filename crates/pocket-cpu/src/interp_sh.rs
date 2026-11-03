@@ -514,7 +514,7 @@ impl InterpCpu {
                     0x1 => self.sh_read16(rm)? as u16 as i16 as i32 as u32,
                     0x2 => self.sh_read32(rm)?,
                     0x3 => rm,
-                    0x4 | 0x5 | 0x6 => {
+                    0x4..=0x6 => {
                         let (value, size) = match d4 {
                             0x4 => (sext8(u32::from(self.read8(rm)?)), 1),
                             0x5 => (self.sh_read16(rm)? as u16 as i16 as i32 as u32, 2),

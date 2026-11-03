@@ -927,7 +927,8 @@ impl Controls {
                 VK_RETURN if sel != 0 => events.push(ViewEvent::TreeActivate { item: sel }),
                 _ => return None,
             }
-        } else if let Some(list) = child.list.as_mut() {
+        } else {
+            let list = child.list.as_mut()?;
             let n = list.items.len() as i32;
             let cur = list.focus;
             match vk {
@@ -944,8 +945,6 @@ impl Controls {
                 VK_RETURN if cur >= 0 => events.push(ViewEvent::ListActivate { item: cur }),
                 _ => return None,
             }
-        } else {
-            return None;
         }
         for event in events {
             self.notify(hwnd, event);

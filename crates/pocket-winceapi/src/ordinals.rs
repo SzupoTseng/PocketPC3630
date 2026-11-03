@@ -122,6 +122,30 @@ pub fn entry_count(dll: &str) -> usize {
     ORDINAL_TABLES.get(&key).map(|m| m.len()).unwrap_or(0)
 }
 
+/// commctrl.dll's ordinal names. Kept out of [`lookup`]: the main image's
+/// commctrl imports are answered by `ord:N` handlers, and only DLLs the
+/// guest loads itself (MFC) need the names.
+static COMMCTRL_ORDINALS: Lazy<HashMap<u16, String>> = Lazy::new(|| {
+    serde_json::from_str::<OrdinalFile>(COMMCTRL_JSON)
+        .map(|file| {
+            file.map
+                .into_iter()
+                .filter_map(|(k, v)| k.parse().ok().map(|k| (k, v)))
+                .collect()
+        })
+        .unwrap_or_default()
+});
+
+/// The export name a guest-loaded DLL means when it imports `dll` by
+/// `ordinal`: MFC imports `aygshell.dll!#34`, which is `SHCreateMenuBar`.
+pub fn lookup_for_guest_module(dll: &str, ordinal: u16) -> Option<String> {
+    let key = dll.to_ascii_lowercase();
+    if key == "commctrl.dll" {
+        return COMMCTRL_ORDINALS.get(&ordinal).cloned();
+    }
+    lookup(&key, ordinal)
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -173,28 +197,4 @@ mod tests {
         assert_eq!(entry_count("libgles_cm.dll"), 140);
         assert_eq!(entry_count("libgles_cl.dll"), 102);
     }
-}
-
-/// commctrl.dll's ordinal names. Kept out of [`lookup`]: the main image's
-/// commctrl imports are answered by `ord:N` handlers, and only DLLs the
-/// guest loads itself (MFC) need the names.
-static COMMCTRL_ORDINALS: Lazy<HashMap<u16, String>> = Lazy::new(|| {
-    serde_json::from_str::<OrdinalFile>(COMMCTRL_JSON)
-        .map(|file| {
-            file.map
-                .into_iter()
-                .filter_map(|(k, v)| k.parse().ok().map(|k| (k, v)))
-                .collect()
-        })
-        .unwrap_or_default()
-});
-
-/// The export name a guest-loaded DLL means when it imports `dll` by
-/// `ordinal`: MFC imports `aygshell.dll!#34`, which is `SHCreateMenuBar`.
-pub fn lookup_for_guest_module(dll: &str, ordinal: u16) -> Option<String> {
-    let key = dll.to_ascii_lowercase();
-    if key == "commctrl.dll" {
-        return COMMCTRL_ORDINALS.get(&ordinal).cloned();
-    }
-    lookup(&key, ordinal)
 }

@@ -236,6 +236,8 @@ impl HeldButtons {
     }
 }
 
+// Each event is the end of a background job, so every name says so.
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug)]
 pub enum UiEvent {
     ImportFinished(Result<String, String>),

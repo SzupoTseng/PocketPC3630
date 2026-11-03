@@ -620,6 +620,7 @@ fn row_height(icon: Option<(i32, i32)>) -> i32 {
 }
 
 /// Draw image `index` of `list` at `(x, y)`, clipped to `right`/`bottom`.
+#[allow(clippy::too_many_arguments)]
 fn draw_image(
     surf: &mut Surface<'_>,
     lists: &HashMap<u32, ImageList>,

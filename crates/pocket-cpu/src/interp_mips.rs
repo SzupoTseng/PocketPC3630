@@ -187,9 +187,11 @@ impl InterpCpu {
                     Flow::Next
                 }
                 0x1B => {
-                    if t != 0 {
-                        self.mips.lo = s / t;
-                        self.mips.hi = s % t;
+                    // DIVU by zero leaves HI and LO as they were.
+                    if let (Some(quotient), Some(remainder)) = (s.checked_div(t), s.checked_rem(t))
+                    {
+                        self.mips.lo = quotient;
+                        self.mips.hi = remainder;
                     }
                     Flow::Next
                 }

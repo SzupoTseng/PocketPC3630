@@ -59,7 +59,7 @@ pub extern "system" fn Java_com_pockethle_app_NativeBridge_backendName<'local>(
     } else {
         "interpreter (ARM, MIPS, SH3)"
     };
-    new_jstring(&env, name.to_string())
+    new_jstring(&env, name)
 }
 
 #[no_mangle]

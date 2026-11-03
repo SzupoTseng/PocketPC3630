@@ -10436,9 +10436,12 @@ fn menu_bar_toolbar_message(
 /// Width of one menu bar button.
 const MENU_BAR_BUTTON_W: i32 = 24;
 
+/// A rectangle on screen: left, top, right, bottom.
+type ScreenRect = (i32, i32, i32, i32);
+
 /// The menu bar the user sees: the newest visible one that has buttons,
 /// with its rectangle on screen.
-fn active_menu_bar(ctx: &CallCtx<'_>) -> Option<(u32, u32, (i32, i32, i32, i32))> {
+fn active_menu_bar(ctx: &CallCtx<'_>) -> Option<(u32, u32, ScreenRect)> {
     let with_buttons: Vec<u32> = MENU_BARS.with(|m| {
         m.borrow()
             .iter()
@@ -22903,6 +22906,7 @@ fn image_list_add_masked(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, Kerne
 }
 
 /// Draw image `i` of `himl` at `(x, y)` of `hdc`.
+#[allow(clippy::too_many_arguments)]
 fn image_list_draw_at(
     ctx: &mut CallCtx<'_>,
     himl: u32,
@@ -23513,7 +23517,8 @@ pub(crate) fn register_shell_folders(d: &mut WinCeDispatcher, dll: &str) {
     d.register_handler(dll, "SHGetPathFromIDListW", sh_get_path_from_id_list);
     d.register_handler(dll, "SHGetMalloc", sh_get_malloc);
     if dll.eq_ignore_ascii_case("coredll.dll") {
-        let methods: [fn(&mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError>; 9] = [
+        type Method = fn(&mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError>;
+        let methods: [Method; 9] = [
             imalloc_no_interface,
             imalloc_one,
             imalloc_one,
@@ -23682,7 +23687,8 @@ fn sh_dtos(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 fn sh_divlu(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let n = ctx.arg_u32(0)?;
     let d = ctx.arg_u32(1)?;
-    Ok(DispatchOutcome::ReturnedR0(if d == 0 { 0 } else { n / d }))
+    // Division by zero returns 0, as the device's helper does.
+    Ok(DispatchOutcome::ReturnedR0(n.checked_div(d).unwrap_or(0)))
 }
 
 fn read_u64(ctx: &mut CallCtx<'_>, lo: u8) -> Result<u64, KernelError> {

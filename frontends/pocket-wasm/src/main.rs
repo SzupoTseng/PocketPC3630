@@ -547,6 +547,9 @@ pub extern "C" fn pocket_key(down: i32, vk: i32) {
 }
 
 /// Fill `frames` stereo float frames at `rate` Hz from the mix.
+// Called only by the page's audio worklet, which owns the buffer; the
+// pointer is checked for null and the length comes from the same caller.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[no_mangle]
 pub extern "C" fn pocket_audio(output: *mut f32, frames: u32, rate: u32) {
     if output.is_null() {

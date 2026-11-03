@@ -3643,7 +3643,7 @@ mod guest_boot_stub_tests {
         assert_eq!(word(&stub, 7), 0x0AAA_0000);
         assert_eq!(word(&stub, 8), 0x0001_0040);
         // `LDR PC, [PC, #imm]` at word 6 must read the entry literal at word 8.
-        assert_eq!(word(&stub, 6), 0xE59F_F000 | (8 * 4 - (6 * 4 + 8)));
+        assert_eq!(word(&stub, 6), 0xE59F_F000);
         // `LDR R0` at word 1 must read the name pointer at word 9.
         assert_eq!(word(&stub, 1), 0xE59F_0000 | (9 * 4 - (4 + 8)));
         let name = base + 10 * 4;
