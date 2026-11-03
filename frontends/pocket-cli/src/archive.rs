@@ -319,8 +319,35 @@ fn prepare_installshield_sfx(path: &Path) -> Result<Launcher> {
 fn prepare_cab(path: &Path) -> Result<Launcher> {
     let tmp = TempDir::with_prefix("pockethle-cab-")
         .with_context(|| format!("creating temp dir for {}", path.display()))?;
-    let (files, header) = pocket_core::cab::extract_with_header(path, tmp.path())
-        .with_context(|| format!("extracting {}", path.display()))?;
+    // A cabinet whose data checksums disagree with its contents still
+    // installs on a device and in Device Emulator: EverQuest Episode 2's
+    // original CAB has one bad byte. Library imports already retry with
+    // the checksums cleared (`pocket_library::import_kb`); `run` does the
+    // same instead of refusing the file.
+    let (files, header) = match pocket_core::cab::extract_with_header(path, tmp.path()) {
+        Ok(found) => found,
+        Err(first) => {
+            let cleared = std::fs::read(path)
+                .ok()
+                .and_then(|bytes| pocket_library::import_kb::clear_cab_checksums(&bytes));
+            let Some(cleared) = cleared else {
+                return Err(
+                    anyhow::Error::new(first).context(format!("extracting {}", path.display()))
+                );
+            };
+            let copy = tmp.path().join(".checksums-cleared.cab");
+            std::fs::write(&copy, cleared)
+                .with_context(|| format!("writing {}", copy.display()))?;
+            log::warn!(
+                "{}: {first}; retrying with the cabinet's data checksums cleared",
+                path.display()
+            );
+            let found = pocket_core::cab::extract_with_header(&copy, tmp.path())
+                .with_context(|| format!("extracting {}", path.display()))?;
+            let _ = std::fs::remove_file(&copy);
+            found
+        }
+    };
 
     if files.is_empty() {
         return Err(anyhow!(
@@ -1082,6 +1109,23 @@ fn prepare_zip(path: &Path) -> Result<Launcher> {
             nested_cab.display()
         );
         let mut inner = prepare_cab(nested_cab)?;
+        // Files packed beside the CAB (most often mfcce300.dll, which the
+        // device ROM provides) belong with the installed program, as the
+        // library import puts them. Only the CAB's folder is mounted, so
+        // EverQuest Episode 2 called into an MFC that was never loaded.
+        if let Some(dest) = inner.exe.parent() {
+            for extra in written.iter().filter(|p| *p != nested_cab && p.is_file()) {
+                if let Some(name) = extra.file_name() {
+                    let target = dest.join(name);
+                    if !target.exists() {
+                        std::fs::copy(extra, &target).with_context(|| {
+                            format!("copying {} beside the program", extra.display())
+                        })?;
+                        log::info!("{} added beside the program", name.to_string_lossy());
+                    }
+                }
+            }
+        }
         inner.origin = format!("ZIP {} -> {}", path.display(), inner.origin);
         // Keep the ZIP's tempdir alive as long as the CAB tempdir is
         // alive: stash both by piggy-backing on the inner launcher's

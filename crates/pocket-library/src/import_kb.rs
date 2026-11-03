@@ -456,7 +456,7 @@ fn carve_zip(bytes: &[u8]) -> Option<&[u8]> {
 
 /// A copy of a cabinet whose data blocks carry no checksum, or `None` when it
 /// is not a cabinet or none of its checksums is set.
-fn clear_cab_checksums(bytes: &[u8]) -> Option<Vec<u8>> {
+pub fn clear_cab_checksums(bytes: &[u8]) -> Option<Vec<u8>> {
     let u16_at = |at: usize| {
         bytes
             .get(at..at + 2)
