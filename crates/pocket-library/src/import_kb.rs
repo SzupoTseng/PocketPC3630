@@ -363,7 +363,8 @@ pub fn learn(library_root: &Path, rule: Rule) -> io::Result<bool> {
 
 fn hex(text: &str) -> Option<Vec<u8>> {
     let text: String = text.chars().filter(|c| !c.is_whitespace()).collect();
-    (text.len() % 2 == 0)
+    text.len()
+        .is_multiple_of(2)
         .then(|| {
             (0..text.len())
                 .step_by(2)
@@ -559,7 +560,7 @@ pub fn clear_cab_checksums(bytes: &[u8]) -> Option<Vec<u8>> {
 /// The two-byte header of a zlib stream: deflate, a 32 KiB window, and a check
 /// that makes the pair a multiple of 31.
 fn is_zlib(bytes: &[u8]) -> bool {
-    matches!(bytes, [cmf, flg, ..] if cmf & 0x0F == 8 && cmf >> 4 <= 7 && ((*cmf as u16) << 8 | *flg as u16) % 31 == 0)
+    matches!(bytes, [cmf, flg, ..] if cmf & 0x0F == 8 && cmf >> 4 <= 7 && ((*cmf as u16) << 8 | *flg as u16).is_multiple_of(31))
 }
 
 /// The data of every resource in a PE image, larger than a few bytes. Icons and
@@ -1324,7 +1325,7 @@ mod tests {
         // "abcabcabc": three literals, then a back reference of six bytes
         // to the window position where the literals were written.
         let mut stream = SZDD_MAGIC.to_vec();
-        stream.extend([b'A', b'_']);
+        stream.extend(b"A_");
         stream.extend(9u32.to_le_bytes());
         let start = 4096 - 16;
         stream.extend([
