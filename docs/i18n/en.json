@@ -93,7 +93,7 @@
  "h.088": "A <code>.zip</code> with one <code>.cab</code> at the top level, optionally with extra files (such as <code>mfcce300.dll</code>)",
  "h.089": "A <code>.zip</code> of the game's installed folder, such as <code>quake/PocketQuake.exe</code>",
  "h.090": "ARM <code>.exe</code> and <code>.rar</code> files",
- "h.091": "Desktop installers (<code>setup.exe</code>) or downloads with one CAB per processor: the ARM version is picked automatically",
+ "h.091": "Desktop installers (<code>setup.exe</code>, InstallShield ones included) or downloads with one CAB per processor: the ARM version is picked automatically",
  "h.092": "System files games need",
  "h.093": "Games that use MFC need <code>mfcce300.dll</code>, which is built into Pocket PC (some also need <code>olece300.dll</code>); the emulator doesn't include it. Put a copy from your own device into the <code>.zip</code>, at the same level as the <code>.cab</code>. If it's missing, you'll be told before the game starts.",
  "h.094": "Cannot be imported",
@@ -222,5 +222,7 @@
  "lib.sort.new": "Year: newest first",
  "lib.sort.old": "Year: oldest first",
  "lib.pick": "★ Pick",
- "lib.coll": "Original collection folder"
+ "lib.coll": "Original collection folder",
+ "lib.reason.flash": "A Flash game for Pocket Internet Explorer, not a Pocket PC program; it needs the browser's Flash plug-in",
+ "lib.reason.vbce": "A Visual Basic for Windows CE program; it needs the device's VB runtime, which the emulator does not support yet"
 }

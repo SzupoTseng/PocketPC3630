@@ -2936,6 +2936,7 @@ name = "pocket-library"
 version = "0.6.0"
 dependencies = [
  "anyhow",
+ "cab",
  "directories",
  "flate2",
  "log",

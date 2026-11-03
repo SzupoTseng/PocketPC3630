@@ -26,7 +26,7 @@ pub const USER_KB_FILE: &str = "import_kb.json";
 
 const BUILTIN: &str = include_str!("../data/import_kb.json");
 /// How deep wrappers may nest: installer in a zip in a zip.
-const MAX_DEPTH: usize = 3;
+const MAX_DEPTH: usize = 5;
 /// Downloads are small; anything bigger than this is not looked inside.
 const LARGEST_FILE: u64 = 128 * 1024 * 1024;
 /// A bound on how many files exploring one import may look at.
@@ -121,9 +121,17 @@ pub enum Action {
     ExtractResources,
     /// Inflate a zlib stream that a file starts with.
     InflateZlib,
+    /// Write out every file of a desktop cabinet (not a Pocket PC install
+    /// cabinet): setup programs ship their own files in one.
+    ExpandCab,
+    /// Read InstallShield 5/6 cabinets (`data1.hdr` + `data1.cab`), where
+    /// desktop setup programs keep the device cabinets.
+    OpenInstallShield,
+    /// Read a RAR archive found inside another download.
+    OpenRar,
 }
 
-const ALL_ACTIONS: [Action; 7] = [
+const ALL_ACTIONS: [Action; 10] = [
     Action::OpenZip,
     Action::CarveCab,
     Action::CarveZip,
@@ -131,6 +139,9 @@ const ALL_ACTIONS: [Action; 7] = [
     Action::ExtractResources,
     Action::InflateZlib,
     Action::ClearCabChecksums,
+    Action::ExpandCab,
+    Action::OpenInstallShield,
+    Action::OpenRar,
 ];
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -423,6 +434,45 @@ fn carve_cabs(bytes: &[u8]) -> Vec<&[u8]> {
         }
     }
     out
+}
+
+/// The file names a Microsoft cabinet lists (its CFFILE entries), read from
+/// the header without unpacking anything.
+fn cab_names(bytes: &[u8]) -> Vec<String> {
+    let u16_at = |at: usize| {
+        bytes
+            .get(at..at + 2)
+            .map(|b| u16::from_le_bytes([b[0], b[1]]))
+    };
+    let u32_at = |at: usize| {
+        bytes
+            .get(at..at + 4)
+            .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+    };
+    let (Some(first), Some(count)) = (u32_at(16), u16_at(28)) else {
+        return Vec::new();
+    };
+    let mut names = Vec::new();
+    let mut at = first as usize;
+    for _ in 0..count {
+        let Some(rest) = bytes.get(at + 16..) else {
+            break;
+        };
+        let Some(end) = rest.iter().position(|&c| c == 0) else {
+            break;
+        };
+        names.push(String::from_utf8_lossy(&rest[..end]).into_owned());
+        at += 16 + end + 1;
+    }
+    names
+}
+
+/// Whether a cabinet is a Pocket PC install cabinet: those carry their setup
+/// instructions in a file whose name ends in `.000`.
+fn is_device_cab(bytes: &[u8]) -> bool {
+    cab_names(bytes)
+        .iter()
+        .any(|name| name.to_ascii_lowercase().ends_with(".000"))
 }
 
 /// A zip stored whole inside `bytes`, found from its end record.
@@ -761,6 +811,29 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
                 }
             }
         }
+        Action::ExpandCab => {
+            if bytes.starts_with(b"MSCF") && !is_device_cab(bytes) {
+                if let Ok(files) = pocket_cab::extract_all(path, out) {
+                    for file in files {
+                        if file.extracted_path.starts_with(out) && file.extracted_path.is_file() {
+                            produced.push(file.extracted_path);
+                        }
+                    }
+                }
+            }
+        }
+        Action::OpenInstallShield => {
+            if crate::installshield::is_installshield(bytes)
+                && crate::installshield::is_header_file(path)
+            {
+                produced.extend(crate::installshield::extract(path, out, LARGEST_FILE));
+            }
+        }
+        Action::OpenRar => {
+            if bytes.starts_with(b"Rar!") {
+                produced.extend(open_rar(path, out));
+            }
+        }
         Action::CarveZip => {
             // A file that is already a zip from its first byte needs no carving.
             if !bytes.starts_with(b"PK\x03\x04") {
@@ -778,6 +851,44 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
         }
     }
     produced
+}
+
+/// Write out every file of the RAR archive at `path` under `out`, each one
+/// capped at [`LARGEST_FILE`].
+fn open_rar(path: &Path, out: &Path) -> Vec<PathBuf> {
+    struct Capped(fs::File, u64);
+    impl io::Write for Capped {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.1 += buf.len() as u64;
+            if self.1 > LARGEST_FILE {
+                return Err(io::Error::other("file larger than the import limit"));
+            }
+            self.0.write(buf)
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            self.0.flush()
+        }
+    }
+    let mut written = Vec::new();
+    let Ok(archive) = rars::ArchiveReader::read_path(path) else {
+        return written;
+    };
+    let _ = archive.extract_to(None, |meta| {
+        let Some(relative) = crate::safe_archive_path(meta.name_bytes()) else {
+            return Ok(Box::new(io::sink()) as Box<dyn io::Write>);
+        };
+        let target = out.join(relative);
+        if meta.is_directory || target == out {
+            return Ok(Box::new(io::sink()) as Box<dyn io::Write>);
+        }
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        written.push(target.clone());
+        Ok(Box::new(Capped(fs::File::create(target)?, 0)) as Box<dyn io::Write>)
+    });
+    written.retain(|p| p.is_file());
+    written
 }
 
 /// Something found inside a download that may import.
@@ -874,9 +985,9 @@ pub fn explore(kb: &KnowledgeBase, download: &Path, work: &Path) -> Exploration 
             continue;
         }
         if bytes.starts_with(b"MSCF") {
-            // Only a repair applies to a cabinet; looking for wrappers in it
-            // would just find itself.
-            actions.retain(|a| *a == Action::ClearCabChecksums);
+            // Only a repair, or opening a desktop cabinet, applies to a
+            // cabinet; looking for wrappers in it would just find itself.
+            actions.retain(|a| matches!(a, Action::ClearCabChecksums | Action::ExpandCab));
         }
         // Knowledge decides the order, never what is left out: a rule that is
         // too general, learned or written, only costs time, never a game.
@@ -925,7 +1036,19 @@ fn relative_name(path: &Path, base: &Path) -> String {
 fn basic_actions(bytes: &[u8], machine: Option<&str>) -> Vec<Action> {
     if bytes.starts_with(b"MSCF") {
         // A cabinet that failed to install: often only its checksums disagree.
-        return vec![Action::ClearCabChecksums];
+        // A desktop cabinet (no `.000` setup file) is a setup program's own
+        // files, often InstallShield's: open it.
+        let mut actions = vec![Action::ClearCabChecksums];
+        if !is_device_cab(bytes) {
+            actions.push(Action::ExpandCab);
+        }
+        return actions;
+    }
+    if crate::installshield::is_installshield(bytes) {
+        return vec![Action::OpenInstallShield];
+    }
+    if bytes.starts_with(b"Rar!") {
+        return vec![Action::OpenRar];
     }
     if bytes.starts_with(b"PK\x03\x04") {
         // A download zip: setup.exe, one cabinet per processor, readme files.
@@ -1011,9 +1134,13 @@ pub fn rule_for(name: &str, bytes: &[u8], action: Action) -> Rule {
     // Specific enough to describe only files the action can work on: the start
     // of the file and the marker the action looks for inside it.
     let marker = match action {
-        Action::CarveCab | Action::ClearCabChecksums => "4d53434600000000",
+        Action::CarveCab | Action::ClearCabChecksums | Action::ExpandCab => "4d53434600000000",
         Action::ExpandSzdd => "535a444488f02733",
-        Action::ExtractResources | Action::InflateZlib => "",
+        // The magic (`ISc(`, `Rar!`) already says what these open.
+        Action::ExtractResources
+        | Action::InflateZlib
+        | Action::OpenInstallShield
+        | Action::OpenRar => "",
         Action::OpenZip | Action::CarveZip => "504b0506",
     };
     let when = Matcher {
@@ -1051,6 +1178,49 @@ mod tests {
         bytes[25] = 1;
         bytes.extend_from_slice(payload);
         bytes
+    }
+
+    /// A cabinet header listing `names` (CFFILE entries only).
+    fn cab_listing(names: &[&str]) -> Vec<u8> {
+        let mut bytes = vec![0u8; 36];
+        bytes[..8].copy_from_slice(b"MSCF\0\0\0\0");
+        bytes[16..20].copy_from_slice(&36u32.to_le_bytes());
+        bytes[24] = 3;
+        bytes[25] = 1;
+        bytes[28..30].copy_from_slice(&(names.len() as u16).to_le_bytes());
+        for name in names {
+            bytes.extend_from_slice(&[0u8; 16]);
+            bytes.extend_from_slice(name.as_bytes());
+            bytes.push(0);
+        }
+        bytes
+    }
+
+    #[test]
+    fn desktop_cabinets_are_opened_device_cabinets_are_not() {
+        let device = cab_listing(&["GAME.000", "GAME.001", "00game.002"]);
+        let desktop = cab_listing(&["Disk1\\data1.cab", "Disk1\\data1.hdr", "Disk1\\Setup.exe"]);
+        assert_eq!(cab_names(&desktop).len(), 3);
+        assert!(is_device_cab(&device));
+        assert!(!is_device_cab(&desktop));
+        assert_eq!(
+            basic_actions(&device, None),
+            vec![Action::ClearCabChecksums]
+        );
+        assert_eq!(
+            basic_actions(&desktop, None),
+            vec![Action::ClearCabChecksums, Action::ExpandCab]
+        );
+        assert_eq!(
+            basic_actions(b"ISc(\0\0\0\0", None),
+            vec![Action::OpenInstallShield]
+        );
+        assert_eq!(
+            basic_actions(b"Rar!\x1a\x07\0", None),
+            vec![Action::OpenRar]
+        );
+        // A truncated listing reads what it can and stops.
+        assert!(cab_names(&desktop[..40]).is_empty());
     }
 
     fn x86_program(tail: &[u8]) -> Vec<u8> {

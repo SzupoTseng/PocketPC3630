@@ -93,7 +93,7 @@
  "h.088": "최상위에 <code>.cab</code> 하나가 있는 <code>.zip</code>(다른 파일, 예: <code>mfcce300.dll</code>을 함께 넣어도 됨)",
  "h.089": "게임을 설치한 폴더의 <code>.zip</code>, 예: <code>quake/PocketQuake.exe</code>",
  "h.090": "ARM 버전 <code>.exe</code>, <code>.rar</code>",
- "h.091": "데스크톱 설치 프로그램(<code>setup.exe</code>) 또는 프로세서별 CAB가 하나씩 들어 있는 다운로드 파일: ARM 버전을 자동으로 고릅니다",
+ "h.091": "데스크톱 설치 프로그램(<code>setup.exe</code>, InstallShield로 만든 것 포함) 또는 프로세서별 CAB가 하나씩 들어 있는 다운로드 파일: ARM 버전을 자동으로 고릅니다",
  "h.092": "게임에 필요한 시스템 파일",
  "h.093": "MFC를 사용하는 게임은 Pocket PC에 내장된 <code>mfcce300.dll</code>(일부는 <code>olece300.dll</code>도)이 필요하며, 에뮬레이터에는 포함되어 있지 않습니다. 내 기기에 있는 사본을 <code>.zip</code>에 넣어 <code>.cab</code>과 같은 위치에 두세요. 파일이 없으면 게임 시작 전에 알려 드립니다.",
  "h.094": "가져올 수 없는 것",
@@ -222,5 +222,7 @@
  "lib.sort.new": "연도: 최신순",
  "lib.sort.old": "연도: 오래된순",
  "lib.pick": "★ 추천",
- "lib.coll": "원래 컬렉션 분류"
+ "lib.coll": "원래 컬렉션 분류",
+ "lib.reason.flash": "Pocket IE용 Flash 게임으로 Pocket PC 프로그램이 아닙니다. 브라우저의 Flash 플러그인이 필요합니다",
+ "lib.reason.vbce": "Visual Basic for Windows CE 프로그램으로 기기의 VB 런타임이 필요하며, 에뮬레이터는 아직 지원하지 않습니다"
 }

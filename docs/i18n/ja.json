@@ -93,7 +93,7 @@
  "h.088": "最上位に <code>.cab</code> をひとつ置いた <code>.zip</code>（ほかのファイル、例えば <code>mfcce300.dll</code> を追加しても可）",
  "h.089": "ゲームをインストールしたフォルダーの <code>.zip</code>（例：<code>quake/PocketQuake.exe</code>）",
  "h.090": "ARM 版の <code>.exe</code>、<code>.rar</code>",
- "h.091": "デスクトップ用インストーラー（<code>setup.exe</code>）や、プロセッサーごとに CAB があるダウンロードファイル：ARM 版を自動で選びます",
+ "h.091": "デスクトップ用インストーラー（<code>setup.exe</code>。InstallShield 製も含む）や、プロセッサーごとに CAB があるダウンロードファイル：ARM 版を自動で選びます",
  "h.092": "ゲームに必要なシステムファイル",
  "h.093": "MFC を使うゲームには Pocket PC 内蔵の <code>mfcce300.dll</code>（一部は <code>olece300.dll</code> も）が必要ですが、エミュレーターには同梱されていません。ご自身の端末にあるコピーを <code>.zip</code> に入れ、<code>.cab</code> と同じ階層に置いてください。不足している場合は、ゲーム開始前にお知らせします。",
  "h.094": "読み込めないもの",
@@ -222,5 +222,7 @@
  "lib.sort.new": "年：新しい順",
  "lib.sort.old": "年：古い順",
  "lib.pick": "★ おすすめ",
- "lib.coll": "元のコレクション分類"
+ "lib.coll": "元のコレクション分類",
+ "lib.reason.flash": "Pocket IE 用の Flash ゲームで、Pocket PC プログラムではありません。ブラウザーの Flash プラグインが必要です",
+ "lib.reason.vbce": "Visual Basic for Windows CE のプログラムで、端末の VB ランタイムが必要です（エミュレーターは未対応）"
 }

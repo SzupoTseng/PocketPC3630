@@ -35,6 +35,7 @@ use thiserror::Error;
 pub mod bundle;
 pub mod import_kb;
 pub mod import_problem;
+pub mod installshield;
 pub mod keybindings;
 pub mod save_archive;
 pub mod save_data;
@@ -90,6 +91,9 @@ fn describe_steps(source: &str, steps: &[import_kb::Step], taken: &str) -> Strin
             import_kb::Action::ExpandSzdd => "expanded a compressed file",
             import_kb::Action::ExtractResources => "took out the installer's resources",
             import_kb::Action::InflateZlib => "inflated compressed data",
+            import_kb::Action::ExpandCab => "opened the setup cabinet",
+            import_kb::Action::OpenInstallShield => "opened the InstallShield cabinets",
+            import_kb::Action::OpenRar => "opened the RAR archive",
         })
         .collect();
     format!("{source} -> {taken} ({})", words.join(", "))
@@ -892,7 +896,12 @@ impl Library {
                 if lower.ends_with(".000") || lower.ends_with(".dll") {
                     continue;
                 }
-                if !is_pe_file(&f.extracted_path) {
+                // Only a program the emulator can run counts. A desktop
+                // cabinet (a setup program's own files, e.g. InstallShield's
+                // Setup.exe beside data1.cab) then has no program, and the
+                // import goes on to look inside it instead of taking the
+                // x86 setup program for the game.
+                if !is_guest_exe(&f.extracted_path) && !is_guest_dll(&f.extracted_path) {
                     continue;
                 }
                 // A cabinet renames its payload to 8.3 names, so the
@@ -2086,14 +2095,6 @@ fn pretty_id(id: &str) -> String {
     out.trim().to_string()
 }
 
-fn is_pe_file(path: &Path) -> bool {
-    let mut head = [0u8; 2];
-    match fs::File::open(path).and_then(|mut f| std::io::Read::read_exact(&mut f, &mut head)) {
-        Ok(()) => &head == b"MZ",
-        Err(_) => false,
-    }
-}
-
 /// `IMAGE_FILE_MACHINE_*` constants from the PE/COFF spec. Mirrors
 /// the values in `pocket-cli`'s archive helper — we deliberately read
 /// the raw bytes here so the hot import-time scan doesn't have to
@@ -2819,6 +2820,41 @@ mod tests {
 
     const MACHINE_ARM: u16 = 0x01c0;
     const MACHINE_X86: u16 = 0x014c;
+
+    /// A cabinet holding one program of `machine` and an unrelated file,
+    /// with no WinCE setup file: the shape of a desktop setup cabinet.
+    fn legacy_cab(path: &Path, machine: u16) {
+        use std::io::Write;
+        let stub = path.with_extension("stub");
+        write_stub_pe(&stub, machine, 0x0002);
+        let program = fs::read(&stub).unwrap();
+        let mut builder = cab::CabinetBuilder::new();
+        let folder = builder.add_folder(cab::CompressionType::None);
+        folder.add_file("SETUP.EXE");
+        folder.add_file("DATA1.CAB");
+        let mut writer = builder.build(fs::File::create(path).unwrap()).unwrap();
+        let mut index = 0;
+        while let Some(mut file) = writer.next_file().unwrap() {
+            file.write_all(if index == 0 { &program } else { b"ISc(" })
+                .unwrap();
+            index += 1;
+        }
+        writer.finish().unwrap();
+    }
+
+    /// A desktop setup cabinet's x86 Setup.exe is not the game: importing
+    /// it fails, so the import goes on to look inside (InstallShield).
+    #[test]
+    fn a_desktop_setup_cabinet_is_not_taken_for_a_game() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut library = Library::open(dir.path().join("library")).unwrap();
+        let desktop = dir.path().join("desktop.cab");
+        legacy_cab(&desktop, MACHINE_X86);
+        assert!(library.import_cab(&desktop).is_err());
+        let device = dir.path().join("device.cab");
+        legacy_cab(&device, MACHINE_ARM);
+        assert!(library.import_cab(&device).is_ok());
+    }
 
     /// Write an ARM PE32 whose import directory names `dlls`, each with
     /// one ordinal import — enough for `pocket_pe` to report the DLL,
