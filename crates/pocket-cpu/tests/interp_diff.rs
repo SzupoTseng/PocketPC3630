@@ -247,8 +247,10 @@ fn intrinsics_match_the_guest_code() {
                 pixels.extend_from_slice(&pixel.to_le_bytes());
             }
             hits += pixels
-                .chunks_exact(2)
-                .filter(|p| p == &[0xE0, 0x07])
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .filter(|p| **p == [0xE0, 0x07])
                 .count();
             let width = rng.below(40) as i32 - 2;
             let height = rng.below(20) as i32 - 2;
