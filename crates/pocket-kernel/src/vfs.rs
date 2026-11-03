@@ -1178,9 +1178,16 @@ mod tests {
         let mut v = Vfs::new();
         v.mount(r"\Program Files\OmniGSoft\Chopper Fight 1.1\", dir.path());
         v.set_default_dir(r"\Program Files\OmniGSoft\Chopper Fight 1.1\bin");
+        // Compare what the path opens, not its spelling: on a
+        // case-insensitive host (Windows) the resolver may return
+        // `level1` for the `Level1` folder, which is the same file.
+        let resolved = v
+            .resolve(r"..\resources\scenes\Level1\flyable.properties")
+            .expect("path inside the mount resolves");
+        assert_eq!(std::fs::read(&resolved).unwrap(), b"level=1");
         assert_eq!(
-            v.resolve(r"..\resources\scenes\Level1\flyable.properties"),
-            Some(file)
+            resolved.to_string_lossy().to_ascii_lowercase(),
+            file.to_string_lossy().to_ascii_lowercase()
         );
     }
 
@@ -1348,7 +1355,9 @@ mod tests {
     #[test]
     fn device_paths_do_not_fall_back_to_basename_files() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(dir.path().join("ACS1:"), b"not a device").unwrap();
+        // Windows does not allow `:` in a file name, so there the decoy
+        // cannot exist and the check below holds trivially.
+        let _ = std::fs::write(dir.path().join("ACS1:"), b"not a device");
         let mut v = Vfs::new();
         v.mount("\\Application\\", dir.path());
 
