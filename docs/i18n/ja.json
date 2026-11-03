@@ -229,5 +229,6 @@
  "lib.reason.disclogs": "このダウンロードはディスクのバックアップ時のログだけで、ディスクの中身は入っていません。手持ちのディスクか完全なインストーラーが必要です",
  "lib.reason.palm": "これは Palm OS 版（.prc／.pdb）で、Pocket PC のプログラムではありません",
  "lib.reason.plugin": "ほかのプログラム用のプラグイン（プレーヤーのコーデックなど）で、単独で起動するプログラムではありません",
- "lib.m01": "Mobile01 のスレッド"
+ "lib.m01": "Mobile01 のスレッド",
+ "lib.variant.retail": "市販ディスクの記録"
 }

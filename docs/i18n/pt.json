@@ -229,5 +229,6 @@
  "lib.reason.disclogs": "Este download tem só os registos de uma cópia do disco, não o disco; precisa do seu próprio disco ou do instalador completo",
  "lib.reason.palm": "É a versão para Palm OS (.prc/.pdb), não um programa de Pocket PC",
  "lib.reason.plugin": "Um plug-in para outro programa (como um codec de um leitor), não um programa que abre sozinho",
- "lib.m01": "Tópico do Mobile01"
+ "lib.m01": "Tópico do Mobile01",
+ "lib.variant.retail": "Registo do disco comercial"
 }

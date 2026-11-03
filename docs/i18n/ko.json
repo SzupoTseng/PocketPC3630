@@ -229,5 +229,6 @@
  "lib.reason.disclogs": "이 다운로드에는 디스크 백업 기록 파일만 있고 디스크 내용은 없습니다. 직접 가진 디스크나 전체 설치 파일이 필요합니다",
  "lib.reason.palm": "Palm OS 버전(.prc/.pdb)이며 Pocket PC 프로그램이 아닙니다",
  "lib.reason.plugin": "다른 프로그램용 플러그인(플레이어 코덱 등)으로, 혼자 실행되는 프로그램이 아닙니다",
- "lib.m01": "Mobile01 토론글"
+ "lib.m01": "Mobile01 토론글",
+ "lib.variant.retail": "정품 디스크 기록"
 }

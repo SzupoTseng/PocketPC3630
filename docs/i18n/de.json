@@ -229,5 +229,6 @@
  "lib.reason.disclogs": "Dieser Download enthält nur die Protokolle einer Disc-Sicherung, nicht die Disc selbst; nötig ist die eigene Disc oder der vollständige Installer",
  "lib.reason.palm": "Das ist die Palm-OS-Version (.prc/.pdb), kein Pocket-PC-Programm",
  "lib.reason.plugin": "Ein Plug-in für ein anderes Programm (etwa ein Codec für einen Player), kein eigenständiges Programm",
- "lib.m01": "Mobile01-Thread"
+ "lib.m01": "Mobile01-Thread",
+ "lib.variant.retail": "Eintrag zur Verkaufs-CD"
 }

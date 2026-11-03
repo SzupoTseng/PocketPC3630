@@ -229,5 +229,6 @@
  "lib.reason.disclogs": "这份下载只有光盘备份时的日志文件，没有光盘内容本身；需要自己的光盘或完整的安装文件",
  "lib.reason.palm": "这是 Palm OS 版（.prc／.pdb），不是 Pocket PC 程序",
  "lib.reason.plugin": "这是给其他程序用的插件组件（例如播放器的解码器），本身不是可以启动的程序",
- "lib.m01": "Mobile01 讨论串"
+ "lib.m01": "Mobile01 讨论串",
+ "lib.variant.retail": "零售光盘记录"
 }
