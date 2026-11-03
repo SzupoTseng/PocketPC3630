@@ -210,5 +210,7 @@
  "js.confirmClear": "Alle {n} Spiele deiner Bibliothek samt Fortschritt löschen? Nicht heruntergeladene Spielstände lassen sich nicht wiederherstellen.",
  "lib.guideLabel": "Anleitung",
  "lib.guideEq": "EverQuest for the Pocket PC unter Windows mit Device Emulator installieren (auf traditionellem Chinesisch)",
- "lib.guideCard": "Installationsanleitung ›"
+ "lib.guideCard": "Installationsanleitung ›",
+ "lib.status.untested": "Noch nicht getestet",
+ "lib.reason.regcode": "Benötigt einen Registrierungscode; nur bis zum Registrierungsbildschirm getestet"
 }

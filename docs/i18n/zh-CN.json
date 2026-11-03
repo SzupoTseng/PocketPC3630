@@ -210,5 +210,7 @@
  "js.confirmClear": "要删除游戏库里全部 {n} 个游戏及其进度吗？未下载的存档将无法恢复。",
  "lib.guideLabel": "实机教程",
  "lib.guideEq": "在 Windows 上用 Device Emulator 安装 EverQuest for the Pocket PC（繁体中文）",
- "lib.guideCard": "安装教程 ›"
+ "lib.guideCard": "安装教程 ›",
+ "lib.status.untested": "尚未实测",
+ "lib.reason.regcode": "需要注册码；本站只实测到注册画面"
 }

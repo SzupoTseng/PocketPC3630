@@ -210,5 +210,7 @@
  "js.confirmClear": "보관함의 게임 {n}개와 진행 상황을 모두 삭제할까요? 내려받지 않은 세이브는 복구할 수 없습니다.",
  "lib.guideLabel": "실기 가이드",
  "lib.guideEq": "Device Emulator로 Windows에 EverQuest for the Pocket PC 설치하기 (번체 중국어)",
- "lib.guideCard": "설치 가이드 ›"
+ "lib.guideCard": "설치 가이드 ›",
+ "lib.status.untested": "아직 테스트 안 함",
+ "lib.reason.regcode": "등록 코드가 필요하며, 등록 화면까지만 테스트함"
 }

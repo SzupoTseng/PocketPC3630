@@ -210,5 +210,7 @@
  "js.confirmClear": "Delete all {n} games in your library and their progress? Saves you have not downloaded cannot be recovered.",
  "lib.guideLabel": "Guide",
  "lib.guideEq": "Install EverQuest for the Pocket PC on Windows with Device Emulator (in Traditional Chinese)",
- "lib.guideCard": "Install guide ›"
+ "lib.guideCard": "Install guide ›",
+ "lib.status.untested": "Not tested yet",
+ "lib.reason.regcode": "Needs a registration code; tested only up to the registration screen"
 }

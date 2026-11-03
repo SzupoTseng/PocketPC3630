@@ -210,5 +210,7 @@
  "js.confirmClear": "¿Borrar los {n} juegos de tu biblioteca y su progreso? Las partidas que no hayas descargado no se podrán recuperar.",
  "lib.guideLabel": "Guía",
  "lib.guideEq": "Instalar EverQuest for the Pocket PC en Windows con Device Emulator (en chino tradicional)",
- "lib.guideCard": "Guía de instalación ›"
+ "lib.guideCard": "Guía de instalación ›",
+ "lib.status.untested": "Aún sin probar",
+ "lib.reason.regcode": "Requiere código de registro; probado solo hasta la pantalla de registro"
 }
