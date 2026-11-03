@@ -12108,10 +12108,22 @@ fn set_window_long_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelErr
         ctx.kernel.window_userdata.insert(hwnd, new_long);
         log::debug!("SetWindowLongW(GWL_USERDATA)=0x{new_long:08x} (previous=0x{previous:08x})");
         previous
+    } else if n_index >= 0 {
+        // The window's extra bytes (`cbWndExtra`). A custom control keeps
+        // its state pointer there; answering 0 when it read it back made
+        // Haali Reader's book list dereference NULL in its first paint.
+        let previous = WINDOW_EXTRA.with(|m| m.borrow_mut().insert((hwnd, n_index as u32), new_long)).unwrap_or(0);
+        log::debug!("SetWindowLongW(hwnd=0x{hwnd:08x}, {n_index})=0x{new_long:08x} (previous=0x{previous:08x})");
+        previous
     } else {
         0
     };
     Ok(DispatchOutcome::ReturnedR0(previous))
+}
+
+thread_local! {
+    /// Each window's extra bytes, by handle and byte offset.
+    static WINDOW_EXTRA: std::cell::RefCell<std::collections::HashMap<(u32, u32), u32>> = std::cell::RefCell::new(std::collections::HashMap::new());
 }
 
 /// `LONG GetWindowLongW(HWND hWnd, int nIndex)` — return `0` for
@@ -12138,6 +12150,8 @@ fn get_window_long_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelErr
             .get(&hwnd)
             .copied()
             .unwrap_or(ctx.kernel.window_user_data)
+    } else if n_index >= 0 {
+        WINDOW_EXTRA.with(|m| m.borrow().get(&(hwnd, n_index as u32)).copied()).unwrap_or(0)
     } else {
         0
     };
@@ -13963,11 +13977,26 @@ fn ext_text_out_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError>
     let hdc = ctx.arg_u32(0)?;
     let x = ctx.arg_u32(1)? as i32;
     let y = ctx.arg_u32(2)? as i32;
-    let _opts = ctx.arg_u32(3)?;
+    let opts = ctx.arg_u32(3)?;
     // The 5th and 6th args go on the stack; arg_u32(4)/(5) handle that.
-    let _rc = ctx.arg_u32(4).unwrap_or(0);
+    let rc = ctx.arg_u32(4).unwrap_or(0);
     let text_p = ctx.arg_u32(5).unwrap_or(0);
     let len = ctx.arg_u32(6).unwrap_or(0) as i32;
+    // ETO_OPAQUE fills the rectangle with the background colour first.
+    // List controls draw each row that way, often with no text at all:
+    // Haali Reader's book list paints its whole white page like this.
+    const ETO_OPAQUE: u32 = 0x0002;
+    if opts & ETO_OPAQUE != 0 && rc != 0 {
+        let r = ctx.cpu.read_mem(rc, 16)?;
+        let v = |i: usize| i32::from_le_bytes([r[i], r[i + 1], r[i + 2], r[i + 3]]);
+        let (l, t, rr, b) = (v(0), v(4), v(8), v(12));
+        if let Some(bk) = ctx.kernel.gdi.dc(hdc).map(|d| d.bk_color) {
+            let rgb = colorref_to_rgb565(bk);
+            if let Some(mut surf) = surface_for_dc(ctx.kernel, hdc) {
+                surf.fill_rect(l, t, rr - l, b - t, rgb);
+            }
+        }
+    }
     blit_text_at(ctx, hdc, x, y, text_p, len)?;
     Ok(DispatchOutcome::ReturnedR0(1))
 }
@@ -16080,7 +16109,104 @@ fn strip_mnemonics(s: &str) -> String {
 /// and Score readouts. Ignoring the template left the dialog an empty
 /// rectangle and those calls addressing nothing.
 fn build_dialog_from_template(ctx: &mut CallCtx<'_>, lp_template: u32) {
+    DIALOG_CUSTOM_ITEMS.with(|c| c.borrow_mut().clear());
     build_dialog_from_template_for(ctx, lp_template, FAKE_DIALOG_HWND, false)
+}
+
+/// A dialog control whose class the program registered itself.
+struct DialogCustomItem {
+    class: String,
+    id: u32,
+    style: u32,
+    ex_style: u32,
+    rect: (i32, i32, i32, i32),
+}
+
+/// A `CreateDialogIndirectParamW` part-way through creating its custom
+/// controls: the interrupted call, where to go once they all exist, and
+/// the WM_CREATE now running.
+struct DialogCustomChain {
+    frame: GuestCallFrame,
+    dialog_proc: u32,
+    init_param: u32,
+    remaining: Vec<DialogCustomItem>,
+    create_struct: u32,
+}
+
+thread_local! {
+    static DIALOG_CUSTOM_ITEMS: std::cell::RefCell<Vec<DialogCustomItem>> = const { std::cell::RefCell::new(Vec::new()) };
+    static DIALOG_CUSTOM_CHAIN: std::cell::RefCell<Option<DialogCustomChain>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Create the next custom control of a dialog and send it WM_CREATE,
+/// coming back to `CreateDialogIndirectParamW` through the thunk when
+/// its procedure returns. `None` when there is none left.
+fn start_next_dialog_custom(ctx: &mut CallCtx<'_>, chain: &mut DialogCustomChain) -> Result<Option<DispatchOutcome>, KernelError> {
+    while let Some(item) = chain.remaining.pop() {
+        let proc_ = ctx
+            .kernel
+            .window_class_procs
+            .iter()
+            .find_map(|(name, p)| name.eq_ignore_ascii_case(&item.class).then_some(*p))
+            .unwrap_or(0);
+        let hwnd = ctx.kernel.next_window_hwnd;
+        if proc_ == 0 || hwnd >= pocket_kernel::GUEST_WINDOW_HWND_END {
+            continue;
+        }
+        ctx.kernel.next_window_hwnd += 1;
+        let (x, y, w, h) = item.rect;
+        ctx.kernel.guest_windows.insert(
+            hwnd,
+            pocket_kernel::GuestWindow {
+                parent: FAKE_DIALOG_HWND,
+                class: item.class.clone(),
+                style: item.style,
+                x,
+                y,
+                w,
+                h,
+                visible: item.style & WS_VISIBLE_STYLE != 0,
+            },
+        );
+        ctx.kernel.window_classes.insert(hwnd, item.class.clone());
+        ctx.kernel.window_procs.insert(hwnd, proc_);
+        let Some(create_struct) = ctx.kernel.heap.alloc(0x30) else {
+            continue;
+        };
+        let fields: [u32; 12] = [
+            0, FAKE_MODULE_HANDLE, item.id, FAKE_DIALOG_HWND, h as u32, w as u32, y as u32, x as u32,
+            item.style, 0, 0, item.ex_style,
+        ];
+        let mut buf = [0u8; 0x30];
+        for (i, v) in fields.iter().enumerate() {
+            buf[i * 4..i * 4 + 4].copy_from_slice(&v.to_le_bytes());
+        }
+        ctx.cpu.write_mem(create_struct, &buf)?;
+        chain.create_struct = create_struct;
+        ctx.cpu.write_reg(ArmReg::Sp, chain.frame.sp)?;
+        ctx.cpu.write_reg(ArmReg::R0, hwnd)?;
+        ctx.cpu.write_reg(ArmReg::R1, WM_CREATE)?;
+        ctx.cpu.write_reg(ArmReg::R2, 0)?;
+        ctx.cpu.write_reg(ArmReg::R3, create_struct)?;
+        ctx.cpu.write_reg(ArmReg::Lr, ctx.thunk.thunk_va)?;
+        log::debug!("dialog control {:?} id={} -> 0x{hwnd:08x}, WM_CREATE to 0x{proc_:08x}", item.class, item.id);
+        return Ok(Some(DispatchOutcome::JumpTo(proc_)));
+    }
+    Ok(None)
+}
+
+/// Send the dialog WM_INITDIALOG, returning to the original caller when
+/// it is done (see the end of [`create_dialog_indirect_param_w`]).
+fn jump_to_init_dialog(ctx: &mut CallCtx<'_>, frame: GuestCallFrame, dialog_proc: u32, init_param: u32) -> Result<DispatchOutcome, KernelError> {
+    ctx.cpu.write_reg(ArmReg::Sp, frame.sp)?;
+    ctx.cpu.write_reg(ArmReg::R0, FAKE_DIALOG_HWND)?;
+    ctx.cpu.write_reg(ArmReg::R1, WM_INITDIALOG)?;
+    ctx.cpu.write_reg(ArmReg::R2, 0)?;
+    ctx.cpu.write_reg(ArmReg::R3, init_param)?;
+    ctx.cpu.write_reg(ArmReg::Lr, ctx.thunk.thunk_va)?;
+    ctx.kernel.dialog_frame = Some(frame);
+    log::debug!("CreateDialogIndirectParamW -> WM_INITDIALOG trampoline at 0x{dialog_proc:08x}");
+    Ok(DispatchOutcome::JumpTo(dialog_proc))
 }
 
 /// Materialise a `DLGTEMPLATE` as a panel owned by `owner_hwnd`.
@@ -16183,6 +16309,29 @@ fn build_dialog_from_template_for(
             ItemClass::Ordinal(class_ordinal::BUTTON) => ControlClass::Button,
             ItemClass::Ordinal(class_ordinal::EDIT) => ControlClass::Edit,
             ItemClass::Ordinal(class_ordinal::STATIC) => ControlClass::Static,
+            ItemClass::Named(name)
+                if !modal
+                    && separate_windows(ctx)
+                    && ctx.kernel.window_class_procs.keys().any(|c| c.eq_ignore_ascii_case(name)) =>
+            {
+                // A control of a class the program registered itself, such
+                // as Haali Reader's `XListBox` book list: it becomes a real
+                // window with its own procedure, created (and sent
+                // WM_CREATE) before the dialog gets WM_INITDIALOG.
+                let (ix, iy, iw, ih) =
+                    dlu.to_px(item.x as i32, item.y as i32, item.cx as i32, item.cy as i32);
+                DIALOG_CUSTOM_ITEMS.with(|c| {
+                    c.borrow_mut().push(DialogCustomItem {
+                        class: name.clone(),
+                        id: item.id as u32,
+                        style: item.style,
+                        ex_style: item.ex_style,
+                        rect: (ix, iy, iw, ih),
+                    })
+                });
+                log::debug!("dialog item id={} custom class {name:?} at ({ix},{iy},{iw},{ih})", item.id);
+                continue;
+            }
             other => {
                 // Listboxes, combos, scrollbars and custom classes are
                 // not modelled; skipping one loses a control but keeps
@@ -16232,6 +16381,20 @@ fn build_dialog_from_template_for(
 /// interrupted call, point `LR` at our own thunk so this handler
 /// re-fires when the callback returns, then hand back the HWND.
 fn create_dialog_indirect_param_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    // A custom control's WM_CREATE has returned: create the next one, or
+    // go on to WM_INITDIALOG once they all exist.
+    let chain_sp = DIALOG_CUSTOM_CHAIN.with(|c| c.borrow().as_ref().map(|chain| chain.frame.sp));
+    if let Some(sp) = chain_sp {
+        if ctx.cpu.read_reg(ArmReg::Sp)? >= sp {
+            let mut chain = DIALOG_CUSTOM_CHAIN.with(|c| c.borrow_mut().take()).unwrap();
+            ctx.kernel.heap.free(chain.create_struct);
+            if let Some(outcome) = start_next_dialog_custom(ctx, &mut chain)? {
+                DIALOG_CUSTOM_CHAIN.with(|c| *c.borrow_mut() = Some(chain));
+                return Ok(outcome);
+            }
+            return jump_to_init_dialog(ctx, chain.frame, chain.dialog_proc, chain.init_param);
+        }
+    }
     // Must come first: on re-entry R0..R3 hold the callback's result,
     // not our arguments.
     if let Some(frame) = ctx.kernel.dialog_frame {
@@ -16272,16 +16435,21 @@ fn create_dialog_indirect_param_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutco
         lr: ctx.cpu.read_reg(ArmReg::Lr)?,
         sp: ctx.cpu.read_reg(ArmReg::Sp)?,
     };
+    // Custom controls exist, and have had WM_CREATE, before the dialog's
+    // WM_INITDIALOG, which commonly fills them.
+    let custom = DIALOG_CUSTOM_ITEMS.with(|c| std::mem::take(&mut *c.borrow_mut()));
+    if !custom.is_empty() {
+        let mut remaining = custom;
+        remaining.reverse();
+        let mut chain = DialogCustomChain { frame, dialog_proc, init_param, remaining, create_struct: 0 };
+        if let Some(outcome) = start_next_dialog_custom(ctx, &mut chain)? {
+            DIALOG_CUSTOM_CHAIN.with(|c| *c.borrow_mut() = Some(chain));
+            return Ok(outcome);
+        }
+    }
     // DialogProc's four arguments all travel in registers, so the guest
     // stack needs no adjustment here.
-    ctx.cpu.write_reg(ArmReg::R0, FAKE_DIALOG_HWND)?;
-    ctx.cpu.write_reg(ArmReg::R1, WM_INITDIALOG)?;
-    ctx.cpu.write_reg(ArmReg::R2, 0)?;
-    ctx.cpu.write_reg(ArmReg::R3, init_param)?;
-    ctx.cpu.write_reg(ArmReg::Lr, ctx.thunk.thunk_va)?;
-    ctx.kernel.dialog_frame = Some(frame);
-    log::debug!("CreateDialogIndirectParamW -> WM_INITDIALOG trampoline at 0x{dialog_proc:08x}");
-    Ok(DispatchOutcome::JumpTo(dialog_proc))
+    jump_to_init_dialog(ctx, frame, dialog_proc, init_param)
 }
 
 fn is_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
