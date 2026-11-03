@@ -10443,9 +10443,24 @@ fn create_pen(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 }
 
 fn create_font_indirect(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
-    // We ignore the LOGFONT contents; just allocate a font handle so
-    // the caller can SelectObject it. Default height 0 is fine.
-    let h = ctx.kernel.gdi.create_font(0);
+    // LOGFONTW: lfHeight at +0, lfWeight at +16. Text is drawn at the
+    // height asked for (see `pocket_kernel::ttf`); the face name is not
+    // honoured, every face is drawn with the one stand-in font.
+    let lf = ctx.arg_u32(0)?;
+    let (height, weight, mono) = if lf != 0 {
+        // lfPitchAndFamily at +27, lfFaceName (32 WCHARs) at +28. A program
+        // that asks for a fixed-pitch face lays text out on a grid
+        // (BasiCE's console); proportional widths spread it apart.
+        let pitch_family = ctx.cpu.read_mem(lf + 27, 1).map(|b| b[0]).unwrap_or(0);
+        let face = read_wstr(ctx, lf + 28, 32).map(|w| String::from_utf16_lossy(&w).to_ascii_lowercase()).unwrap_or_default();
+        let mono = pitch_family & 0x03 == 1
+            || pitch_family & 0xF0 == 0x30
+            || ["courier", "mono", "console", "fixed"].iter().any(|k| face.contains(k));
+        (ctx.cpu.read_u32_le(lf).unwrap_or(0) as i32, ctx.cpu.read_u32_le(lf + 16).unwrap_or(400) as i32, mono)
+    } else {
+        (0, 400, false)
+    };
+    let h = ctx.kernel.gdi.create_font_full(height, if weight == 0 { 400 } else { weight }, mono);
     Ok(DispatchOutcome::ReturnedR0(h))
 }
 
@@ -13971,7 +13986,7 @@ fn stretch_blt(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 /// `lpnFit` gets the number of chars that fit `nMaxExtent` and
 /// `alpDx` (when non-NULL) the cumulative advance per char.
 fn get_text_extent_ex_point_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
-    let _hdc = ctx.arg_u32(0)?;
+    let hdc = ctx.arg_u32(0)?;
     let str_p = ctx.arg_u32(1)?;
     let cch = ctx.arg_u32(2)? as i32;
     let max_extent = ctx.arg_u32(3)? as i32;
@@ -13997,21 +14012,22 @@ fn get_text_extent_ex_point_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, 
         }
     }
     let n = chars.len() as i32;
-    let cx = n * pocket_kernel::font::GLYPH_W;
-    let cy = pocket_kernel::font::GLYPH_H;
+    let font = ctx.kernel.gdi.text_font(hdc);
+    let stops = font.caret_stops(&chars);
+    let cx = stops.last().copied().unwrap_or(0);
+    let cy = font.height();
     ctx.cpu.write_mem(lp_size, &cx.to_le_bytes())?;
     ctx.cpu.write_mem(lp_size + 4, &cy.to_le_bytes())?;
     if lpn_fit != 0 {
         let fit = if max_extent >= 0 {
-            (max_extent / pocket_kernel::font::GLYPH_W).min(n)
+            stops.iter().take_while(|&&end| end <= max_extent).count() as i32
         } else {
             n
         };
         ctx.cpu.write_mem(lpn_fit, &fit.to_le_bytes())?;
     }
     if alp_dx != 0 {
-        for (i, _) in chars.iter().enumerate() {
-            let dx = (i as i32 + 1) * pocket_kernel::font::GLYPH_W;
+        for (i, dx) in stops.iter().enumerate() {
             ctx.cpu
                 .write_mem(alp_dx + (i * 4) as u32, &dx.to_le_bytes())?;
         }
@@ -14067,8 +14083,8 @@ fn draw_text_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     };
     let color = colorref_to_rgb565(dc_meta.text_color);
     let bk_color = colorref_to_rgb565(dc_meta.bk_color);
-    let glyph_w = pocket_kernel::font::GLYPH_W;
-    let glyph_h = pocket_kernel::font::GLYPH_H;
+    let font = ctx.kernel.gdi.text_font(hdc);
+    let glyph_h = font.height();
     // EverQuest's text boxes depend on all of these: it measures with
     // DT_CALCRECT (which must not paint), then draws with DT_WORDBREAK, and its
     // data files embed CR/LF line breaks.
@@ -14080,15 +14096,11 @@ fn draw_text_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     const DT_SINGLELINE: u32 = 0x20;
     const DT_CALCRECT: u32 = 0x400;
     let fmt = ctx.arg_u32(4).unwrap_or(0);
-    let wrap_columns = if fmt & DT_WORDBREAK != 0 {
-        Some(((rr - rl) / glyph_w).max(1) as usize)
-    } else {
-        None
-    };
-    let lines = draw_text_lines(&chars, fmt & DT_SINGLELINE != 0, wrap_columns);
+    let wrap_width = (fmt & DT_WORDBREAK != 0).then(|| (rr - rl).max(1));
+    let lines = draw_text_lines_px(&chars, fmt & DT_SINGLELINE != 0, wrap_width, &|line| font.width(line));
     let text_h = lines.len() as i32 * glyph_h;
     if fmt & DT_CALCRECT != 0 {
-        let widest = lines.iter().map(|line| line.len() as i32).max().unwrap_or(0) * glyph_w;
+        let widest = lines.iter().map(|line| font.width(line)).max().unwrap_or(0);
         if rc_p != 0 {
             ctx.cpu.write_mem(rc_p + 8, &(rl + widest).to_le_bytes())?;
             ctx.cpu.write_mem(rc_p + 12, &(rt + text_h).to_le_bytes())?;
@@ -14104,7 +14116,7 @@ fn draw_text_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     };
     if let Some(mut surf) = surface_for_dc(ctx.kernel, hdc) {
         for (index, line) in lines.iter().enumerate() {
-            let pixel_w = line.len() as i32 * glyph_w;
+            let pixel_w = font.width(line);
             let x = if fmt & DT_CENTER != 0 {
                 rl + ((rr - rl) - pixel_w).max(0) / 2
             } else if fmt & DT_RIGHT != 0 {
@@ -14116,7 +14128,7 @@ fn draw_text_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
             if !dc_meta.bk_transparent {
                 surf.fill_rect(x, y, pixel_w, glyph_h, bk_color);
             }
-            pocket_kernel::font::draw_str_u16(&mut surf, x, y, line, color);
+            font.draw(&mut surf, x, y, line, color);
         }
         surf.mark_dirty();
     }
@@ -14127,6 +14139,18 @@ fn draw_text_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 /// Split `DrawTextW` text into display lines: CR, LF and CRLF always break
 /// unless `single_line`, and `wrap_columns` breaks at the last space that fits.
 fn draw_text_lines(chars: &[u16], single_line: bool, wrap_columns: Option<usize>) -> Vec<Vec<u16>> {
+    draw_text_lines_px(chars, single_line, wrap_columns.map(|c| c as i32), &|line| line.len() as i32)
+}
+
+/// [`draw_text_lines`] for proportional text: `wrap_width` is in the units
+/// `measure` returns (pixels), and a line breaks at the last space that
+/// still fits.
+fn draw_text_lines_px(
+    chars: &[u16],
+    single_line: bool,
+    wrap_width: Option<i32>,
+    measure: &dyn Fn(&[u16]) -> i32,
+) -> Vec<Vec<u16>> {
     const CR: u16 = 0x0D;
     const LF: u16 = 0x0A;
     const SPACE: u16 = 0x20;
@@ -14142,18 +14166,20 @@ fn draw_text_lines(chars: &[u16], single_line: bool, wrap_columns: Option<usize>
         }
         previous = c;
     }
-    let Some(columns) = wrap_columns.filter(|_| !single_line) else {
+    let Some(width) = wrap_width.filter(|_| !single_line) else {
         return paragraphs;
     };
     let mut lines = Vec::new();
     for paragraph in paragraphs {
         let mut rest = paragraph.as_slice();
-        while rest.len() > columns {
-            let cut = rest[..=columns]
+        while measure(rest) > width && rest.len() > 1 {
+            // The longest prefix that fits, at least one character.
+            let fits = (1..=rest.len()).take_while(|&n| measure(&rest[..n]) <= width).last().unwrap_or(1);
+            let cut = rest[..=fits.min(rest.len() - 1)]
                 .iter()
                 .rposition(|c| *c == SPACE)
                 .filter(|at| *at > 0)
-                .unwrap_or(columns);
+                .unwrap_or(fits);
             lines.push(rest[..cut].to_vec());
             rest = &rest[cut..];
             while rest.first() == Some(&SPACE) {
@@ -14310,13 +14336,14 @@ fn blit_text_at(
     }
     let color = colorref_to_rgb565(dc_meta.text_color);
     let bk_color = colorref_to_rgb565(dc_meta.bk_color);
-    let pixel_w = chars.len() as i32 * pocket_kernel::font::GLYPH_W;
-    let (x, y) = aligned_text_origin(&dc_meta, x, y, pixel_w, pocket_kernel::font::GLYPH_H);
+    let font = ctx.kernel.gdi.text_font(hdc);
+    let pixel_w = font.width(&chars);
+    let (x, y) = aligned_text_origin(&dc_meta, x, y, pixel_w, font.height());
     if let Some(mut surf) = surface_for_dc(ctx.kernel, hdc) {
         if !dc_meta.bk_transparent {
-            surf.fill_rect(x, y, pixel_w, pocket_kernel::font::GLYPH_H, bk_color);
+            surf.fill_rect(x, y, pixel_w, font.height(), bk_color);
         }
-        pocket_kernel::font::draw_str_u16(&mut surf, x, y, &chars, color);
+        font.draw(&mut surf, x, y, &chars, color);
         surf.mark_dirty();
     }
     sync_dst_dib_to_guest(ctx, hdc)?;
@@ -20542,7 +20569,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn get_text_extent_ex_point_w_reports_fixed_font_metrics() {
+    fn get_text_extent_ex_point_w_reports_proportional_font_metrics() {
         let mut cpu = StubCpu::new();
         let mut kernel = fresh_kernel();
         cpu.map_region(0x1000, 0x3000, Prot::READ | Prot::WRITE)
@@ -20571,14 +20598,19 @@ pub(crate) mod tests {
             get_text_extent_ex_point_w(&mut c).unwrap()
         };
         assert_eq!(result, DispatchOutcome::ReturnedR0(1));
-        assert_eq!(cpu.read_u32_le(0x1100).unwrap(), 4);
-        assert_eq!(cpu.read_u32_le(0x1200).unwrap(), 6);
-        assert_eq!(cpu.read_u32_le(0x1204).unwrap(), 12);
-        assert_eq!(cpu.read_u32_le(0x1208).unwrap(), 18);
-        assert_eq!(cpu.read_u32_le(0x120C).unwrap(), 24);
-        assert_eq!(cpu.read_u32_le(0x1210).unwrap(), 30);
-        assert_eq!(cpu.read_u32_le(0x1300).unwrap(), 30);
-        assert_eq!(cpu.read_u32_le(0x1304).unwrap(), 8);
+        // Proportional text in the screen DC's font: each caret stop is
+        // further right, the last one is the string's width, nFit counts
+        // the characters inside the 24-pixel extent, and the height is
+        // the font's line height.
+        let font = kernel.gdi.text_font(GDI_SCREEN_DC);
+        let stops: Vec<i32> = (0..5).map(|i| cpu.read_u32_le(0x1200 + i * 4).unwrap() as i32).collect();
+        assert!(stops.windows(2).all(|w| w[1] > w[0]), "{stops:?}");
+        let units: Vec<u16> = "Hello".encode_utf16().collect();
+        assert_eq!(stops, font.caret_stops(&units));
+        assert_eq!(cpu.read_u32_le(0x1300).unwrap() as i32, font.width(&units));
+        assert_eq!(cpu.read_u32_le(0x1304).unwrap() as i32, font.height());
+        let fit = cpu.read_u32_le(0x1100).unwrap() as usize;
+        assert_eq!(fit, stops.iter().take_while(|&&end| end <= 24).count());
     }
 
     // ---- GDI handler tests ----
@@ -22808,21 +22840,29 @@ pub(crate) fn register_command_bars(d: &mut WinCeDispatcher, dll: &str) {
 /// `GetTextMetricsW(hdc, TEXTMETRICW*)` for the built-in fixed font, the
 /// same one `GetTextExtentPoint32W` measures with.
 fn get_text_metrics_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let hdc = ctx.arg_u32(0)?;
     let tm = ctx.arg_u32(1)?;
     if tm == 0 {
         return Ok(DispatchOutcome::ReturnedR0(0));
     }
-    let h = pocket_kernel::font::GLYPH_H;
-    let w = pocket_kernel::font::GLYPH_W;
+    let font = ctx.kernel.gdi.text_font(hdc);
+    let h = font.height();
+    let internal_leading = (h - font.px.round() as i32).max(0);
+    let weight = if font.bold { 700 } else { 400 };
     let mut out = Vec::with_capacity(60);
-    for v in [h, h - 1, 1, 0, 0, w, w, 400, 0, 96, 96] {
+    // tmHeight, tmAscent, tmDescent, tmInternalLeading, tmExternalLeading,
+    // tmAveCharWidth, tmMaxCharWidth, tmWeight, tmOverhang, digitized x/y.
+    for v in [h, font.ascent(), font.descent(), internal_leading, 0, font.advance('x'), font.advance('W'), weight, 0, 96, 96] {
         out.extend_from_slice(&v.to_le_bytes());
     }
     for c in [0x20u16, 0xFF, 0x3F, 0x20] {
         out.extend_from_slice(&c.to_le_bytes());
     }
-    // italic, underlined, struck out, FIXED_PITCH | FF_MODERN, ANSI_CHARSET
-    out.extend_from_slice(&[0, 0, 0, 0x30, 0, 0, 0, 0]);
+    // italic, underlined, struck out; TMPF_FIXED_PITCH (set means
+    // proportional) | TMPF_TRUETYPE | FF_SWISS, or TMPF_TRUETYPE |
+    // FF_MODERN for a monospaced font; ANSI_CHARSET.
+    let pitch_family = if font.mono { 0x34 } else { 0x25 };
+    out.extend_from_slice(&[0, 0, 0, pitch_family, 0, 0, 0, 0]);
     ctx.cpu.write_mem(tm, &out[..60])?;
     Ok(DispatchOutcome::ReturnedR0(1))
 }

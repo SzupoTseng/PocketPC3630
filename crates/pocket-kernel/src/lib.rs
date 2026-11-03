@@ -47,6 +47,7 @@ pub mod native_thunks;
 pub mod profile;
 pub mod registry;
 pub mod tracker;
+pub mod ttf;
 pub mod vfs;
 pub mod winsock;
 
