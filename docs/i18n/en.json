@@ -213,5 +213,14 @@
  "lib.guideCard": "Install guide ›",
  "lib.status.untested": "Not tested yet",
  "lib.reason.regcode": "Needs a registration code; tested only up to the registration screen",
- "lib.details": "Details"
+ "lib.details": "Details",
+ "lib.onlyPic": "With pictures",
+ "lib.onlyPick": "★ Collection picks",
+ "lib.sort": "Sort",
+ "lib.sort.default": "Recommended",
+ "lib.sort.name": "Name A→Z",
+ "lib.sort.new": "Year: newest first",
+ "lib.sort.old": "Year: oldest first",
+ "lib.pick": "★ Pick",
+ "lib.coll": "Original collection folder"
 }

@@ -213,5 +213,14 @@
  "lib.guideCard": "इंस्टॉल गाइड ›",
  "lib.status.untested": "अभी परीक्षण नहीं हुआ",
  "lib.reason.regcode": "पंजीकरण कोड चाहिए; केवल पंजीकरण स्क्रीन तक परीक्षण हुआ",
- "lib.details": "विवरण"
+ "lib.details": "विवरण",
+ "lib.onlyPic": "सिर्फ़ चित्र वाले",
+ "lib.onlyPick": "★ चुनिंदा",
+ "lib.sort": "क्रम",
+ "lib.sort.default": "अनुशंसित",
+ "lib.sort.name": "नाम A→Z",
+ "lib.sort.new": "वर्ष: नए पहले",
+ "lib.sort.old": "वर्ष: पुराने पहले",
+ "lib.pick": "★ चुनिंदा",
+ "lib.coll": "मूल संग्रह फ़ोल्डर"
 }

@@ -213,5 +213,14 @@
  "lib.guideCard": "설치 가이드 ›",
  "lib.status.untested": "아직 테스트 안 함",
  "lib.reason.regcode": "등록 코드가 필요하며, 등록 화면까지만 테스트함",
- "lib.details": "자세히"
+ "lib.details": "자세히",
+ "lib.onlyPic": "이미지 있는 것만",
+ "lib.onlyPick": "★ 추천 소장품",
+ "lib.sort": "정렬",
+ "lib.sort.default": "추천순",
+ "lib.sort.name": "이름 A→Z",
+ "lib.sort.new": "연도: 최신순",
+ "lib.sort.old": "연도: 오래된순",
+ "lib.pick": "★ 추천",
+ "lib.coll": "원래 컬렉션 분류"
 }

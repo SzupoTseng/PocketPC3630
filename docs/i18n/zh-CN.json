@@ -213,5 +213,14 @@
  "lib.guideCard": "安装教程 ›",
  "lib.status.untested": "尚未实测",
  "lib.reason.regcode": "需要注册码；本站只实测到注册画面",
- "lib.details": "详细信息"
+ "lib.details": "详细信息",
+ "lib.onlyPic": "只看有图片",
+ "lib.onlyPick": "★ 精选收藏",
+ "lib.sort": "排序",
+ "lib.sort.default": "推荐顺序",
+ "lib.sort.name": "名称 A→Z",
+ "lib.sort.new": "年份：新到旧",
+ "lib.sort.old": "年份：旧到新",
+ "lib.pick": "★ 精选",
+ "lib.coll": "原始收藏分类"
 }

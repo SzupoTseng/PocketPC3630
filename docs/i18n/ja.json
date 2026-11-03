@@ -213,5 +213,14 @@
  "lib.guideCard": "インストールガイド ›",
  "lib.status.untested": "未検証",
  "lib.reason.regcode": "登録コードが必要。当サイトでは登録画面まで確認",
- "lib.details": "詳細"
+ "lib.details": "詳細",
+ "lib.onlyPic": "画像ありのみ",
+ "lib.onlyPick": "★ おすすめ収蔵",
+ "lib.sort": "並べ替え",
+ "lib.sort.default": "おすすめ順",
+ "lib.sort.name": "名前 A→Z",
+ "lib.sort.new": "年：新しい順",
+ "lib.sort.old": "年：古い順",
+ "lib.pick": "★ おすすめ",
+ "lib.coll": "元のコレクション分類"
 }

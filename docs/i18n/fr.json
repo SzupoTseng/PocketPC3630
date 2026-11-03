@@ -213,5 +213,14 @@
  "lib.guideCard": "Guide d’installation ›",
  "lib.status.untested": "Pas encore testé",
  "lib.reason.regcode": "Nécessite un code d’enregistrement ; testé jusqu’à l’écran d’enregistrement seulement",
- "lib.details": "Détails"
+ "lib.details": "Détails",
+ "lib.onlyPic": "Avec image",
+ "lib.onlyPick": "★ Sélection",
+ "lib.sort": "Trier",
+ "lib.sort.default": "Recommandé",
+ "lib.sort.name": "Nom A→Z",
+ "lib.sort.new": "Année : récent d’abord",
+ "lib.sort.old": "Année : ancien d’abord",
+ "lib.pick": "★ Sélection",
+ "lib.coll": "Dossier de la collection d’origine"
 }

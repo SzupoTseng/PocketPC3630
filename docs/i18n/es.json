@@ -213,5 +213,14 @@
  "lib.guideCard": "Guía de instalación ›",
  "lib.status.untested": "Aún sin probar",
  "lib.reason.regcode": "Requiere código de registro; probado solo hasta la pantalla de registro",
- "lib.details": "Detalles"
+ "lib.details": "Detalles",
+ "lib.onlyPic": "Con imagen",
+ "lib.onlyPick": "★ Selección",
+ "lib.sort": "Ordenar",
+ "lib.sort.default": "Recomendado",
+ "lib.sort.name": "Nombre A→Z",
+ "lib.sort.new": "Año: más reciente",
+ "lib.sort.old": "Año: más antiguo",
+ "lib.pick": "★ Selección",
+ "lib.coll": "Carpeta de la colección original"
 }

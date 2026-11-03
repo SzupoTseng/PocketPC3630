@@ -213,5 +213,14 @@
  "lib.guideCard": "Installationsanleitung ›",
  "lib.status.untested": "Noch nicht getestet",
  "lib.reason.regcode": "Benötigt einen Registrierungscode; nur bis zum Registrierungsbildschirm getestet",
- "lib.details": "Details"
+ "lib.details": "Details",
+ "lib.onlyPic": "Nur mit Bild",
+ "lib.onlyPick": "★ Sammlungstipps",
+ "lib.sort": "Sortieren",
+ "lib.sort.default": "Empfohlen",
+ "lib.sort.name": "Name A→Z",
+ "lib.sort.new": "Jahr: neueste zuerst",
+ "lib.sort.old": "Jahr: älteste zuerst",
+ "lib.pick": "★ Tipp",
+ "lib.coll": "Ordner der Originalsammlung"
 }
