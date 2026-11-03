@@ -183,7 +183,22 @@ fn sh_create_menu_bar(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelEr
         let parent = ctx.cpu.read_u32_le(pmb + 4).unwrap_or(0);
         match crate::coredll::new_system_window(ctx, parent, "menu_worker") {
             0 => FAKE_MENUBAR_HWND,
-            h => h,
+            h => {
+                // A menu bar sits along the bottom of the screen, 26 pixels
+                // tall. MFC on Pocket PC ends its view at the top of the
+                // menu bar; a bar at (0,0) with no size gave Haali Reader's
+                // view a height of zero, so it never drew.
+                const MENU_BAR_HEIGHT: i32 = 26;
+                let (w, h_screen) = crate::coredll::screen_dims(ctx);
+                if let Some(win) = ctx.kernel.guest_windows.get_mut(&h) {
+                    win.x = 0;
+                    win.y = h_screen as i32 - MENU_BAR_HEIGHT;
+                    win.w = w as i32;
+                    win.h = MENU_BAR_HEIGHT;
+                    win.visible = true;
+                }
+                h
+            }
         }
     } else {
         FAKE_MENUBAR_HWND

@@ -7734,7 +7734,7 @@ fn create_guest_window(ctx: &mut CallCtx<'_>, class_name: &str, class_arg: u32) 
     ctx.cpu.write_reg(ArmReg::R2, 0)?;
     ctx.cpu.write_reg(ArmReg::R3, create_struct)?;
     ctx.cpu.write_reg(ArmReg::Lr, ctx.thunk.thunk_va)?;
-    log::debug!("CreateWindowExW(class={class_name:?}, parent=0x{parent:08x}) -> 0x{hwnd:08x}, WM_CREATE to 0x{proc_:08x}");
+    log::debug!("CreateWindowExW(class={class_name:?}, parent=0x{parent:08x}, style=0x{style:08x}) -> 0x{hwnd:08x}, WM_CREATE to 0x{proc_:08x}");
     Ok(DispatchOutcome::JumpTo(proc_))
 }
 
@@ -7778,6 +7778,13 @@ fn finish_guest_window_create(ctx: &mut CallCtx<'_>) -> Result<Option<DispatchOu
 fn queue_guest_paints(ctx: &mut CallCtx<'_>) {
     if ctx.kernel.guest_windows.is_empty() {
         return;
+    }
+    if log::log_enabled!(log::Level::Trace) {
+        for (h, w) in &ctx.kernel.guest_windows {
+            log::trace!("guest window 0x{h:08x} class={:?} visible={} parent=0x{:08x} rect=({},{},{},{})", w.class, w.visible, w.parent, w.x, w.y, w.w, w.h);
+        }
+        let q: Vec<String> = ctx.kernel.posted_messages.iter().map(|m| format!("{:x}:{:x}", m.0, m.1)).collect();
+        log::trace!("posted queue before guest paints: {q:?}");
     }
     let mut order: Vec<(bool, u32)> = ctx
         .kernel
@@ -9797,14 +9804,19 @@ fn get_message_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> 
         ctx.kernel.synthetic_message_count = count + 1;
         return Ok(DispatchOutcome::ReturnedR0(1));
     }
-    if let Some((hwnd, msg, wp, lp)) = take_posted_message(ctx) {
-        write_synthetic_msg_for_hwnd(ctx.cpu, lp_msg, hwnd, msg, wp, lp)?;
-        ctx.kernel.synthetic_message_count = count + 1;
-        return Ok(DispatchOutcome::ReturnedR0(1));
-    }
+    // A message that `PeekMessage(PM_NOREMOVE)` looked at is the head of
+    // the queue, so it comes out before anything posted after it. Taking
+    // the posted queue first let the peeked message be replaced by the
+    // next synthetic paint: MFC peeks on every idle check, and Haali
+    // Reader's view lost every WM_PAINT that way and stayed black.
     if let Some((hwnd, msg, wp, lp)) = ctx.kernel.pending_message.take() {
         write_synthetic_msg_for_hwnd(ctx.cpu, lp_msg, hwnd, msg, wp, lp)?;
         ctx.kernel.synthetic_message_count += 1;
+        return Ok(DispatchOutcome::ReturnedR0(1));
+    }
+    if let Some((hwnd, msg, wp, lp)) = take_posted_message(ctx) {
+        write_synthetic_msg_for_hwnd(ctx.cpu, lp_msg, hwnd, msg, wp, lp)?;
+        ctx.kernel.synthetic_message_count = count + 1;
         return Ok(DispatchOutcome::ReturnedR0(1));
     }
     // Anything already due (input, driver notifications, the synthetic
@@ -12544,7 +12556,7 @@ fn read_u32(ctx: &mut CallCtx<'_>, addr: u32) -> Result<u32, KernelError> {
     Ok(u32::from_le_bytes([raw[0], raw[1], raw[2], raw[3]]))
 }
 
-fn screen_dims(ctx: &CallCtx<'_>) -> (u32, u32) {
+pub(crate) fn screen_dims(ctx: &CallCtx<'_>) -> (u32, u32) {
     (ctx.kernel.framebuffer.width, ctx.kernel.framebuffer.height)
 }
 
