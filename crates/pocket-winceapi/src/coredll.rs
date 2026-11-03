@@ -7623,14 +7623,12 @@ pub(crate) fn new_system_window(ctx: &mut CallCtx<'_>, parent: u32, class: &str)
 /// programs that load MFC get real separate windows; everything else
 /// keeps the single-window model for now.
 pub(crate) fn separate_windows(ctx: &CallCtx<'_>) -> bool {
-    // Off unless `POCKETHLE_MFC_WINDOWS=1`. Giving MFC apps real windows
-    // of their own is not finished: with it on, MFC programs that already
-    // ran (CommLog, dotPocket, Pretec CompactGPS, ZIO SimCity 2000) recursed
-    // through a window procedure until the guest stack ran out, and Haali
-    // Reader still shows a black screen. One shared window keeps them
-    // running until the separate-window model is complete.
+    // On unless `POCKETHLE_MFC_WINDOWS=0`. It was off while MFC programs
+    // that already ran (CommLog, dotPocket, Pretec CompactGPS, ZIO SimCity
+    // 2000, Sorcery PDA) recursed through their menu-bar subclass; with
+    // that fixed, the 157-program regression is the same with it on.
     static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ENABLED.get_or_init(|| std::env::var("POCKETHLE_MFC_WINDOWS").is_ok_and(|v| v == "1"))
+    *ENABLED.get_or_init(|| !std::env::var("POCKETHLE_MFC_WINDOWS").is_ok_and(|v| v == "0"))
         && ctx.kernel.modules.iter().any(|m| m.name.starts_with("mfcce"))
 }
 
