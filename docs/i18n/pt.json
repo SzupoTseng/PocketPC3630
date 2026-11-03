@@ -207,5 +207,8 @@
  "lib.moreN": "Mostrar mais (faltam {n})",
  "play.keyboard": "Teclado",
  "js.clearAll": "Esvaziar biblioteca",
- "js.confirmClear": "Excluir os {n} jogos da sua biblioteca e o progresso deles? Saves que você não baixou não poderão ser recuperados."
+ "js.confirmClear": "Excluir os {n} jogos da sua biblioteca e o progresso deles? Saves que você não baixou não poderão ser recuperados.",
+ "lib.guideLabel": "Guia",
+ "lib.guideEq": "Instalar EverQuest for the Pocket PC no Windows com o Device Emulator (em chinês tradicional)",
+ "lib.guideCard": "Guia de instalação ›"
 }

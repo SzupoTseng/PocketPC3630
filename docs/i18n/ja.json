@@ -207,5 +207,8 @@
  "lib.moreN": "さらに表示（残り {n} 件）",
  "play.keyboard": "キーボード",
  "js.clearAll": "ライブラリを空にする",
- "js.confirmClear": "ライブラリの {n} 本のゲームとその進行状況をすべて削除しますか？ダウンロードしていないセーブデータは元に戻せません。"
+ "js.confirmClear": "ライブラリの {n} 本のゲームとその進行状況をすべて削除しますか？ダウンロードしていないセーブデータは元に戻せません。",
+ "lib.guideLabel": "実機ガイド",
+ "lib.guideEq": "Device Emulator で Windows に EverQuest for the Pocket PC をインストール（繁体字中国語）",
+ "lib.guideCard": "インストールガイド ›"
 }

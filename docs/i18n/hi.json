@@ -207,5 +207,8 @@
  "lib.moreN": "और दिखाएँ ({n} बाकी)",
  "play.keyboard": "कीबोर्ड",
  "js.clearAll": "लाइब्रेरी खाली करें",
- "js.confirmClear": "लाइब्रेरी के सभी {n} गेम और उनकी प्रगति हटाएँ? जो सेव आपने डाउनलोड नहीं किए, वे वापस नहीं मिलेंगे।"
+ "js.confirmClear": "लाइब्रेरी के सभी {n} गेम और उनकी प्रगति हटाएँ? जो सेव आपने डाउनलोड नहीं किए, वे वापस नहीं मिलेंगे।",
+ "lib.guideLabel": "गाइड",
+ "lib.guideEq": "Device Emulator से Windows पर EverQuest for the Pocket PC इंस्टॉल करें (पारंपरिक चीनी में)",
+ "lib.guideCard": "इंस्टॉल गाइड ›"
 }

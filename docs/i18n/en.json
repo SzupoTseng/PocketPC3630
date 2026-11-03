@@ -207,5 +207,8 @@
  "lib.moreN": "Show more ({n} left)",
  "play.keyboard": "Keyboard",
  "js.clearAll": "Clear library",
- "js.confirmClear": "Delete all {n} games in your library and their progress? Saves you have not downloaded cannot be recovered."
+ "js.confirmClear": "Delete all {n} games in your library and their progress? Saves you have not downloaded cannot be recovered.",
+ "lib.guideLabel": "Guide",
+ "lib.guideEq": "Install EverQuest for the Pocket PC on Windows with Device Emulator (in Traditional Chinese)",
+ "lib.guideCard": "Install guide ›"
 }

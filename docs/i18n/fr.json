@@ -207,5 +207,8 @@
  "lib.moreN": "Afficher plus ({n} restants)",
  "play.keyboard": "Clavier",
  "js.clearAll": "Vider la ludothèque",
- "js.confirmClear": "Supprimer les {n} jeux de votre ludothèque et leur progression ? Les sauvegardes non téléchargées seront perdues."
+ "js.confirmClear": "Supprimer les {n} jeux de votre ludothèque et leur progression ? Les sauvegardes non téléchargées seront perdues.",
+ "lib.guideLabel": "Guide",
+ "lib.guideEq": "Installer EverQuest for the Pocket PC sous Windows avec Device Emulator (en chinois traditionnel)",
+ "lib.guideCard": "Guide d’installation ›"
 }
