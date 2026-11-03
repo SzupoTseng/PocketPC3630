@@ -212,5 +212,6 @@
  "lib.guideEq": "Device Emulator से Windows पर EverQuest for the Pocket PC इंस्टॉल करें (पारंपरिक चीनी में)",
  "lib.guideCard": "इंस्टॉल गाइड ›",
  "lib.status.untested": "अभी परीक्षण नहीं हुआ",
- "lib.reason.regcode": "पंजीकरण कोड चाहिए; केवल पंजीकरण स्क्रीन तक परीक्षण हुआ"
+ "lib.reason.regcode": "पंजीकरण कोड चाहिए; केवल पंजीकरण स्क्रीन तक परीक्षण हुआ",
+ "lib.details": "विवरण"
 }

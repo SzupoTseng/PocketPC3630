@@ -212,5 +212,6 @@
  "lib.guideEq": "Device Emulator로 Windows에 EverQuest for the Pocket PC 설치하기 (번체 중국어)",
  "lib.guideCard": "설치 가이드 ›",
  "lib.status.untested": "아직 테스트 안 함",
- "lib.reason.regcode": "등록 코드가 필요하며, 등록 화면까지만 테스트함"
+ "lib.reason.regcode": "등록 코드가 필요하며, 등록 화면까지만 테스트함",
+ "lib.details": "자세히"
 }

@@ -212,5 +212,6 @@
  "lib.guideEq": "Instalar EverQuest for the Pocket PC no Windows com o Device Emulator (em chinês tradicional)",
  "lib.guideCard": "Guia de instalação ›",
  "lib.status.untested": "Ainda não testado",
- "lib.reason.regcode": "Requer código de registro; testado só até a tela de registro"
+ "lib.reason.regcode": "Requer código de registro; testado só até a tela de registro",
+ "lib.details": "Detalhes"
 }
