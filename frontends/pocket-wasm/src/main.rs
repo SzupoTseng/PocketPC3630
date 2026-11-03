@@ -1,3 +1,5 @@
+// Pixel loops step through fixed-size chunks; as the other crates do.
+#![allow(clippy::chunks_exact_to_as_chunks)]
 //! Browser frontend: PocketHLE as a set of C functions a page calls.
 //!
 //! Modelled on FluffOS's WebAssembly driver, whose `fluffos_boot` / `tick` /
