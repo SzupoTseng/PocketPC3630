@@ -72,13 +72,33 @@ fn set_error(message: String) {
     });
 }
 
+thread_local! {
+    /// The page's language: explanations come in Chinese for the Chinese
+    /// pages and in English for every other language.
+    static ENGLISH: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+fn lang() -> Lang {
+    if ENGLISH.with(|e| e.get()) {
+        Lang::En
+    } else {
+        Lang::ZhHant
+    }
+}
+
+/// Choose the language of explanations: `0` Chinese, anything else English.
+#[no_mangle]
+pub extern "C" fn pocket_set_lang(english: i32) {
+    ENGLISH.with(|e| e.set(english != 0));
+}
+
 fn knowledge() -> pocket_library::import_kb::KnowledgeBase {
     pocket_library::import_kb::KnowledgeBase::load(Path::new(LIBRARY_ROOT))
 }
 
 /// A failure explained for a player, with the technical message kept.
 fn explain(message: &str, missing: &[String]) -> String {
-    knowledge().explain(message, missing).message(Lang::ZhHant)
+    knowledge().explain(message, missing).message(lang())
 }
 
 /// After a successful import, how the game was found when the download was not
@@ -141,7 +161,7 @@ pub extern "C" fn pocket_import(path: *const c_char) -> i32 {
         }
         Err(error) => {
             let problem = knowledge().explain_import(&error);
-            set_error(problem.message(Lang::ZhHant));
+            set_error(problem.message(lang()));
             -2
         }
     }
@@ -339,7 +359,7 @@ pub extern "C" fn pocket_boot(index: i32) -> i32 {
                 let mut text = if missing.is_empty() {
                     String::new()
                 } else {
-                    knowledge().explain("", &missing).hint(Lang::ZhHant)
+                    knowledge().explain("", &missing).hint(lang())
                 };
                 text.push('\0');
                 *slot.borrow_mut() = text.into_bytes();
