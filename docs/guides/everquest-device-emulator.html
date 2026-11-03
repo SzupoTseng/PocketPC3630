@@ -66,7 +66,7 @@ footer { margin-top: 48px; color: var(--dim); font-size: 14px; border-top: 1px s
     <tr><td><strong>EverQuest: Pocket PC III — War on Faydwer</strong></td><td class="nw">2003-04-28</td><td>第三部，戰場移到精靈與矮人居住的 Faydwer 大陸。</td></tr>
   </table></div>
   <p>三部都是 ARM 版的 CAB，類型都是動作角色扮演，當年都能在 Pocket PC 實機上玩。第二、三部的 CAB 可以用同樣的方法放進 <code>SD</code> 資料夾安裝；不過本教學只在 Device Emulator 上實測過第一部。發售日引用自 EverQuest Show 的系列整理。</p>
-  <p>在 PocketPC3630 上，第一部可以完整進入遊戲；第二部在 Windows 版測試過能啟動；第三部還沒有測試。</p>
+  <p>在 PocketPC3630 上的實測結果見下方「在 PocketPC3630 上玩」。</p>
 
   <h2>開始之前</h2>
   <p>你需要兩個檔案，以及遊戲的註冊碼。</p>
@@ -128,6 +128,22 @@ footer { margin-top: 48px; color: var(--dim); font-size: 14px; border-top: 1px s
     <li>遊戲會進入教學關，就代表安裝完成了。
       <figure><img src="eq/12-tutorial.webp" width="364" height="606" alt="教學關" loading="lazy"></figure></li>
   </ol>
+
+  <h2>在 PocketPC3630 上玩（不需要 ROM）</h2>
+  <p>不想架 Device Emulator 的話，可以直接在 PocketPC3630 上玩：網頁版、Windows 版和 Android 版都可以，不需要 Pocket PC 的 ROM。</p>
+  <ol>
+    <li>打開 <a href="../">PocketPC3630</a>，按「匯入遊戲」，選你自己的遊戲 CAB（例如第二部的 CAB）。安裝程式 <code>Setup.exe</code> 也可以直接選，本站只會拆開它取出 CAB，不會執行。</li>
+    <li>遊戲需要 <code>mfcce300.dll</code>。網頁版會在遊戲畫面上方出現「自動取得 MFC 並重新開始」，按下去就好；也可以把你自己的 <code>mfcce300.dll</code> 和 CAB 一起選。</li>
+    <li>匯入後在「我的遊戲庫」點遊戲開始。滑鼠就是觸控筆，畫面下方有方向鍵和 A／B／C 按鈕。</li>
+  </ol>
+  <div class="table"><table>
+    <tr><th>作品</th><th>在 PocketPC3630 上的實測</th></tr>
+    <tr><td>Episode 1</td><td>可以啟動，停在註冊畫面；需要你自己的註冊碼</td></tr>
+    <tr><td>II — Attack on Qeynos</td><td>不需要註冊碼。建立角色、教學、移動、存檔、讀檔都已和 Device Emulator 逐步比對，結果一致</td></tr>
+    <tr><td>III — War on Faydwer</td><td>可以啟動，停在註冊畫面；需要你自己的註冊碼</td></tr>
+  </table></div>
+  <p>第二部原版 CAB 裡有一個位元組的校驗碼不符，Device Emulator 和 PocketPC3630 都會照常安裝，不需要另外修正。戰鬥還沒有和 Device Emulator 比對過。</p>
+  <figure><img src="eq/cmp-device-emulator-vs-pocketpc3630.webp" width="990" height="650" alt="第二部：上排 Device Emulator，下排 PocketPC3630" loading="lazy" style="max-width:100%"><figcaption>第二部同一組操作：上排 Device Emulator，下排 PocketPC3630（角色選擇、建立角色、教學、進入遊戲）。</figcaption></figure>
 
   <h2>常見問題</h2>
   <div class="table"><table>
