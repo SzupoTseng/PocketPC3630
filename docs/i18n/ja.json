@@ -228,5 +228,6 @@
  "lib.reason.installer": "インポーターが未対応のインストーラー形式（Inno Setup、NSIS、Ghost Installer、Setup Factory など）に入っています。PC で 7-Zip や innoextract を使って Pocket PC 用 CAB を取り出し、それをインポートしてください",
  "lib.reason.disclogs": "このダウンロードはディスクのバックアップ時のログだけで、ディスクの中身は入っていません。手持ちのディスクか完全なインストーラーが必要です",
  "lib.reason.palm": "これは Palm OS 版（.prc／.pdb）で、Pocket PC のプログラムではありません",
- "lib.reason.plugin": "ほかのプログラム用のプラグイン（プレーヤーのコーデックなど）で、単独で起動するプログラムではありません"
+ "lib.reason.plugin": "ほかのプログラム用のプラグイン（プレーヤーのコーデックなど）で、単独で起動するプログラムではありません",
+ "lib.m01": "Mobile01 のスレッド"
 }

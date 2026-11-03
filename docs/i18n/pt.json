@@ -228,5 +228,6 @@
  "lib.reason.installer": "Empacotado num formato de instalador que o importador ainda não lê (Inno Setup, NSIS, Ghost Installer, Setup Factory…); extraia o CAB de Pocket PC num computador com 7-Zip ou innoextract e importe-o",
  "lib.reason.disclogs": "Este download tem só os registos de uma cópia do disco, não o disco; precisa do seu próprio disco ou do instalador completo",
  "lib.reason.palm": "É a versão para Palm OS (.prc/.pdb), não um programa de Pocket PC",
- "lib.reason.plugin": "Um plug-in para outro programa (como um codec de um leitor), não um programa que abre sozinho"
+ "lib.reason.plugin": "Um plug-in para outro programa (como um codec de um leitor), não um programa que abre sozinho",
+ "lib.m01": "Tópico do Mobile01"
 }
