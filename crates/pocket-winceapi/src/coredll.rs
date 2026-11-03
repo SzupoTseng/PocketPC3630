@@ -10119,6 +10119,11 @@ fn create_dc(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 fn def_window_proc_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let _hwnd = ctx.arg_u32(0)?;
     let message = ctx.arg_u32(1)?;
+    log::trace!("DefWindowProcW(hwnd=0x{_hwnd:08x}, msg=0x{message:04x}, wp=0x{:08x}, lp=0x{:08x})", ctx.arg_u32(2)?, ctx.arg_u32(3)?);
+    if (0x0400..0x0460).contains(&message) && is_menu_bar_window(ctx, _hwnd) {
+        let wparam = ctx.arg_u32(2)?;
+        return Ok(DispatchOutcome::ReturnedR0(menu_bar_toolbar_message(_hwnd, message, wparam)));
+    }
     match message {
         WM_ERASEBKGND => {
             erase_window_background(ctx);
@@ -10132,6 +10137,66 @@ fn def_window_proc_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelErr
         }
         _ => Ok(DispatchOutcome::ReturnedR0(0)),
     }
+}
+
+thread_local! {
+    /// Buttons on each menu bar, which is a toolbar control on a device.
+    static MENU_BAR_BUTTONS: std::cell::RefCell<std::collections::HashMap<u32, u32>> = std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// A menu bar from `SHCreateMenuBar`: the shared one, or one with a handle
+/// of its own when windows are separate.
+fn is_menu_bar_window(ctx: &CallCtx<'_>, hwnd: u32) -> bool {
+    hwnd == crate::aygshell::FAKE_MENUBAR_HWND
+        || ctx.kernel.window_classes.get(&hwnd).is_some_and(|class| class == "menu_worker")
+}
+
+/// The toolbar messages a menu bar answers. On a device the menu bar is a
+/// `ToolbarWindow32`, and MFC loads its toolbar resource into it with
+/// `TB_BUTTONCOUNT`, `TB_GETIMAGELIST` and `TB_ADDBUTTONS`. Answering 0,
+/// as `DefWindowProc` does, told Haali Reader's frame that adding the
+/// buttons failed; it then failed its own WM_CREATE and drew nothing.
+fn menu_bar_toolbar_message(hwnd: u32, message: u32, wparam: u32) -> u32 {
+    const TB_ENABLEBUTTON: u32 = 0x0401;
+    const TB_HIDEBUTTON: u32 = 0x0404;
+    const TB_SETSTATE: u32 = 0x0411;
+    const TB_ADDBITMAP: u32 = 0x0413;
+    const TB_ADDBUTTONS: u32 = 0x0414;
+    const TB_INSERTBUTTON: u32 = 0x0415;
+    const TB_DELETEBUTTON: u32 = 0x0416;
+    const TB_BUTTONCOUNT: u32 = 0x0418;
+    const TB_BUTTONSTRUCTSIZE: u32 = 0x041e;
+    const TB_SETBUTTONSIZE: u32 = 0x041f;
+    const TB_SETBITMAPSIZE: u32 = 0x0420;
+    const TB_AUTOSIZE: u32 = 0x0421;
+    MENU_BAR_BUTTONS.with(|map| {
+        let mut map = map.borrow_mut();
+        let count = map.entry(hwnd).or_insert(0);
+        match message {
+            TB_BUTTONCOUNT => *count,
+            TB_ADDBUTTONS => {
+                *count = count.saturating_add(wparam);
+                1
+            }
+            TB_INSERTBUTTON => {
+                *count = count.saturating_add(1);
+                1
+            }
+            TB_DELETEBUTTON => {
+                if wparam < *count {
+                    *count -= 1;
+                    1
+                } else {
+                    0
+                }
+            }
+            // The index of the first new image.
+            TB_ADDBITMAP => 0,
+            TB_ENABLEBUTTON..=TB_HIDEBUTTON | TB_SETSTATE | TB_BUTTONSTRUCTSIZE | TB_SETBUTTONSIZE
+            | TB_SETBITMAPSIZE | TB_AUTOSIZE => 1,
+            _ => 0,
+        }
+    })
 }
 
 /// Fill the client area with the registered class background brush and
