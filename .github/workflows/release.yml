@@ -1,0 +1,109 @@
+# Builds the Windows zip and the Android APK and publishes them as a GitHub
+# release whenever a version tag (v0.5.0, v0.6.0, ...) is pushed. The website's
+# download buttons point at releases/latest, so a new tag is all it takes for
+# every visitor to get the new version.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to (re)build and publish, e.g. v0.5.0'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: build CLI and desktop app
+        shell: bash
+        run: cargo build --release -p pocket-cli -p pocket-desktop
+      - name: package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist/PocketPC3630 | Out-Null
+          Copy-Item target/release/pockethle-gui.exe dist/PocketPC3630/PocketPC3630.exe
+          Copy-Item target/release/pockethle.exe dist/PocketPC3630/pockethle.exe
+          Copy-Item packaging/windows-README.txt dist/PocketPC3630/README.txt
+          Compress-Archive -Path dist/PocketPC3630 -DestinationPath PocketPC3630-windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: PocketPC3630-windows-x64.zip
+
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26d
+          add-to-path: true
+      - name: install cargo-ndk
+        run: cargo install cargo-ndk --locked
+      - name: build the native library (interpreter backend)
+        env:
+          ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          # No debug symbols in the shipped library: they tripled the APK.
+          CARGO_PROFILE_RELEASE_DEBUG: '0'
+          CARGO_PROFILE_RELEASE_STRIP: 'true'
+        run: |
+          cargo ndk -t arm64-v8a -t x86_64 \
+            -o frontends/pocket-android/app/src/main/jniLibs \
+            build --release -p pocket-android-jni --no-default-features
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
+      - name: build APK
+        working-directory: frontends/pocket-android
+        run: gradle assembleDebug --no-daemon
+      - name: rename
+        run: cp frontends/pocket-android/app/build/outputs/apk/debug/*.apk PocketPC3630-android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: PocketPC3630-android.apk
+
+  publish:
+    name: publish release
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          name: PocketPC3630 ${{ inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: |
+            out/windows/PocketPC3630-windows-x64.zip
+            out/android/PocketPC3630-android.apk
