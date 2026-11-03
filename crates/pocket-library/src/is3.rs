@@ -54,6 +54,26 @@ pub fn carve(bytes: &[u8]) -> Vec<&[u8]> {
     found
 }
 
+/// Microsoft cabinets stored imploded (PKWARE DCL) inside `bytes`, as Setup
+/// Factory installers keep their files. Tries each place an imploded stream
+/// can start (a literal-mode byte, then a dictionary size of 4 to 6), keeps
+/// what decodes to a cabinet whose header gives the size that came out.
+pub fn imploded_cabs(bytes: &[u8], limit: usize) -> Vec<Vec<u8>> {
+    let mut found = Vec::new();
+    let mut at = 0;
+    while at + 2 < bytes.len() {
+        if bytes[at] <= 1 && (4..=6).contains(&bytes[at + 1]) {
+            if let Some(out) = blast_expecting(&bytes[at..], limit, b"MSCF\0\0\0\0") {
+                if u32_at(&out, 8) == Some(out.len() as u32) {
+                    found.push(out);
+                }
+            }
+        }
+        at += 1;
+    }
+    found
+}
+
 /// A canonical Huffman code given as counts per length and symbols in order.
 struct Huffman {
     count: [u16; MAX_BITS + 1],
@@ -141,6 +161,11 @@ impl Bits<'_> {
 /// Decompress PKWARE DCL ("implode") data. `None` when the data is damaged or
 /// the output would pass `limit` bytes.
 pub fn blast(data: &[u8], limit: usize) -> Option<Vec<u8>> {
+    blast_expecting(data, limit, &[])
+}
+
+/// [`blast`], giving up as soon as the output does not start with `prefix`.
+fn blast_expecting(data: &[u8], limit: usize, prefix: &[u8]) -> Option<Vec<u8>> {
     let literal = Huffman::from_compact(&LITERAL_LENGTHS);
     let length_code = Huffman::from_compact(&LENGTH_LENGTHS);
     let distance_code = Huffman::from_compact(&DISTANCE_LENGTHS);
@@ -175,6 +200,11 @@ pub fn blast(data: &[u8], limit: usize) -> Option<Vec<u8>> {
             for i in 0..length {
                 out.push(out[start + i]);
             }
+            if out.len() <= prefix.len() + length
+                && !out.starts_with(&prefix[..prefix.len().min(out.len())])
+            {
+                return None;
+            }
         } else {
             let byte = if coded == 1 {
                 bits.decode(&literal)? as u8
@@ -185,6 +215,9 @@ pub fn blast(data: &[u8], limit: usize) -> Option<Vec<u8>> {
                 return None;
             }
             out.push(byte);
+            if out.len() <= prefix.len() && prefix[out.len() - 1] != byte {
+                return None;
+            }
         }
     }
 }
@@ -397,6 +430,63 @@ mod tests {
         assert_eq!(carved[0], &one[..]);
         // A signature with a size past the end is not an archive.
         assert!(carve(&program[..program.len() - 20]).is_empty());
+    }
+
+    /// Implode `data` the simplest legal way: uncoded literals, then the
+    /// end code (length 519), with codes inverted as the format stores them.
+    fn implode_literals(data: &[u8]) -> Vec<u8> {
+        let mut bits: Vec<u8> = Vec::new();
+        let push = |bits: &mut Vec<u8>, value: u32, count: u32| {
+            for i in 0..count {
+                bits.push(((value >> i) & 1) as u8);
+            }
+        };
+        push(&mut bits, 0, 8); // uncoded literals
+        push(&mut bits, 4, 8); // 1 KiB dictionary
+        for &byte in data {
+            push(&mut bits, 0, 1);
+            push(&mut bits, u32::from(byte), 8);
+        }
+        // Length symbol 15 (base 264) with all 8 extra bits set = 519, the end.
+        push(&mut bits, 1, 1);
+        let code = Huffman::from_compact(&LENGTH_LENGTHS);
+        let (mut first, mut index) = (0usize, 0usize);
+        'found: for length in 1..=MAX_BITS {
+            let count = usize::from(code.count[length]);
+            for k in 0..count {
+                if code.symbol[index + k] == 15 {
+                    let value = first + k;
+                    for i in (0..length).rev() {
+                        bits.push((((value >> i) & 1) ^ 1) as u8);
+                    }
+                    break 'found;
+                }
+            }
+            index += count;
+            first = (first + count) << 1;
+        }
+        push(&mut bits, 255, 8);
+        bits.chunks(8)
+            .map(|byte| {
+                byte.iter()
+                    .enumerate()
+                    .fold(0u8, |acc, (i, b)| acc | (b << i))
+            })
+            .collect()
+    }
+
+    #[test]
+    fn imploded_cabinets_are_found_inside_a_program() {
+        let mut cabinet = vec![0u8; 80];
+        cabinet[..8].copy_from_slice(b"MSCF\0\0\0\0");
+        cabinet[8..12].copy_from_slice(&80u32.to_le_bytes());
+        let stream = implode_literals(&cabinet);
+        assert_eq!(blast(&stream, 1 << 10).unwrap(), cabinet);
+        let mut program = b"MZ Setup Factory \x00\x05 noise".to_vec();
+        program.extend_from_slice(&stream);
+        program.extend_from_slice(&implode_literals(b"not a cabinet at all"));
+        let found = imploded_cabs(&program, 1 << 20);
+        assert_eq!(found, vec![cabinet]);
     }
 
     #[test]

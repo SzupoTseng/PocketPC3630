@@ -225,5 +225,8 @@
  "lib.coll": "Original collection folder",
  "lib.reason.flash": "A Flash game for Pocket Internet Explorer, not a Pocket PC program; it needs the browser's Flash plug-in",
  "lib.reason.vbce": "A Visual Basic for Windows CE program; it needs the device's VB runtime, which the emulator does not support yet",
- "lib.reason.installer": "Packed in an installer format the importer does not read yet (Inno Setup, NSIS, Ghost Installer, Setup Factory…); take the Pocket PC CAB out on a computer with 7-Zip or innoextract and import that"
+ "lib.reason.installer": "Packed in an installer format the importer does not read yet (Inno Setup, NSIS, Ghost Installer, Setup Factory…); take the Pocket PC CAB out on a computer with 7-Zip or innoextract and import that",
+ "lib.reason.disclogs": "This download holds only the logs of a disc backup, not the disc itself; you need your own disc or the full installer",
+ "lib.reason.palm": "This is the Palm OS version (.prc/.pdb), not a Pocket PC program",
+ "lib.reason.plugin": "A plug-in for another program (such as a player's codec), not a program that starts on its own"
 }

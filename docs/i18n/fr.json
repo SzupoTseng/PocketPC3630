@@ -225,5 +225,8 @@
  "lib.coll": "Dossier de la collection d’origine",
  "lib.reason.flash": "Un jeu Flash pour Pocket Internet Explorer, pas un programme Pocket PC ; il faut le module Flash du navigateur",
  "lib.reason.vbce": "Un programme Visual Basic pour Windows CE ; il lui faut le moteur VB de l’appareil, que l’émulateur ne gère pas encore",
- "lib.reason.installer": "Emballé dans un format d’installeur que l’importateur ne lit pas encore (Inno Setup, NSIS, Ghost Installer, Setup Factory…) ; extrayez le CAB Pocket PC sur un ordinateur avec 7-Zip ou innoextract, puis importez-le"
+ "lib.reason.installer": "Emballé dans un format d’installeur que l’importateur ne lit pas encore (Inno Setup, NSIS, Ghost Installer, Setup Factory…) ; extrayez le CAB Pocket PC sur un ordinateur avec 7-Zip ou innoextract, puis importez-le",
+ "lib.reason.disclogs": "Ce téléchargement ne contient que les journaux d’une sauvegarde du disque, pas le disque ; il faut votre propre disque ou l’installeur complet",
+ "lib.reason.palm": "C’est la version Palm OS (.prc/.pdb), pas un programme Pocket PC",
+ "lib.reason.plugin": "Un module pour un autre programme (comme un codec de lecteur), pas un programme qui se lance seul"
 }

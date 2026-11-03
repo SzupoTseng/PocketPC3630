@@ -99,6 +99,9 @@ fn describe_steps(source: &str, steps: &[import_kb::Step], taken: &str) -> Strin
             import_kb::Action::OpenWise => "opened the Wise installer",
             import_kb::Action::OpenInstallShield3 => "opened the InstallShield 3 archive",
             import_kb::Action::CarveInstallShield3 => "took out an InstallShield 3 archive",
+            import_kb::Action::OpenNsis => "opened the Nullsoft installer",
+            import_kb::Action::InflateInnoChunks => "inflated the Inno Setup data",
+            import_kb::Action::FindImplodedCabs => "found the installer's imploded cabinets",
         })
         .collect();
     format!("{source} -> {taken} ({})", words.join(", "))

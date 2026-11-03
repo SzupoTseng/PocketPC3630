@@ -225,5 +225,8 @@
  "lib.coll": "원래 컬렉션 분류",
  "lib.reason.flash": "Pocket IE용 Flash 게임으로 Pocket PC 프로그램이 아닙니다. 브라우저의 Flash 플러그인이 필요합니다",
  "lib.reason.vbce": "Visual Basic for Windows CE 프로그램으로 기기의 VB 런타임이 필요하며, 에뮬레이터는 아직 지원하지 않습니다",
- "lib.reason.installer": "가져오기 도구가 아직 읽지 못하는 설치 프로그램 형식(Inno Setup, NSIS, Ghost Installer, Setup Factory 등)에 들어 있습니다. PC에서 7-Zip이나 innoextract로 Pocket PC용 CAB를 꺼내 가져오세요"
+ "lib.reason.installer": "가져오기 도구가 아직 읽지 못하는 설치 프로그램 형식(Inno Setup, NSIS, Ghost Installer, Setup Factory 등)에 들어 있습니다. PC에서 7-Zip이나 innoextract로 Pocket PC용 CAB를 꺼내 가져오세요",
+ "lib.reason.disclogs": "이 다운로드에는 디스크 백업 기록 파일만 있고 디스크 내용은 없습니다. 직접 가진 디스크나 전체 설치 파일이 필요합니다",
+ "lib.reason.palm": "Palm OS 버전(.prc/.pdb)이며 Pocket PC 프로그램이 아닙니다",
+ "lib.reason.plugin": "다른 프로그램용 플러그인(플레이어 코덱 등)으로, 혼자 실행되는 프로그램이 아닙니다"
 }

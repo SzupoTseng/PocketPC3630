@@ -225,5 +225,8 @@
  "lib.coll": "Папка исходной коллекции",
  "lib.reason.flash": "Flash-игра для Pocket Internet Explorer, а не программа Pocket PC; нужен Flash-плагин браузера",
  "lib.reason.vbce": "Программа на Visual Basic для Windows CE; ей нужна среда VB устройства, которую эмулятор пока не поддерживает",
- "lib.reason.installer": "Упакован в формат установщика, который импорт пока не читает (Inno Setup, NSIS, Ghost Installer, Setup Factory…); извлеките CAB для Pocket PC на компьютере с помощью 7-Zip или innoextract и импортируйте его"
+ "lib.reason.installer": "Упакован в формат установщика, который импорт пока не читает (Inno Setup, NSIS, Ghost Installer, Setup Factory…); извлеките CAB для Pocket PC на компьютере с помощью 7-Zip или innoextract и импортируйте его",
+ "lib.reason.disclogs": "В этой загрузке только журналы копирования диска, самого диска нет; нужен свой диск или полный установщик",
+ "lib.reason.palm": "Это версия для Palm OS (.prc/.pdb), а не программа для Pocket PC",
+ "lib.reason.plugin": "Подключаемый модуль для другой программы (например, кодек плеера), а не самостоятельная программа"
 }

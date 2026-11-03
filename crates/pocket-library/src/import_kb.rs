@@ -135,9 +135,16 @@ pub enum Action {
     OpenInstallShield3,
     /// Cut out the InstallShield 3 archives a setup program carries.
     CarveInstallShield3,
+    /// Take out the files of a Nullsoft (NSIS) installer.
+    OpenNsis,
+    /// Inflate the zlib chunks (`zlb` + 0x1A) an Inno Setup installer keeps
+    /// its files in; cabinets are then cut out of them.
+    InflateInnoChunks,
+    /// Find the cabinets a Setup Factory installer stores imploded.
+    FindImplodedCabs,
 }
 
-const ALL_ACTIONS: [Action; 13] = [
+const ALL_ACTIONS: [Action; 16] = [
     Action::OpenZip,
     Action::CarveCab,
     Action::CarveZip,
@@ -151,6 +158,9 @@ const ALL_ACTIONS: [Action; 13] = [
     Action::OpenWise,
     Action::OpenInstallShield3,
     Action::CarveInstallShield3,
+    Action::OpenNsis,
+    Action::InflateInnoChunks,
+    Action::FindImplodedCabs,
 ];
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -881,6 +891,41 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
                 }
             }
         }
+        Action::OpenNsis => {
+            if newtua_nsis::NsisArchive::recognize(bytes) {
+                produced.extend(open_nsis(bytes, out));
+            }
+        }
+        Action::InflateInnoChunks => {
+            if find(bytes, INNO_MARKER, 0).is_some() {
+                let stem = path
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+                for (index, chunk) in inno_chunks(bytes).into_iter().enumerate() {
+                    let target = out.join(format!("{stem}.chunk{index}.bin"));
+                    if fs::write(&target, chunk).is_ok() {
+                        produced.push(target);
+                    }
+                }
+            }
+        }
+        Action::FindImplodedCabs => {
+            if pe_machine(bytes) == Some("x86")
+                && (find(bytes, b"Setup Factory", 0).is_some()
+                    || find(bytes, b"IRSetup", 0).is_some())
+            {
+                for (index, cab) in crate::is3::imploded_cabs(bytes, LARGEST_FILE as usize)
+                    .into_iter()
+                    .enumerate()
+                {
+                    let target = out.join(format!("imploded-{index}.cab"));
+                    if fs::write(&target, cab).is_ok() {
+                        produced.push(target);
+                    }
+                }
+            }
+        }
         Action::CarveZip => {
             // A file that is already a zip from its first byte needs no carving.
             if !bytes.starts_with(b"PK\x03\x04") {
@@ -898,6 +943,105 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
         }
     }
     produced
+}
+
+/// What an Inno Setup installer says about itself.
+const INNO_MARKER: &[u8] = b"Inno Setup Setup Data (";
+/// The start of each zlib-compressed chunk of an Inno Setup installer
+/// (versions 1 to 4 compress with zlib by default).
+const INNO_CHUNK: &[u8] = b"zlb\x1a";
+/// Chunks looked at in one installer.
+const MOST_INNO_CHUNKS: usize = 512;
+
+/// Inflate every zlib chunk of an Inno Setup installer, each capped at
+/// [`LARGEST_FILE`]. A chunk holds one or more files back to back.
+fn inno_chunks(bytes: &[u8]) -> Vec<Vec<u8>> {
+    let mut chunks = Vec::new();
+    let mut at = 0;
+    while chunks.len() < MOST_INNO_CHUNKS {
+        let Some(start) = find(bytes, INNO_CHUNK, at) else {
+            break;
+        };
+        at = start + INNO_CHUNK.len();
+        let Some(rest) = bytes.get(at..) else { break };
+        if !is_zlib(rest) {
+            continue;
+        }
+        let mut inflated = Vec::new();
+        let decoder = flate2::read::ZlibDecoder::new(rest);
+        // A damaged or cut chunk still gives what came out before the damage.
+        let _ = io::Read::read_to_end(&mut io::Read::take(decoder, LARGEST_FILE), &mut inflated);
+        if !inflated.is_empty() {
+            chunks.push(inflated);
+        }
+    }
+    chunks
+}
+
+/// Write out every file of a Nullsoft installer under `out`, flat (by file
+/// name only), each one capped at [`LARGEST_FILE`].
+fn open_nsis(bytes: &[u8], out: &Path) -> Vec<PathBuf> {
+    let mut written = Vec::new();
+    let Ok(archive) = newtua_nsis::NsisArchive::open(io::Cursor::new(bytes)) else {
+        return written;
+    };
+    for (index, entry) in archive.entries().iter().enumerate() {
+        if entry.is_dir() {
+            continue;
+        }
+        let raw = entry.name();
+        let base = raw
+            .rsplit(|b| *b == b'/' || *b == b'\\')
+            .next()
+            .unwrap_or(raw);
+        let name: String = String::from_utf8_lossy(base)
+            .chars()
+            .map(|c| {
+                if c.is_ascii_alphanumeric() || "._-() ".contains(c) {
+                    c
+                } else {
+                    '_'
+                }
+            })
+            .collect();
+        let name = name.trim_matches(|c: char| c == '.' || c == ' ');
+        if name.is_empty() {
+            continue;
+        }
+        let target = out.join(format!("{index}-{name}"));
+        let Ok(mut buffer) = fs::File::create(&target) else {
+            continue;
+        };
+        let mut limited = LimitedWriter {
+            inner: &mut buffer,
+            left: LARGEST_FILE,
+        };
+        if archive.read_entry(index, &mut limited).is_ok() {
+            written.push(target);
+        } else {
+            let _ = fs::remove_file(&target);
+        }
+    }
+    written
+}
+
+/// A writer that fails once more than `left` bytes went through it.
+struct LimitedWriter<'a, W: io::Write> {
+    inner: &'a mut W,
+    left: u64,
+}
+
+impl<W: io::Write> io::Write for LimitedWriter<'_, W> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if buf.len() as u64 > self.left {
+            return Err(io::Error::other("file larger than the import limit"));
+        }
+        self.left -= buf.len() as u64;
+        self.inner.write(buf)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush()
+    }
 }
 
 /// Write out every file of the RAR archive at `path` under `out`, each one
@@ -1136,6 +1280,18 @@ fn basic_actions(bytes: &[u8], machine: Option<&str>) -> Vec<Action> {
         if find(bytes, &[0x13, 0x5D, 0x65, 0x8C], 1).is_some() {
             actions.push(Action::CarveInstallShield3);
         }
+        // An Inno Setup installer: files in zlib chunks after the program.
+        if find(bytes, INNO_MARKER, 0).is_some() && find(bytes, INNO_CHUNK, 0).is_some() {
+            actions.push(Action::InflateInnoChunks);
+        }
+        // A Setup Factory installer: files imploded after the program.
+        if find(bytes, b"Setup Factory", 0).is_some() || find(bytes, b"IRSetup", 0).is_some() {
+            actions.push(Action::FindImplodedCabs);
+        }
+        // A Nullsoft installer, also when it arrives inside a zip.
+        if newtua_nsis::NsisArchive::recognize(bytes) {
+            actions.push(Action::OpenNsis);
+        }
         // A Wise installer: every file is a deflate stream after the program.
         if crate::wise::is_wise(bytes) {
             actions.push(Action::OpenWise);
@@ -1212,7 +1368,10 @@ pub fn rule_for(name: &str, bytes: &[u8], action: Action) -> Rule {
         | Action::OpenRar
         | Action::OpenWise
         | Action::OpenInstallShield3
-        | Action::CarveInstallShield3 => "",
+        | Action::CarveInstallShield3
+        | Action::OpenNsis
+        | Action::InflateInnoChunks
+        | Action::FindImplodedCabs => "",
         Action::OpenZip | Action::CarveZip => "504b0506",
     };
     let when = Matcher {
@@ -1348,6 +1507,36 @@ mod tests {
             .collect();
         // MIPS ranks above SH-3; the desktop program is never offered.
         assert_eq!(names, ["CaveMan.exe.MPS", "CaveMan.exe.SH3"]);
+    }
+
+    #[test]
+    fn an_inno_setup_chunk_gives_up_its_cabinet() {
+        use std::io::Write;
+        let mut chunk = b"readme bytes before the cabinet ".to_vec();
+        chunk.extend(cab(b"game"));
+        chunk.extend_from_slice(b" and a desktop file after it");
+        let mut zlib = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+        zlib.write_all(&chunk).unwrap();
+        let mut tail = INNO_MARKER.to_vec();
+        tail.extend_from_slice(b"2.0.11)");
+        tail.extend_from_slice(INNO_CHUNK);
+        tail.extend(zlib.finish().unwrap());
+        let dir = tempfile::tempdir().unwrap();
+        let installer = dir.path().join("setup.exe");
+        fs::write(&installer, x86_program(&tail)).unwrap();
+        let found = explore(
+            KnowledgeBase::builtin(),
+            &installer,
+            &dir.path().join("work"),
+        );
+        let best = &found.candidates[0];
+        let actions: Vec<Action> = best.chain.iter().map(|s| s.action).collect();
+        assert_eq!(
+            actions,
+            [Action::InflateInnoChunks, Action::CarveCab],
+            "{best:?}"
+        );
+        assert_eq!(fs::read(&best.path).unwrap(), cab(b"game"));
     }
 
     #[test]
