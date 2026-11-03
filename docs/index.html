@@ -550,8 +550,11 @@ function applyI18n() {
     }
   }
 }
+// The page follows the browser's language. Only a language picked from
+// the menu is remembered (under its own key: older visits stored their
+// automatic choice as 'lang', which pinned them to it).
 function pickLang() {
-  try { const saved = localStorage.getItem('lang'); if (saved && I18N_LANGS.some(([c]) => c === saved)) return saved; } catch {}
+  try { localStorage.removeItem('lang'); const saved = localStorage.getItem('langChosen'); if (saved && I18N_LANGS.some(([c]) => c === saved)) return saved; } catch {}
   for (const tag of navigator.languages || [navigator.language || 'zh-TW']) {
     const lower = tag.toLowerCase();
     if (/^zh-(tw|hk|mo|hant)/.test(lower)) return 'zh-TW';
@@ -559,16 +562,16 @@ function pickLang() {
     const hit = I18N_LANGS.find(([c]) => c === lower.split('-')[0]);
     if (hit) return hit[0];
   }
-  return 'zh-TW';
+  return 'en';
 }
-async function setLang(lang) {
+async function setLang(lang, chosen = false) {
   let dict = I18N_BASE;
   if (lang !== 'zh-TW') {
     try { dict = await (await fetch(`i18n/${lang}.json`)).json(); } catch { lang = 'zh-TW'; dict = I18N_BASE; }
   }
   I18N.lang = lang; I18N.dict = dict;
   if (M) M._pocket_set_lang(lang.startsWith('zh') ? 0 : 1);
-  try { localStorage.setItem('lang', lang); } catch {}
+  if (chosen) { try { localStorage.setItem('langChosen', lang); } catch {} }
   $('lang').value = lang;
   applyI18n();
   if (M) listGames();
@@ -578,7 +581,7 @@ async function setLang(lang) {
 for (const [code, name] of I18N_LANGS) {
   const option = document.createElement('option'); option.value = code; option.textContent = name; $('lang').append(option);
 }
-$('lang').addEventListener('change', () => setLang($('lang').value));
+$('lang').addEventListener('change', () => setLang($('lang').value, true));
 const AUDIO_FRAMES = 4096;
 const SAVE_EVERY_MS = 10000;
 const FRAMES_PER_PRESS = 3;
