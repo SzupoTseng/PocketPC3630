@@ -129,9 +129,15 @@ pub enum Action {
     OpenInstallShield,
     /// Read a RAR archive found inside another download.
     OpenRar,
+    /// Take out the files a Wise installer stores after its program.
+    OpenWise,
+    /// Read an InstallShield 3 archive (`data.z`).
+    OpenInstallShield3,
+    /// Cut out the InstallShield 3 archives a setup program carries.
+    CarveInstallShield3,
 }
 
-const ALL_ACTIONS: [Action; 10] = [
+const ALL_ACTIONS: [Action; 13] = [
     Action::OpenZip,
     Action::CarveCab,
     Action::CarveZip,
@@ -142,6 +148,9 @@ const ALL_ACTIONS: [Action; 10] = [
     Action::ExpandCab,
     Action::OpenInstallShield,
     Action::OpenRar,
+    Action::OpenWise,
+    Action::OpenInstallShield3,
+    Action::CarveInstallShield3,
 ];
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -835,6 +844,43 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
                 produced.extend(open_rar(path, out));
             }
         }
+        Action::OpenWise => {
+            if crate::wise::is_wise(bytes) {
+                // A few thousand tries find the first file in every Wise
+                // installer seen so far; the rest follow in a chain.
+                for (index, data) in crate::wise::files(bytes, 20_000, LARGEST_FILE as usize)
+                    .into_iter()
+                    .enumerate()
+                {
+                    let extension = if data.starts_with(b"MSCF") {
+                        "cab"
+                    } else {
+                        "bin"
+                    };
+                    let target = out.join(format!("wise-{index}.{extension}"));
+                    if fs::write(&target, data).is_ok() {
+                        produced.push(target);
+                    }
+                }
+            }
+        }
+        Action::OpenInstallShield3 => {
+            if crate::is3::is_is3(bytes) {
+                produced.extend(crate::is3::extract(path, out, LARGEST_FILE));
+            }
+        }
+        Action::CarveInstallShield3 => {
+            let stem = path
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            for (index, archive) in crate::is3::carve(bytes).into_iter().enumerate() {
+                let target = out.join(format!("{stem}.{index}.z"));
+                if fs::write(&target, archive).is_ok() {
+                    produced.push(target);
+                }
+            }
+        }
         Action::CarveZip => {
             // A file that is already a zip from its first byte needs no carving.
             if !bytes.starts_with(b"PK\x03\x04") {
@@ -949,9 +995,15 @@ pub fn explore(kb: &KnowledgeBase, download: &Path, work: &Path) -> Exploration 
                     path: path.clone(),
                     chain: chain.clone(),
                 });
-            } else if machine == Some("arm") {
+            } else if matches!(machine, Some("arm" | "mips" | "sh")) {
+                // The emulator runs all three; the ranking puts ARM first and
+                // keeps a MIPS or SH-3 build for downloads that have no other.
+                // Only ARM libraries go beside a game: another processor's
+                // library of the same name would shadow it.
                 if is_dll(&bytes) {
-                    found.libraries.push(path.clone());
+                    if machine == Some("arm") {
+                        found.libraries.push(path.clone());
+                    }
                 } else {
                     let tiny = kb
                         .ranking
@@ -959,8 +1011,13 @@ pub fn explore(kb: &KnowledgeBase, download: &Path, work: &Path) -> Exploration 
                         .as_ref()
                         .filter(|t| (bytes.len() as u64) < t.below)
                         .map_or(0, |t| t.score);
+                    // A program the emulator runs is never ruled out: its
+                    // processor counts in both its name and its machine
+                    // field, which alone would push an SH-3 build out.
+                    let score = (kb.score(&relative, machine) + kb.kind_score("exe") + tiny)
+                        .max(NEVER_IMPORT + 1);
                     found.candidates.push(Candidate {
-                        score: kb.score(&relative, machine) + kb.kind_score("exe") + tiny,
+                        score,
                         path: path.clone(),
                         chain: chain.clone(),
                     });
@@ -1051,6 +1108,9 @@ fn basic_actions(bytes: &[u8], machine: Option<&str>) -> Vec<Action> {
     if bytes.starts_with(b"Rar!") {
         return vec![Action::OpenRar];
     }
+    if crate::is3::is_is3(bytes) {
+        return vec![Action::OpenInstallShield3];
+    }
     if bytes.starts_with(b"PK\x03\x04") {
         // A download zip: setup.exe, one cabinet per processor, readme files.
         return vec![Action::OpenZip];
@@ -1071,6 +1131,14 @@ fn basic_actions(bytes: &[u8], machine: Option<&str>) -> Vec<Action> {
         // A setup program holding them compressed with compress.exe.
         if find(bytes, SZDD_MAGIC, 0).is_some() {
             actions.push(Action::ExpandSzdd);
+        }
+        // An InstallShield 3 self-extractor: its archives are stored whole.
+        if find(bytes, &[0x13, 0x5D, 0x65, 0x8C], 1).is_some() {
+            actions.push(Action::CarveInstallShield3);
+        }
+        // A Wise installer: every file is a deflate stream after the program.
+        if crate::wise::is_wise(bytes) {
+            actions.push(Action::OpenWise);
         }
         // A setup program carrying them as resources, often zlib-compressed.
         actions.push(Action::ExtractResources);
@@ -1141,7 +1209,10 @@ pub fn rule_for(name: &str, bytes: &[u8], action: Action) -> Rule {
         Action::ExtractResources
         | Action::InflateZlib
         | Action::OpenInstallShield
-        | Action::OpenRar => "",
+        | Action::OpenRar
+        | Action::OpenWise
+        | Action::OpenInstallShield3
+        | Action::CarveInstallShield3 => "",
         Action::OpenZip | Action::CarveZip => "504b0506",
     };
     let when = Matcher {
@@ -1242,6 +1313,41 @@ mod tests {
             zip.write_all(data).unwrap();
         }
         zip.finish().unwrap().into_inner()
+    }
+
+    /// A program for `machine` (COFF machine field), padded past the size
+    /// below which the ranking takes an executable for a launcher.
+    fn program_for(machine: u16) -> Vec<u8> {
+        let mut bytes = x86_program(&[0u8; 20_000]);
+        bytes[0x44..0x46].copy_from_slice(&machine.to_le_bytes());
+        bytes
+    }
+
+    #[test]
+    fn a_mips_or_sh3_build_is_found_when_there_is_no_arm_one() {
+        let dir = tempfile::tempdir().unwrap();
+        let download = dir.path().join("demo.zip");
+        fs::write(
+            &download,
+            zip_of(&[
+                ("SH3/CaveMan.exe.SH3", &program_for(0x01A2)),
+                ("MPS/CaveMan.exe.MPS", &program_for(0x0166)),
+                ("IQSetup.exe", &program_for(0x014C)),
+            ]),
+        )
+        .unwrap();
+        let found = explore(
+            KnowledgeBase::builtin(),
+            &download,
+            &dir.path().join("work"),
+        );
+        let names: Vec<String> = found
+            .candidates
+            .iter()
+            .map(|c| c.path.file_name().unwrap().to_string_lossy().into_owned())
+            .collect();
+        // MIPS ranks above SH-3; the desktop program is never offered.
+        assert_eq!(names, ["CaveMan.exe.MPS", "CaveMan.exe.SH3"]);
     }
 
     #[test]

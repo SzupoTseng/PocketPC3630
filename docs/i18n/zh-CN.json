@@ -93,7 +93,7 @@
  "h.088": "最上层放一个 <code>.cab</code> 的 <code>.zip</code>，可以附加其他文件（例如 <code>mfcce300.dll</code>）",
  "h.089": "游戏安装后文件夹的 <code>.zip</code>，例如 <code>quake/PocketQuake.exe</code>",
  "h.090": "ARM 版的 <code>.exe</code>、<code>.rar</code>",
- "h.091": "桌面安装程序（<code>setup.exe</code>，包括 InstallShield 制作的）或每种处理器各一个 CAB 的下载文件：会自动挑出 ARM 版",
+ "h.091": "桌面安装程序（<code>setup.exe</code>，包括 InstallShield、Wise 制作的）或每种处理器各一个 CAB 的下载文件：会自动挑出 ARM 版",
  "h.092": "游戏需要的系统文件",
  "h.093": "使用 MFC 的游戏需要 Pocket PC 内置的 <code>mfcce300.dll</code>（有些还需要 <code>olece300.dll</code>），模拟器不附带。请把你自己设备上的副本放进 <code>.zip</code>，和 <code>.cab</code> 放在同一层。缺少时，开始游戏前会提示。",
  "h.094": "无法导入",
@@ -224,5 +224,6 @@
  "lib.pick": "★ 精选",
  "lib.coll": "原始收藏分类",
  "lib.reason.flash": "这是给 Pocket IE 的 Flash 游戏，不是 Pocket PC 程序；需要浏览器的 Flash 插件",
- "lib.reason.vbce": "Visual Basic for Windows CE 程序，需要设备上的 VB 运行环境，模拟器还不支持"
+ "lib.reason.vbce": "Visual Basic for Windows CE 程序，需要设备上的 VB 运行环境，模拟器还不支持",
+ "lib.reason.installer": "包在导入器还不支持的安装程序格式里（Inno Setup、NSIS、Ghost Installer、Setup Factory 等）；可在电脑上用 7-Zip 或 innoextract 取出 Pocket PC 的 CAB 再导入"
 }

@@ -93,7 +93,7 @@
  "h.088": "<code>.zip</code> mit einer <code>.cab</code> auf oberster Ebene, optional mit weiteren Dateien (z. B. <code>mfcce300.dll</code>)",
  "h.089": "<code>.zip</code> des installierten Spielordners, z. B. <code>quake/PocketQuake.exe</code>",
  "h.090": "<code>.exe</code> und <code>.rar</code> der ARM-Version",
- "h.091": "Desktop-Installer (<code>setup.exe</code>, auch mit InstallShield erstellte) oder Downloads mit einer CAB pro Prozessor: Die ARM-Version wird automatisch ausgewählt",
+ "h.091": "Desktop-Installer (<code>setup.exe</code>, auch mit InstallShield und Wise erstellte) oder Downloads mit einer CAB pro Prozessor: Die ARM-Version wird automatisch ausgewählt",
  "h.092": "Vom Spiel benötigte Systemdateien",
  "h.093": "Spiele mit MFC brauchen die im Pocket PC integrierte <code>mfcce300.dll</code> (manche zusätzlich <code>olece300.dll</code>), die der Emulator nicht mitliefert. Lege die Kopie von deinem eigenen Gerät in die <code>.zip</code>, auf dieselbe Ebene wie die <code>.cab</code>. Fehlt sie, erhältst du vor dem Spielstart einen Hinweis.",
  "h.094": "Nicht importierbar",
@@ -224,5 +224,6 @@
  "lib.pick": "★ Tipp",
  "lib.coll": "Ordner der Originalsammlung",
  "lib.reason.flash": "Ein Flash-Spiel für Pocket Internet Explorer, kein Pocket-PC-Programm; es braucht das Flash-Plug-in des Browsers",
- "lib.reason.vbce": "Ein Visual-Basic-für-Windows-CE-Programm; es braucht die VB-Laufzeit des Geräts, die der Emulator noch nicht unterstützt"
+ "lib.reason.vbce": "Ein Visual-Basic-für-Windows-CE-Programm; es braucht die VB-Laufzeit des Geräts, die der Emulator noch nicht unterstützt",
+ "lib.reason.installer": "In einem Installer-Format verpackt, das der Import noch nicht liest (Inno Setup, NSIS, Ghost Installer, Setup Factory …); die Pocket-PC-CAB am Computer mit 7-Zip oder innoextract herausholen und importieren"
 }

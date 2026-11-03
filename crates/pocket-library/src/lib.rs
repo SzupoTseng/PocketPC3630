@@ -36,9 +36,11 @@ pub mod bundle;
 pub mod import_kb;
 pub mod import_problem;
 pub mod installshield;
+pub mod is3;
 pub mod keybindings;
 pub mod save_archive;
 pub mod save_data;
+pub mod wise;
 
 pub use keybindings::{GuestButton, KeyBinding, KeyBindings};
 
@@ -94,6 +96,9 @@ fn describe_steps(source: &str, steps: &[import_kb::Step], taken: &str) -> Strin
             import_kb::Action::ExpandCab => "opened the setup cabinet",
             import_kb::Action::OpenInstallShield => "opened the InstallShield cabinets",
             import_kb::Action::OpenRar => "opened the RAR archive",
+            import_kb::Action::OpenWise => "opened the Wise installer",
+            import_kb::Action::OpenInstallShield3 => "opened the InstallShield 3 archive",
+            import_kb::Action::CarveInstallShield3 => "took out an InstallShield 3 archive",
         })
         .collect();
     format!("{source} -> {taken} ({})", words.join(", "))
