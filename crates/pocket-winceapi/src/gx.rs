@@ -280,8 +280,14 @@ fn gx_get_default_keys(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelE
     Ok(DispatchOutcome::ReturnedR0(sret))
 }
 
+/// `GXIsDisplayDRAMBuffer`. Answering TRUE told GapiDraw the display was
+/// plain memory it could use as its back buffer, so EverQuest erased and
+/// redrew its character slots straight on the screen and half the frames
+/// we showed caught a slot erased (Device Emulator never shows one). With
+/// FALSE GapiDraw composes off screen and copies whole frames, as it does
+/// on a device; DevilDarts also reaches its menu now.
 fn gx_is_display_dram_buffer(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
-    Ok(DispatchOutcome::ReturnedR0(1))
+    Ok(DispatchOutcome::ReturnedR0(0))
 }
 fn gx_set_viewport(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let top = ctx.arg_u32(0)?;
