@@ -9683,6 +9683,12 @@ fn take_posted_message(ctx: &mut CallCtx<'_>) -> Option<(u32, u32, u32, u32)> {
 fn next_message_if_due(ctx: &mut CallCtx<'_>) -> Option<(u32, u32, u32, u32)> {
     while let Some(ev) = take_pending_input(ctx) {
         update_key_state(ctx, ev);
+        if let Some(handled) = menu_bar_tap(ctx, ev) {
+            match handled {
+                Some(addressed) => return Some(addressed),
+                None => continue,
+            }
+        }
         if let Some(handled) = controls_take_input(ctx, ev) {
             match handled {
                 Some(addressed) => return Some(addressed),
@@ -10132,7 +10138,8 @@ fn def_window_proc_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelErr
     log::trace!("DefWindowProcW(hwnd=0x{_hwnd:08x}, msg=0x{message:04x}, wp=0x{:08x}, lp=0x{:08x})", ctx.arg_u32(2)?, ctx.arg_u32(3)?);
     if (0x0400..0x0460).contains(&message) && is_menu_bar_window(ctx, _hwnd) {
         let wparam = ctx.arg_u32(2)?;
-        return Ok(DispatchOutcome::ReturnedR0(menu_bar_toolbar_message(_hwnd, message, wparam)));
+        let lparam = ctx.arg_u32(3)?;
+        return Ok(DispatchOutcome::ReturnedR0(menu_bar_toolbar_message(ctx, _hwnd, message, wparam, lparam)));
     }
     match message {
         WM_ERASEBKGND => {
@@ -10149,9 +10156,25 @@ fn def_window_proc_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelErr
     }
 }
 
+/// One button on a menu bar.
+#[derive(Clone, Copy)]
+struct MenuBarButton {
+    id: u32,
+    image: i32,
+    style: u8,
+}
+
+/// What a menu bar holds: its buttons and the image strip their icons
+/// come from (RGB565, `w` x `h`, one square icon per `h` pixels).
+#[derive(Default)]
+struct MenuBarState {
+    buttons: Vec<MenuBarButton>,
+    images: Option<(u32, u32, Vec<u16>)>,
+}
+
 thread_local! {
-    /// Buttons on each menu bar, which is a toolbar control on a device.
-    static MENU_BAR_BUTTONS: std::cell::RefCell<std::collections::HashMap<u32, u32>> = std::cell::RefCell::new(std::collections::HashMap::new());
+    /// Each menu bar's buttons, which is a toolbar control on a device.
+    static MENU_BARS: std::cell::RefCell<std::collections::HashMap<u32, MenuBarState>> = std::cell::RefCell::new(std::collections::HashMap::new());
 }
 
 /// A menu bar from `SHCreateMenuBar`: the shared one, or one with a handle
@@ -10163,10 +10186,11 @@ fn is_menu_bar_window(ctx: &CallCtx<'_>, hwnd: u32) -> bool {
 
 /// The toolbar messages a menu bar answers. On a device the menu bar is a
 /// `ToolbarWindow32`, and MFC loads its toolbar resource into it with
-/// `TB_BUTTONCOUNT`, `TB_GETIMAGELIST` and `TB_ADDBUTTONS`. Answering 0,
-/// as `DefWindowProc` does, told Haali Reader's frame that adding the
-/// buttons failed; it then failed its own WM_CREATE and drew nothing.
-fn menu_bar_toolbar_message(hwnd: u32, message: u32, wparam: u32) -> u32 {
+/// `TB_ADDBITMAP` and `TB_ADDBUTTONS`. Answering 0, as `DefWindowProc`
+/// does, told Haali Reader's frame that adding the buttons failed; it
+/// then failed its own WM_CREATE and drew nothing. The buttons are kept
+/// so the bar can be drawn and tapped: Haali's open-book command is one.
+fn menu_bar_toolbar_message(ctx: &mut CallCtx<'_>, hwnd: u32, message: u32, wparam: u32, lparam: u32) -> u32 {
     const TB_ENABLEBUTTON: u32 = 0x0401;
     const TB_HIDEBUTTON: u32 = 0x0404;
     const TB_SETSTATE: u32 = 0x0411;
@@ -10179,34 +10203,151 @@ fn menu_bar_toolbar_message(hwnd: u32, message: u32, wparam: u32) -> u32 {
     const TB_SETBUTTONSIZE: u32 = 0x041f;
     const TB_SETBITMAPSIZE: u32 = 0x0420;
     const TB_AUTOSIZE: u32 = 0x0421;
-    MENU_BAR_BUTTONS.with(|map| {
-        let mut map = map.borrow_mut();
-        let count = map.entry(hwnd).or_insert(0);
-        match message {
-            TB_BUTTONCOUNT => *count,
-            TB_ADDBUTTONS => {
-                *count = count.saturating_add(wparam);
+    // TBBUTTON on Windows CE: iBitmap, idCommand, fsState, fsStyle, 2
+    // bytes of padding, dwData, iString.
+    const TBBUTTON_BYTES: u32 = 20;
+    let read_button = |ctx: &mut CallCtx<'_>, at: u32| -> Option<MenuBarButton> {
+        let b = ctx.cpu.read_mem(at, TBBUTTON_BYTES).ok()?;
+        Some(MenuBarButton {
+            image: i32::from_le_bytes([b[0], b[1], b[2], b[3]]),
+            id: u32::from_le_bytes([b[4], b[5], b[6], b[7]]),
+            style: b[9],
+        })
+    };
+    match message {
+        TB_ADDBUTTONS => {
+            let added: Vec<MenuBarButton> =
+                (0..wparam.min(64)).filter_map(|i| read_button(ctx, lparam + i * TBBUTTON_BYTES)).collect();
+            log::debug!("menu bar 0x{hwnd:08x}: {} button(s) added, ids {:?}", added.len(), added.iter().map(|b| b.id).collect::<Vec<_>>());
+            MENU_BARS.with(|m| m.borrow_mut().entry(hwnd).or_default().buttons.extend(added));
+            1
+        }
+        TB_INSERTBUTTON => {
+            let Some(button) = read_button(ctx, lparam) else { return 0 };
+            MENU_BARS.with(|m| {
+                let mut m = m.borrow_mut();
+                let buttons = &mut m.entry(hwnd).or_default().buttons;
+                let at = (wparam as usize).min(buttons.len());
+                buttons.insert(at, button);
+            });
+            1
+        }
+        TB_DELETEBUTTON => MENU_BARS.with(|m| {
+            let mut m = m.borrow_mut();
+            let buttons = &mut m.entry(hwnd).or_default().buttons;
+            if (wparam as usize) < buttons.len() {
+                buttons.remove(wparam as usize);
                 1
+            } else {
+                0
             }
-            TB_INSERTBUTTON => {
-                *count = count.saturating_add(1);
-                1
+        }),
+        TB_BUTTONCOUNT => MENU_BARS.with(|m| m.borrow().get(&hwnd).map_or(0, |s| s.buttons.len() as u32)),
+        TB_ADDBITMAP => {
+            // TBADDBITMAP { HINSTANCE hInst; UINT nID; }: a bitmap resource
+            // with one icon per `wparam`, laid side by side.
+            let hinst = ctx.cpu.read_u32_le(lparam).unwrap_or(0);
+            let id = ctx.cpu.read_u32_le(lparam + 4).unwrap_or(0);
+            const RT_BITMAP: ResourceKey = ResourceKey::Id(2);
+            let decoded = lookup_resource(ctx.kernel, hinst, &RT_BITMAP, &ResourceKey::Id(id)).and_then(|(entry, base)| {
+                let raw = ctx.cpu.read_mem(base.wrapping_add(entry.data_rva), entry.size).ok()?;
+                decode_dib_to_rgb565(&raw)
+            });
+            if let Some(dib) = decoded {
+                let (w, h) = dib.dims;
+                let px: Vec<u16> = dib.bytes.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect();
+                log::debug!("menu bar 0x{hwnd:08x}: icons from bitmap {id} ({w}x{h}, {wparam} images)");
+                MENU_BARS.with(|m| m.borrow_mut().entry(hwnd).or_default().images = Some((w, h, px)));
             }
-            TB_DELETEBUTTON => {
-                if wparam < *count {
-                    *count -= 1;
-                    1
-                } else {
-                    0
+            0
+        }
+        TB_ENABLEBUTTON..=TB_HIDEBUTTON | TB_SETSTATE | TB_BUTTONSTRUCTSIZE | TB_SETBUTTONSIZE
+        | TB_SETBITMAPSIZE | TB_AUTOSIZE => 1,
+        _ => 0,
+    }
+}
+
+/// Width of one menu bar button.
+const MENU_BAR_BUTTON_W: i32 = 24;
+
+/// The menu bar the user sees: the newest visible one that has buttons,
+/// with its rectangle on screen.
+fn active_menu_bar(ctx: &CallCtx<'_>) -> Option<(u32, u32, (i32, i32, i32, i32))> {
+    let with_buttons: Vec<u32> = MENU_BARS.with(|m| {
+        m.borrow().iter().filter(|(_, s)| !s.buttons.is_empty()).map(|(h, _)| *h).collect()
+    });
+    with_buttons
+        .into_iter()
+        .filter_map(|h| {
+            let w = ctx.kernel.guest_windows.get(&h)?;
+            (w.visible && w.h > 0).then_some((h, w.parent, (w.x, w.y, w.w, w.h)))
+        })
+        .max_by_key(|(h, _, _)| *h)
+}
+
+/// Draw the active menu bar: a light bar along the bottom with each
+/// button's icon, the way the shell draws a Pocket PC command bar.
+fn draw_menu_bar(ctx: &mut CallCtx<'_>) {
+    let Some((hwnd, _, (x, y, w, h))) = active_menu_bar(ctx) else { return };
+    let (buttons, images) = MENU_BARS.with(|m| {
+        let m = m.borrow();
+        let s = m.get(&hwnd);
+        (s.map(|s| s.buttons.clone()).unwrap_or_default(), s.and_then(|s| s.images.clone()))
+    });
+    let Some(mut surf) = surface_for_dc(ctx.kernel, GDI_SCREEN_DC) else { return };
+    surf.fill_rect(x, y, w, h, colorref_to_rgb565(0x00f0_f0f0));
+    surf.fill_rect(x, y, w, 1, colorref_to_rgb565(0x0080_8080));
+    for (i, b) in buttons.iter().enumerate() {
+        let bx = x + 2 + i as i32 * MENU_BAR_BUTTON_W;
+        if b.style & 0x01 != 0 {
+            // TBSTYLE_SEP: a gap, no icon.
+            continue;
+        }
+        let Some((iw, ih, px)) = images.as_ref() else { continue };
+        let size = (*ih).min(*iw) as i32;
+        let cols = (*iw as i32) / size.max(1);
+        if b.image < 0 || b.image >= cols {
+            continue;
+        }
+        // The strip's top-left pixel is its transparent colour.
+        let key = px[0];
+        let ox = bx + (MENU_BAR_BUTTON_W - size) / 2;
+        let oy = y + (h - size) / 2;
+        for yy in 0..size {
+            for xx in 0..size {
+                let c = px[(yy as u32 * iw + (b.image * size + xx) as u32) as usize];
+                if c != key {
+                    surf.put_pixel(ox + xx, oy + yy, c);
                 }
             }
-            // The index of the first new image.
-            TB_ADDBITMAP => 0,
-            TB_ENABLEBUTTON..=TB_HIDEBUTTON | TB_SETSTATE | TB_BUTTONSTRUCTSIZE | TB_SETBUTTONSIZE
-            | TB_SETBITMAPSIZE | TB_AUTOSIZE => 1,
-            _ => 0,
         }
-    })
+    }
+    surf.mark_dirty();
+}
+
+/// A tap on the active menu bar presses the button under it: the bar
+/// swallows the press and sends `WM_COMMAND` to its owner on release.
+/// `None` when the tap is not on a menu bar button.
+fn menu_bar_tap(ctx: &mut CallCtx<'_>, ev: pocket_kernel::InputEvent) -> Option<Option<(u32, u32, u32, u32)>> {
+    let (px, py, up) = match ev {
+        pocket_kernel::InputEvent::PointerDown { x, y } => (x as i32, y as i32, false),
+        pocket_kernel::InputEvent::PointerUp { x, y } => (x as i32, y as i32, true),
+        _ => return None,
+    };
+    let (hwnd, parent, (x, y, w, h)) = active_menu_bar(ctx)?;
+    if px < x || px >= x + w || py < y || py >= y + h {
+        return None;
+    }
+    if !up {
+        return Some(None);
+    }
+    let index = (px - x - 2).max(0) / MENU_BAR_BUTTON_W;
+    let button = MENU_BARS.with(|m| m.borrow().get(&hwnd).and_then(|s| s.buttons.get(index as usize).copied()))?;
+    if button.style & 0x01 != 0 {
+        return Some(None);
+    }
+    log::info!("menu bar 0x{hwnd:08x}: button {index} tapped -> WM_COMMAND {} to 0x{parent:08x}", button.id);
+    Some(Some((if parent != 0 { parent } else { FAKE_HWND }, WM_COMMAND, button.id & 0xFFFF, hwnd)))
 }
 
 /// Fill the client area with the registered class background brush and
@@ -10269,6 +10410,7 @@ fn end_paint(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     if !ctx.kernel.fb_mapped {
         repaint_controls(ctx);
         repaint_status_bar(ctx);
+        draw_menu_bar(ctx);
     }
     Ok(DispatchOutcome::ReturnedR0(1))
 }
@@ -16442,6 +16584,7 @@ fn build_dialog_from_template_for(
                         rect: (ix, iy, iw, ih),
                     })
                 });
+                ctx.kernel.controls.set_panel_see_through(owner_hwnd);
                 log::debug!("dialog item id={} custom class {name:?} at ({ix},{iy},{iw},{ih})", item.id);
                 continue;
             }

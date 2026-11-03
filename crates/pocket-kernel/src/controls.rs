@@ -715,6 +715,11 @@ pub struct Controls {
     /// here: releasing outside the button cancels the click instead of
     /// notifying the parent.
     capture: u32,
+    /// Panels that hold windows the program draws itself (custom dialog
+    /// controls). Their background is not painted: a device's dialog
+    /// does not paint over its children, and painting it on every
+    /// repaint covered Haali Reader's file list with grey.
+    see_through: std::collections::HashSet<u32>,
 }
 
 impl Default for Controls {
@@ -726,6 +731,7 @@ impl Default for Controls {
             notifications: Vec::new(),
             next_hwnd: Self::HWND_BASE,
             capture: 0,
+            see_through: std::collections::HashSet::new(),
         }
     }
 }
@@ -927,7 +933,14 @@ impl Controls {
     /// rather than two stacked on each other.
     pub fn add_panel(&mut self, panel: DialogPanel) {
         self.panels.retain(|p| p.hwnd != panel.hwnd);
+        self.see_through.remove(&panel.hwnd);
         self.panels.push(panel);
+    }
+
+    /// Stop painting this panel's background: the program owns windows
+    /// inside it that draw themselves.
+    pub fn set_panel_see_through(&mut self, hwnd: u32) {
+        self.see_through.insert(hwnd);
     }
 
     pub fn panel(&self, hwnd: u32) -> Option<&DialogPanel> {
@@ -1279,7 +1292,9 @@ impl Controls {
         // Children of a frame window, which no panel owns.
         self.render_children_of(surf, lists, |parent| self.panel(parent).is_none());
         for panel in &self.panels {
-            panel.render(surf);
+            if !self.see_through.contains(&panel.hwnd) {
+                panel.render(surf);
+            }
             self.render_children_of(surf, lists, |parent| parent == panel.hwnd);
         }
     }
