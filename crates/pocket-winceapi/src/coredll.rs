@@ -12126,6 +12126,110 @@ thread_local! {
     static WINDOW_EXTRA: std::cell::RefCell<std::collections::HashMap<(u32, u32), u32>> = std::cell::RefCell::new(std::collections::HashMap::new());
 }
 
+/// The patterns of one filter pair in an `lpstrFilter` list
+/// (`"Text Files (*.txt)\0*.txt;*.text\0All Files (*.*)\0*.*\0\0"`):
+/// the pair `index` names, counted from 1, or the first.
+fn open_filter_patterns(ctx: &mut CallCtx<'_>, filter: u32, index: u32) -> Vec<Vec<String>> {
+    let mut parts: Vec<String> = Vec::new();
+    if filter == 0 {
+        return Vec::new();
+    }
+    let mut at = filter;
+    for _ in 0..64 {
+        let Ok(text) = read_wstr(ctx, at, 512) else { break };
+        if text.is_empty() {
+            break;
+        }
+        at += (text.len() as u32 + 1) * 2;
+        parts.push(String::from_utf16_lossy(&text));
+    }
+    let pairs: Vec<Vec<String>> = parts
+        .chunks(2)
+        .filter_map(|pair| pair.get(1))
+        .map(|spec| spec.split(';').map(|p| p.trim().to_string()).filter(|p| !p.is_empty()).collect())
+        .collect();
+    let pick = (index as usize).checked_sub(1).filter(|i| *i < pairs.len()).unwrap_or(0);
+    let mut ordered = Vec::new();
+    if let Some(first) = pairs.get(pick) {
+        ordered.push(first.clone());
+    }
+    ordered
+}
+
+/// `BOOL GetOpenFileNameW(LPOPENFILENAMEW)`. There is no file browser to
+/// show, so the dialog answers for the user: the first file that matches
+/// the selected filter in the starting folder, the program's own folder
+/// or `\My Documents`, and `*.*` only when the filter finds nothing.
+/// Packaging a document next to a program (an e-book with Haali Reader)
+/// is how a user hands it one. With no file at all, it is "cancelled".
+fn get_open_file_name_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let ofn = ctx.arg_u32(0)?;
+    if ofn == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let field = |ctx: &mut CallCtx<'_>, off: u32| ctx.cpu.read_u32_le(ofn + off).unwrap_or(0);
+    let filter = field(ctx, 12);
+    let filter_index = field(ctx, 24);
+    let file_buf = field(ctx, 28);
+    let max_file = field(ctx, 32);
+    let title_buf = field(ctx, 36);
+    let max_title = field(ctx, 40);
+    let initial_dir = field(ctx, 44);
+    if file_buf == 0 || max_file == 0 {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    let mut dirs: Vec<String> = Vec::new();
+    if initial_dir != 0 {
+        if let Ok(w) = read_wstr(ctx, initial_dir, 260) {
+            let d = String::from_utf16_lossy(&w);
+            if !d.is_empty() {
+                dirs.push(d);
+            }
+        }
+    }
+    if let Some((dir, _)) = ctx.kernel.module_path.rsplit_once('\\') {
+        dirs.push(if dir.is_empty() { "\\".to_string() } else { dir.to_string() });
+    }
+    dirs.push("\\My Documents".to_string());
+    let patterns = open_filter_patterns(ctx, filter, filter_index);
+    let mut tries: Vec<Vec<String>> = patterns;
+    tries.push(vec!["*.*".to_string()]);
+    let mut chosen = None;
+    'outer: for pats in &tries {
+        for dir in &dirs {
+            let Some(entries) = ctx.kernel.vfs.list_dir(dir) else { continue };
+            for (name, _, is_dir) in entries {
+                if is_dir || name.to_ascii_lowercase().ends_with(".exe") || name.to_ascii_lowercase().ends_with(".dll") {
+                    continue;
+                }
+                if pats.iter().any(|p| wildcard_match(p, &name)) {
+                    let base = dir.trim_end_matches('\\');
+                    chosen = Some((format!("{base}\\{name}"), name));
+                    break 'outer;
+                }
+            }
+        }
+    }
+    let Some((path, name)) = chosen else {
+        log::info!("GetOpenFileNameW: no file to offer in {dirs:?}; cancelled");
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    };
+    let units = path.encode_utf16().count() as u32;
+    if units + 1 > max_file {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    write_wide_str(ctx.cpu, file_buf, max_file, &path)?;
+    if title_buf != 0 && max_title != 0 {
+        write_wide_str(ctx.cpu, title_buf, max_title, &name)?;
+    }
+    let file_offset = units - name.encode_utf16().count() as u32;
+    let ext_offset = name.rfind('.').map_or(units, |dot| file_offset + name[..dot].encode_utf16().count() as u32 + 1);
+    ctx.cpu.write_mem(ofn + 56, &(file_offset as u16).to_le_bytes())?;
+    ctx.cpu.write_mem(ofn + 58, &(ext_offset as u16).to_le_bytes())?;
+    log::info!("GetOpenFileNameW -> {path:?}");
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
 /// `LONG GetWindowLongW(HWND hWnd, int nIndex)` — return `0` for
 /// every slot we don't track (the documented return when never set).
 fn get_window_long_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
@@ -13921,6 +14025,15 @@ fn draw_text_lines(chars: &[u16], single_line: bool, wrap_columns: Option<usize>
 
 #[cfg(test)]
 mod draw_text_layout_tests {
+    #[test]
+    fn open_dialog_wildcards_match_like_the_shell() {
+        assert!(super::wildcard_match("*.txt", "Book.TXT"));
+        assert!(super::wildcard_match("*.*", "notes.fb2"));
+        assert!(super::wildcard_match("ch??.txt", "ch01.txt"));
+        assert!(!super::wildcard_match("*.txt", "book.txt.bak"));
+        assert!(!super::wildcard_match("*.pdb", "book.txt"));
+    }
+
     use super::draw_text_lines;
 
     fn wide(text: &str) -> Vec<u16> {
@@ -23226,8 +23339,8 @@ fn register_common_gaps(d: &mut WinCeDispatcher, dll: &str) {
     let table: &[(&str, H)] = &[
         ("CreateCaret", returns_true), ("DestroyCaret", returns_true), ("ShowCaret", returns_true),
         ("HideCaret", returns_true), ("SetCaretPos", set_caret_pos), ("GetCaretPos", get_caret_pos),
-        // No file dialog to show: the user "cancelled", which programs handle.
-        ("GetOpenFileNameW", returns_zero), ("GetSaveFileNameW", returns_zero),
+        // No save dialog to show: the user "cancelled", which programs handle.
+        ("GetOpenFileNameW", get_open_file_name_w), ("GetSaveFileNameW", returns_zero),
         ("Shell_NotifyIcon", returns_true), ("CreatePenIndirect", create_pen_indirect),
         ("CreatePatternBrush", create_pattern_brush), ("ImageList_ReplaceIcon", image_list_replace_icon),
         ("ImageList_AddIcon", image_list_replace_icon), ("DestroyIcon", returns_true), ("DrawIconEx", returns_true),
