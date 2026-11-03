@@ -13,17 +13,24 @@ pub fn bundle_files(files: &[PathBuf], dir: &Path) -> std::io::Result<PathBuf> {
         .find(|p| !p.extension().is_some_and(|e| e.eq_ignore_ascii_case("dll")))
         .or_else(|| files.first())
         .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "no files"))?;
-    let stem = main.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "game".into());
+    let stem = main
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "game".into());
     std::fs::create_dir_all(dir)?;
     let out = dir.join(format!("{stem}.zip"));
     let mut zip = zip::ZipWriter::new(std::fs::File::create(&out)?);
-    let options = zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
+    let options =
+        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
     for file in files {
         let name = file
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "a file without a name"))?;
-        zip.start_file(name, options).map_err(std::io::Error::other)?;
+            .ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, "a file without a name")
+            })?;
+        zip.start_file(name, options)
+            .map_err(std::io::Error::other)?;
         zip.write_all(&std::fs::read(file)?)?;
     }
     zip.finish().map_err(std::io::Error::other)?;
@@ -44,7 +51,9 @@ mod tests {
         let out = bundle_files(&[dll.clone(), cab.clone()], &dir.path().join("out")).unwrap();
         assert_eq!(out.file_name().unwrap(), "MyGame.zip");
         let mut zip = zip::ZipArchive::new(std::fs::File::open(&out).unwrap()).unwrap();
-        let mut names: Vec<String> = (0..zip.len()).map(|i| zip.by_index(i).unwrap().name().to_string()).collect();
+        let mut names: Vec<String> = (0..zip.len())
+            .map(|i| zip.by_index(i).unwrap().name().to_string())
+            .collect();
         names.sort();
         assert_eq!(names, ["MyGame.cab", "mfcce300.dll"]);
     }

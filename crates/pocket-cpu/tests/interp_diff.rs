@@ -41,21 +41,33 @@ fn random_instruction(rng: &mut Rng) -> u32 {
         0 => {
             // Data processing, immediate.
             let op = rng.below(16);
-            let s = if (8..=11).contains(&op) { 1 } else { rng.below(2) };
+            let s = if (8..=11).contains(&op) {
+                1
+            } else {
+                rng.below(2)
+            };
             let (n, d) = dp_regs(op);
             (1 << 25) | op << 21 | s << 20 | n << 16 | d << 12 | rng.below(16) << 8 | rng.below(256)
         }
         1 => {
             // Data processing, immediate shift.
             let op = rng.below(16);
-            let s = if (8..=11).contains(&op) { 1 } else { rng.below(2) };
+            let s = if (8..=11).contains(&op) {
+                1
+            } else {
+                rng.below(2)
+            };
             let (n, d) = dp_regs(op);
             op << 21 | s << 20 | n << 16 | d << 12 | rng.below(32) << 7 | rng.below(4) << 5 | rm
         }
         2 => {
             // Data processing, register shift.
             let op = rng.below(16);
-            let s = if (8..=11).contains(&op) { 1 } else { rng.below(2) };
+            let s = if (8..=11).contains(&op) {
+                1
+            } else {
+                rng.below(2)
+            };
             let (n, d) = dp_regs(op);
             op << 21 | s << 20 | n << 16 | d << 12 | rs << 8 | rng.below(4) << 5 | 1 << 4 | rm
         }
@@ -63,12 +75,23 @@ fn random_instruction(rng: &mut Rng) -> u32 {
             // MUL / MLA with distinct registers.
             let d = 12;
             let accumulate = rng.below(2);
-            accumulate << 21 | rng.below(2) << 20 | d << 16 | (rn * accumulate) << 12 | rs << 8 | 0x90 | rm
+            accumulate << 21
+                | rng.below(2) << 20
+                | d << 16
+                | (rn * accumulate) << 12
+                | rs << 8
+                | 0x90
+                | rm
         }
         4 => {
             // UMULL / UMLAL / SMULL / SMLAL.
             let (hi, lo) = (12, 10);
-            0x0080_0090 | rng.below(4) << 21 | rng.below(2) << 20 | hi << 16 | lo << 12 | rs << 8
+            0x0080_0090
+                | rng.below(4) << 21
+                | rng.below(2) << 20
+                | hi << 16
+                | lo << 12
+                | rs << 8
                 | rng.below(10)
         }
         5 => {
@@ -87,8 +110,16 @@ fn random_instruction(rng: &mut Rng) -> u32 {
                 2 => (1, 2),
                 _ => (1, 3),
             };
-            1 << 24 | 1 << 23 | 1 << 22 | load << 20 | 11 << 16 | rd << 12 | (offset >> 4) << 8
-                | 0x90 | sh << 5 | (offset & 15)
+            1 << 24
+                | 1 << 23
+                | 1 << 22
+                | load << 20
+                | 11 << 16
+                | rd << 12
+                | (offset >> 4) << 8
+                | 0x90
+                | sh << 5
+                | (offset & 15)
         }
         7 => {
             // STMIA / LDMIA from r11, no writeback, r11 not in the list.
@@ -106,7 +137,8 @@ fn random_instruction(rng: &mut Rng) -> u32 {
 
 fn setup(cpu: &mut dyn Cpu, code: &[u8], data: &[u8], regs: &[u32]) {
     cpu.map_region(CODE, 0x10000, Prot::ALL).unwrap();
-    cpu.map_region(DATA, 0x10000, Prot::READ | Prot::WRITE).unwrap();
+    cpu.map_region(DATA, 0x10000, Prot::READ | Prot::WRITE)
+        .unwrap();
     cpu.write_mem(CODE, code).unwrap();
     cpu.write_mem(DATA, data).unwrap();
     for (reg, value) in REGS.iter().zip(regs) {
@@ -156,7 +188,9 @@ fn run_both(words: &[u32], data: &[u8], regs: &[u32]) -> Result<bool, String> {
         let pc = reference.read_reg(Pc).unwrap();
         format!("unicorn {e} at {pc:#x}")
     })?;
-    subject.run_until_hook(CODE, 0).map_err(|e| format!("interp {e}"))?;
+    subject
+        .run_until_hook(CODE, 0)
+        .map_err(|e| format!("interp {e}"))?;
     Ok(final_state(&mut reference) == final_state(&mut subject))
 }
 
@@ -169,7 +203,10 @@ fn first_difference(words: &[u32], data: &[u8], regs: &[u32]) -> Option<String> 
     }
     for length in 1..=words.len() {
         if run_both(&words[..length], data, regs) != Ok(true) {
-            let code: Vec<u8> = words[..length].iter().flat_map(|w| w.to_le_bytes()).collect();
+            let code: Vec<u8> = words[..length]
+                .iter()
+                .flat_map(|w| w.to_le_bytes())
+                .collect();
             let mut a = UnicornCpu::new().unwrap();
             let mut b = InterpCpu::new();
             setup(&mut a, &code, data, regs);
@@ -202,10 +239,17 @@ fn intrinsics_match_the_guest_code() {
             let key = if case % 5 == 0 { 0x1_07E0u32 } else { 0x07E0 };
             let mut pixels = Vec::with_capacity(0x8000);
             for _ in 0..0x4000 {
-                let pixel = if rng.below(4) == 0 { 0x07E0 } else { rng.next() as u16 };
+                let pixel = if rng.below(4) == 0 {
+                    0x07E0
+                } else {
+                    rng.next() as u16
+                };
                 pixels.extend_from_slice(&pixel.to_le_bytes());
             }
-            hits += pixels.chunks_exact(2).filter(|p| p == &[0xE0, 0x07]).count();
+            hits += pixels
+                .chunks_exact(2)
+                .filter(|p| p == &[0xE0, 0x07])
+                .count();
             let width = rng.below(40) as i32 - 2;
             let height = rng.below(20) as i32 - 2;
             let src = DATA + rng.below(0x800) * 2;
@@ -221,15 +265,26 @@ fn intrinsics_match_the_guest_code() {
             let run = |native: bool| {
                 let mut cpu = InterpCpu::new();
                 cpu.map_region(CODE, 0x10000, Prot::ALL).unwrap();
-                cpu.map_region(DATA, 0x10000, Prot::READ | Prot::WRITE).unwrap();
-                cpu.map_region(STACK, 0x10000, Prot::READ | Prot::WRITE).unwrap();
+                cpu.map_region(DATA, 0x10000, Prot::READ | Prot::WRITE)
+                    .unwrap();
+                cpu.map_region(STACK, 0x10000, Prot::READ | Prot::WRITE)
+                    .unwrap();
                 cpu.write_mem(CODE, &code).unwrap();
                 cpu.write_mem(DATA, &pixels).unwrap();
                 let sp = STACK + 0x8000;
-                let args =
-                    [0, alpha, dst, src, width as u32, height as u32, dst_pitch, src_pitch];
+                let args = [
+                    0,
+                    alpha,
+                    dst,
+                    src,
+                    width as u32,
+                    height as u32,
+                    dst_pitch,
+                    src_pitch,
+                ];
                 for (i, value) in args.iter().enumerate() {
-                    cpu.write_mem(sp + i as u32 * 4, &value.to_le_bytes()).unwrap();
+                    cpu.write_mem(sp + i as u32 * 4, &value.to_le_bytes())
+                        .unwrap();
                 }
                 cpu.write_reg(Sp, sp).unwrap();
                 cpu.write_reg(R3, key).unwrap();
@@ -264,7 +319,10 @@ fn intrinsics_match_the_guest_code() {
 #[test]
 fn the_fill_intrinsic_matches_the_guest_loop() {
     use pocket_cpu::{Intrinsic, GD104_ROUTINES};
-    let routine = GD104_ROUTINES.iter().find(|r| r.intrinsic == Intrinsic::FillWords).unwrap();
+    let routine = GD104_ROUTINES
+        .iter()
+        .find(|r| r.intrinsic == Intrinsic::FillWords)
+        .unwrap();
     let code: Vec<u8> = routine.code.iter().flat_map(|w| w.to_le_bytes()).collect();
     // The closing branch goes to RVA 0x8524; 0x841C is where the code starts.
     let tail = CODE + (0x8524 - 0x841C);
@@ -273,7 +331,8 @@ fn the_fill_intrinsic_matches_the_guest_loop() {
         let run = |native: bool| {
             let mut cpu = InterpCpu::new();
             cpu.map_region(CODE, 0x10000, Prot::ALL).unwrap();
-            cpu.map_region(DATA, 0x10000, Prot::READ | Prot::WRITE).unwrap();
+            cpu.map_region(DATA, 0x10000, Prot::READ | Prot::WRITE)
+                .unwrap();
             cpu.write_mem(CODE, &code).unwrap();
             cpu.write_reg(R1, count).unwrap();
             cpu.write_reg(R2, 0x1234_ABCD).unwrap();
@@ -287,7 +346,11 @@ fn the_fill_intrinsic_matches_the_guest_loop() {
                 pocket_cpu::StopReason::Hook(tail)
             );
             (
-                [cpu.read_reg(R1).unwrap(), cpu.read_reg(R2).unwrap(), cpu.read_reg(R3).unwrap()],
+                [
+                    cpu.read_reg(R1).unwrap(),
+                    cpu.read_reg(R2).unwrap(),
+                    cpu.read_reg(R3).unwrap(),
+                ],
                 cpu.read_reg(Cpsr).unwrap(),
                 cpu.read_mem(DATA, 0x1000).unwrap(),
             )

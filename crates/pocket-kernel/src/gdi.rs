@@ -306,8 +306,14 @@ impl GdiState {
             STOCK_DKGRAY_BRUSH,
             GdiObject::Brush(Brush { color: 0x0040_4040 }),
         );
-        s.objects
-            .insert(STOCK_SYSTEM_FONT, GdiObject::Font(Font { height: -11, weight: 400, mono: false }));
+        s.objects.insert(
+            STOCK_SYSTEM_FONT,
+            GdiObject::Font(Font {
+                height: -11,
+                weight: 400,
+                mono: false,
+            }),
+        );
         // Every memory DC starts with a 1x1 monochrome bitmap selected.
         // We never draw through it; it exists so the first
         // SelectObject(memdc, hbm) can return a non-NULL "previous".
@@ -380,7 +386,14 @@ impl GdiState {
 
     pub fn create_font_full(&mut self, height: i32, weight: i32, mono: bool) -> u32 {
         let h = self.alloc_handle();
-        self.objects.insert(h, GdiObject::Font(Font { height, weight, mono }));
+        self.objects.insert(
+            h,
+            GdiObject::Font(Font {
+                height,
+                weight,
+                mono,
+            }),
+        );
         h
     }
 
@@ -388,7 +401,9 @@ impl GdiState {
     pub fn text_font(&self, dc: u32) -> crate::ttf::TextFont {
         let selected = self.dc(dc).map(|d| d.selected_font).unwrap_or(0);
         match self.objects.get(&selected) {
-            Some(GdiObject::Font(f)) => crate::ttf::TextFont::from_logfont_pitch(f.height, f.weight, f.mono),
+            Some(GdiObject::Font(f)) => {
+                crate::ttf::TextFont::from_logfont_pitch(f.height, f.weight, f.mono)
+            }
             _ => crate::ttf::TextFont::from_logfont(0, 400),
         }
     }

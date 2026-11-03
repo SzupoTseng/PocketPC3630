@@ -55,7 +55,13 @@ impl Problem {
         title: Vec<(String, String)>,
         hint: Vec<(String, String)>,
     ) -> Self {
-        Self { id, detail, missing, title, hint }
+        Self {
+            id,
+            detail,
+            missing,
+            title,
+            hint,
+        }
     }
 
     fn pick(texts: &[(String, String)], lang: Lang) -> String {
@@ -83,7 +89,12 @@ impl Problem {
             Lang::En => "Details",
             Lang::ZhHant => "技術細節",
         };
-        format!("{}\n{}\n{label}: {}", self.title(lang), self.hint(lang), self.detail)
+        format!(
+            "{}\n{}\n{label}: {}",
+            self.title(lang),
+            self.hint(lang),
+            self.detail
+        )
     }
 }
 
@@ -95,8 +106,14 @@ mod tests {
     fn import_errors_are_explained_from_the_knowledge_base() {
         let cases = [
             (LibraryError::NoExecutable, "no-game"),
-            (LibraryError::NotArmPe("setup.exe".into()), "desktop-program"),
-            (LibraryError::NoPocketPcCab("x.exe".into()), "desktop-program"),
+            (
+                LibraryError::NotArmPe("setup.exe".into()),
+                "desktop-program",
+            ),
+            (
+                LibraryError::NoPocketPcCab("x.exe".into()),
+                "desktop-program",
+            ),
             (LibraryError::IsLibrary("a.dll".into()), "support-library"),
             (
                 LibraryError::Cab(pocket_cab::CabError::Parse(
@@ -105,7 +122,10 @@ mod tests {
                 "not-a-cab",
             ),
             (
-                LibraryError::Io(std::io::Error::new(std::io::ErrorKind::StorageFull, "disk full")),
+                LibraryError::Io(std::io::Error::new(
+                    std::io::ErrorKind::StorageFull,
+                    "disk full",
+                )),
                 "no-space",
             ),
         ];
@@ -122,7 +142,10 @@ mod tests {
 
     #[test]
     fn a_missing_rom_dll_is_named_in_the_hint() {
-        let problem = Problem::from_run("cpu error: WRITE unmapped at 0x14", &["mfcce300.dll".into()]);
+        let problem = Problem::from_run(
+            "cpu error: WRITE unmapped at 0x14",
+            &["mfcce300.dll".into()],
+        );
         assert_eq!(problem.id, "missing-rom-library");
         assert!(problem.hint(Lang::ZhHant).contains("mfcce300.dll"));
     }
@@ -130,8 +153,14 @@ mod tests {
     #[test]
     fn run_errors_are_told_apart() {
         let id = |message: &str| Problem::from_run(message, &[]).id;
-        assert_eq!(id("managed PE requires a .NET Compact Framework runtime"), "dotnet");
-        assert_eq!(id("emu_start: unsupported instruction 0xafbf0014"), "other-processor");
+        assert_eq!(
+            id("managed PE requires a .NET Compact Framework runtime"),
+            "dotnet"
+        );
+        assert_eq!(
+            id("emu_start: unsupported instruction 0xafbf0014"),
+            "other-processor"
+        );
         assert_eq!(id("cpu error: EXCEPTION (READ unmapped) at 0x0"), "crashed");
         assert_eq!(id("something new"), "unknown");
     }

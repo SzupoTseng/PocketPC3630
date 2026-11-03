@@ -539,7 +539,10 @@ mod persistence_tests {
             second.value(key, "Char0Zone"),
             Some(&RegistryValue::Sz("Freeport\twest".into()))
         );
-        assert_eq!(second.value(key, "Char0Level"), Some(&RegistryValue::Dword(7)));
+        assert_eq!(
+            second.value(key, "Char0Level"),
+            Some(&RegistryValue::Dword(7))
+        );
         assert_eq!(second.value(key, "Gone"), None);
     }
 

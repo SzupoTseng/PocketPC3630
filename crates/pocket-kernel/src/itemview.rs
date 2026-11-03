@@ -314,7 +314,10 @@ impl TreeData {
             TVE_EXPAND
         };
         self.clamp_top();
-        Some(ViewEvent::TreeExpand { item: handle, action })
+        Some(ViewEvent::TreeExpand {
+            item: handle,
+            action,
+        })
     }
 
     /// `TVM_SELECTITEM(TVGN_CARET)`.
@@ -339,7 +342,11 @@ impl TreeData {
             it.state |= TVIS_EXPANDED | TVIS_EXPANDEDONCE;
             p = it.parent;
         }
-        Some(ViewEvent::TreeSelect { old, new: handle, by })
+        Some(ViewEvent::TreeSelect {
+            old,
+            new: handle,
+            by,
+        })
     }
 
     /// Rows currently shown, top to bottom, with their depth.
@@ -347,7 +354,9 @@ impl TreeData {
         let mut out = Vec::new();
         let mut stack: Vec<(u32, i32)> = self.roots.iter().rev().map(|h| (*h, 0)).collect();
         while let Some((h, depth)) = stack.pop() {
-            let Some(it) = self.items.get(&h) else { continue };
+            let Some(it) = self.items.get(&h) else {
+                continue;
+            };
             out.push((h, depth));
             if it.expanded() {
                 stack.extend(it.children.iter().rev().map(|c| (*c, depth + 1)));
@@ -389,7 +398,11 @@ impl TreeData {
                 let Some(i) = sib.iter().position(|h| *h == from) else {
                     return 0;
                 };
-                let j = if code == TVGN_NEXT { i.checked_add(1) } else { i.checked_sub(1) };
+                let j = if code == TVGN_NEXT {
+                    i.checked_add(1)
+                } else {
+                    i.checked_sub(1)
+                };
                 j.and_then(|j| sib.get(j)).copied().unwrap_or(0)
             }
             TVGN_FIRSTVISIBLE => self.visible_rows().get(self.top).map(|r| r.0).unwrap_or(0),
@@ -399,7 +412,11 @@ impl TreeData {
                 let Some(i) = rows.iter().position(|r| r.0 == from) else {
                     return 0;
                 };
-                let j = if code == TVGN_NEXTVISIBLE { i.checked_add(1) } else { i.checked_sub(1) };
+                let j = if code == TVGN_NEXTVISIBLE {
+                    i.checked_add(1)
+                } else {
+                    i.checked_sub(1)
+                };
                 j.and_then(|j| rows.get(j)).map(|r| r.0).unwrap_or(0)
             }
             _ => 0,
@@ -518,7 +535,10 @@ impl ListData {
     }
 
     pub fn selected_count(&self) -> usize {
-        self.items.iter().filter(|i| i.state & LVIS_SELECTED != 0).count()
+        self.items
+            .iter()
+            .filter(|i| i.state & LVIS_SELECTED != 0)
+            .count()
     }
 
     /// `LVM_GETNEXTITEM`: the first item after `start` whose state has
@@ -562,7 +582,11 @@ impl ListData {
     pub fn select_only(&mut self, index: i32) -> Vec<ViewEvent> {
         let mut events = Vec::new();
         for i in 0..self.items.len() {
-            let want = if i as i32 == index { LVIS_SELECTED | LVIS_FOCUSED } else { 0 };
+            let want = if i as i32 == index {
+                LVIS_SELECTED | LVIS_FOCUSED
+            } else {
+                0
+            };
             events.extend(self.set_state(i as i32, want, LVIS_SELECTED | LVIS_FOCUSED));
         }
         self.focus = index;
@@ -761,11 +785,24 @@ impl TreeData {
                 }
             }
             let selected = handle == self.selected;
-            let image = if selected { item.selected_image } else { item.image };
+            let image = if selected {
+                item.selected_image
+            } else {
+                item.image
+            };
             let mut tx = lx;
             if self.image_list != 0 {
                 let iy = ry + (rh - self.image_size.map(|s| s.1).unwrap_or(0)) / 2;
-                tx += draw_image(surf, lists, self.image_list, image, lx, iy, right, f.y + f.h) + 3;
+                tx += draw_image(
+                    surf,
+                    lists,
+                    self.image_list,
+                    image,
+                    lx,
+                    iy,
+                    right,
+                    f.y + f.h,
+                ) + 3;
             }
             let ty = ry + (rh - font::GLYPH_H) / 2;
             let tw = font::str_width(&item.text).min(right - tx - 2);
@@ -874,7 +911,11 @@ impl ListData {
     /// Row height, rows per page, columns per row (icon view), whether a
     /// scroll strip is needed, and the y of the first row.
     fn layout(&self, f: &Frame, style: u32) -> (i32, usize, usize, bool, i32) {
-        let header = if Self::has_header(style) { Self::HEADER_H } else { 0 };
+        let header = if Self::has_header(style) {
+            Self::HEADER_H
+        } else {
+            0
+        };
         let body = (f.h - header).max(1);
         if Self::view(style) == LVS_ICON {
             let (cw, ch) = self.icon_cell();
@@ -922,22 +963,52 @@ impl ListData {
                 let cw = self.column_width(i, f.w);
                 surf.fill_rect(cx, f.y, cw, Self::HEADER_H, FACE);
                 crate::controls::draw_edge(surf, cx, f.y, cw, Self::HEADER_H, LIGHT, SHADOW);
-                draw_text_clipped(surf, cx + 3, f.y + 3, &col.text, TEXT, (cx + cw - 2).min(right));
+                draw_text_clipped(
+                    surf,
+                    cx + 3,
+                    f.y + 3,
+                    &col.text,
+                    TEXT,
+                    (cx + cw - 2).min(right),
+                );
                 cx += cw;
             }
             if cx < right {
                 surf.fill_rect(cx, f.y, right - cx, Self::HEADER_H, FACE);
-                crate::controls::draw_edge(surf, cx, f.y, right - cx, Self::HEADER_H, LIGHT, SHADOW);
+                crate::controls::draw_edge(
+                    surf,
+                    cx,
+                    f.y,
+                    right - cx,
+                    Self::HEADER_H,
+                    LIGHT,
+                    SHADOW,
+                );
             }
         }
         if Self::view(style) == LVS_ICON {
             let (cw, ch) = self.icon_cell();
             let (icx, icy) = self.large_size.unwrap_or((32, 32));
-            for (n, item) in self.items.iter().enumerate().skip(self.top * per_row).take(fit * per_row) {
+            for (n, item) in self
+                .items
+                .iter()
+                .enumerate()
+                .skip(self.top * per_row)
+                .take(fit * per_row)
+            {
                 let k = n - self.top * per_row;
                 let cx = f.x + (k % per_row) as i32 * cw;
                 let cy = body_y + (k / per_row) as i32 * ch;
-                draw_image(surf, lists, self.image_list, item.image, cx + (cw - icx) / 2, cy + 2, right, bottom);
+                draw_image(
+                    surf,
+                    lists,
+                    self.image_list,
+                    item.image,
+                    cx + (cw - icx) / 2,
+                    cy + 2,
+                    right,
+                    bottom,
+                );
                 let label = item.text(0);
                 let max = ((cw - 2) / font::GLYPH_W) as usize;
                 let shown: String = label.chars().take(max).collect();
@@ -966,19 +1037,36 @@ impl ListData {
                 };
                 if self.small_list() != 0 {
                     let iy = ry + (rh - self.small_size.map(|s| s.1).unwrap_or(0)) / 2;
-                    cx += draw_image(surf, lists, self.small_list(), item.image, cx, iy, col0_right, bottom) + 2;
+                    cx += draw_image(
+                        surf,
+                        lists,
+                        self.small_list(),
+                        item.image,
+                        cx,
+                        iy,
+                        col0_right,
+                        bottom,
+                    ) + 2;
                 }
                 let ty = ry + (rh - font::GLYPH_H) / 2;
                 let label = item.text(0);
                 let tw = font::str_width(label).min(col0_right - cx - 2);
                 if selected {
-                    let (hx, hw) = if full_row && report { (cx - 1, right - cx + 1) } else { (cx - 1, tw + 3) };
+                    let (hx, hw) = if full_row && report {
+                        (cx - 1, right - cx + 1)
+                    } else {
+                        (cx - 1, tw + 3)
+                    };
                     surf.fill_rect(hx, ry + 1, hw, rh - 2, HIGHLIGHT);
                 }
                 let color = if selected { HIGHLIGHT_TEXT } else { TEXT };
                 draw_text_clipped(surf, cx + 1, ty, label, color, col0_right - 1);
                 if report {
-                    let sub_color = if selected && full_row { HIGHLIGHT_TEXT } else { TEXT };
+                    let sub_color = if selected && full_row {
+                        HIGHLIGHT_TEXT
+                    } else {
+                        TEXT
+                    };
                     let mut sx = f.x + self.column_width(0, f.w);
                     for (i, col) in self.columns.iter().enumerate().skip(1) {
                         let cw = self.column_width(i, f.w);
@@ -1004,7 +1092,12 @@ impl ListData {
             } else {
                 self.items.len()
             };
-            let sf = Frame { x: f.x, y: body_y, w: f.w, h: (f.y + f.h - body_y).max(1) };
+            let sf = Frame {
+                x: f.x,
+                y: body_y,
+                w: f.w,
+                h: (f.y + f.h - body_y).max(1),
+            };
             draw_scroll(surf, &sf, self.top, fit, total);
         }
     }
@@ -1057,22 +1150,37 @@ impl ListData {
     }
 
     /// `LVM_GETITEMRECT` (`LVIR_BOUNDS`), relative to the client area.
-    pub fn item_rect(&self, w: i32, h: i32, style: u32, index: i32) -> Option<(i32, i32, i32, i32)> {
+    pub fn item_rect(
+        &self,
+        w: i32,
+        h: i32,
+        style: u32,
+        index: i32,
+    ) -> Option<(i32, i32, i32, i32)> {
         let f = Frame::of(0, 0, w, h, style);
         let (rh, _, per_row, _, body_y) = self.layout(&f, style);
-        let i = usize::try_from(index).ok().filter(|&i| i < self.items.len())?;
+        let i = usize::try_from(index)
+            .ok()
+            .filter(|&i| i < self.items.len())?;
         if Self::view(style) == LVS_ICON {
             let (cw, ch) = self.icon_cell();
             let row = (i / per_row) as i32 - self.top as i32;
             let col = (i % per_row) as i32;
-            return Some((col * cw, body_y + row * ch, col * cw + cw, body_y + row * ch + ch));
+            return Some((
+                col * cw,
+                body_y + row * ch,
+                col * cw + cw,
+                body_y + row * ch + ch,
+            ));
         }
         let row = i as i32 - self.top as i32;
         Some((0, body_y + row * rh, f.w, body_y + row * rh + rh))
     }
 
     pub fn ensure_visible(&mut self, index: i32, fit: usize) {
-        let Ok(i) = usize::try_from(index) else { return };
+        let Ok(i) = usize::try_from(index) else {
+            return;
+        };
         let fit = fit.max(1);
         if i < self.top {
             self.top = i;
@@ -1111,14 +1219,21 @@ mod tests {
     #[test]
     fn first_expand_notifies_and_shows_children() {
         let mut t = TreeData::new();
-        let root = t.insert(TVI_ROOT, TVI_LAST, TreeItem {
-            has_children: 1,
-            ..item("My Device")
-        });
+        let root = t.insert(
+            TVI_ROOT,
+            TVI_LAST,
+            TreeItem {
+                has_children: 1,
+                ..item("My Device")
+            },
+        );
         assert_eq!(t.visible_rows().len(), 1);
         assert_eq!(
             t.expand(root, TVE_EXPAND),
-            Some(ViewEvent::TreeExpand { item: root, action: TVE_EXPAND })
+            Some(ViewEvent::TreeExpand {
+                item: root,
+                action: TVE_EXPAND
+            })
         );
         t.insert(root, TVI_LAST, item("Windows"));
         assert_eq!(t.visible_rows(), vec![(root, 0), (root + 1, 1)]);
@@ -1126,7 +1241,13 @@ mod tests {
         t.expand(root, TVE_COLLAPSE);
         assert_eq!(t.expand(root, TVE_EXPAND), None);
         // A tap on the box always tells the application.
-        assert!(matches!(t.toggle_by_user(root), Some(ViewEvent::TreeExpand { action: TVE_COLLAPSE, .. })));
+        assert!(matches!(
+            t.toggle_by_user(root),
+            Some(ViewEvent::TreeExpand {
+                action: TVE_COLLAPSE,
+                ..
+            })
+        ));
     }
 
     #[test]
@@ -1136,7 +1257,10 @@ mod tests {
         let kid = t.insert(root, TVI_LAST, item("k"));
         let grand = t.insert(kid, TVI_LAST, item("g"));
         t.select(grand, 0);
-        assert!(t.get(root).unwrap().expanded(), "selecting reveals the item");
+        assert!(
+            t.get(root).unwrap().expanded(),
+            "selecting reveals the item"
+        );
         assert_eq!(t.delete(kid).len(), 2);
         assert_eq!(t.selected, 0);
         assert!(t.get(root).unwrap().children.is_empty());
@@ -1146,7 +1270,14 @@ mod tests {
     fn tree_hit_tells_the_box_from_the_label() {
         let mut t = TreeData::new();
         let style = TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT;
-        let root = t.insert(TVI_ROOT, TVI_LAST, TreeItem { has_children: 1, ..item("r") });
+        let root = t.insert(
+            TVI_ROOT,
+            TVI_LAST,
+            TreeItem {
+                has_children: 1,
+                ..item("r")
+            },
+        );
         // Row 0, box sits in the root indent, label right of it.
         assert_eq!(t.hit(0, 0, 100, 100, style, 8, 5), TreeHit::Button(root));
         assert_eq!(t.hit(0, 0, 100, 100, style, 30, 5), TreeHit::Item(root));
@@ -1158,7 +1289,13 @@ mod tests {
         let mut l = ListData::new();
         for name in ["a", "b", "c"] {
             let n = l.items.len() as i32;
-            l.insert(n, ListItem { texts: vec![name.into()], ..ListItem::default() });
+            l.insert(
+                n,
+                ListItem {
+                    texts: vec![name.into()],
+                    ..ListItem::default()
+                },
+            );
         }
         let ev = l.select_only(1);
         assert_eq!(ev.len(), 1);
@@ -1171,16 +1308,36 @@ mod tests {
     #[test]
     fn report_view_hit_test_finds_rows_and_headers() {
         let mut l = ListData::new();
-        l.columns.push(ListColumn { text: "Name".into(), width: 80, fmt: 0 });
-        l.columns.push(ListColumn { text: "Size".into(), width: 40, fmt: 1 });
+        l.columns.push(ListColumn {
+            text: "Name".into(),
+            width: 80,
+            fmt: 0,
+        });
+        l.columns.push(ListColumn {
+            text: "Size".into(),
+            width: 40,
+            fmt: 1,
+        });
         for i in 0..3 {
-            l.insert(i, ListItem { texts: vec![format!("f{i}"), "1K".into()], ..ListItem::default() });
+            l.insert(
+                i,
+                ListItem {
+                    texts: vec![format!("f{i}"), "1K".into()],
+                    ..ListItem::default()
+                },
+            );
         }
         let style = LVS_REPORT;
         assert_eq!(l.hit(0, 0, 200, 100, style, 90, 3), ListHit::Header(1));
         let rh = font::GLYPH_H + 6;
         let body = ListData::HEADER_H;
-        assert_eq!(l.hit(0, 0, 200, 100, style, 10, body + rh + 2), ListHit::Item(1));
-        assert_eq!(l.hit(0, 0, 200, 100, style, 10, body + 3 * rh + 2), ListHit::Nowhere);
+        assert_eq!(
+            l.hit(0, 0, 200, 100, style, 10, body + rh + 2),
+            ListHit::Item(1)
+        );
+        assert_eq!(
+            l.hit(0, 0, 200, 100, style, 10, body + 3 * rh + 2),
+            ListHit::Nowhere
+        );
     }
 }

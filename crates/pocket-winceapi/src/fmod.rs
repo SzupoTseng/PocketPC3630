@@ -194,13 +194,19 @@ fn start_voice(ctx: &mut CallCtx<'_>, handle: u32, group: u32) -> u32 {
 /// `int FSOUND_PlaySound(int channel, FSOUND_SAMPLE *sample)`; -1 on failure.
 fn play_sound(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let handle = ctx.arg_u32(1)?;
-    Ok(DispatchOutcome::ReturnedR0(start_voice(ctx, handle, SFX_GROUP)))
+    Ok(DispatchOutcome::ReturnedR0(start_voice(
+        ctx, handle, SFX_GROUP,
+    )))
 }
 
 /// `int FSOUND_Stream_Play(int channel, FSOUND_STREAM *stream)`; -1 on failure.
 fn stream_play(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let handle = ctx.arg_u32(1)?;
-    Ok(DispatchOutcome::ReturnedR0(start_voice(ctx, handle, STREAM_GROUP)))
+    Ok(DispatchOutcome::ReturnedR0(start_voice(
+        ctx,
+        handle,
+        STREAM_GROUP,
+    )))
 }
 
 fn stream_stop(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {

@@ -92,7 +92,8 @@ impl Runner {
 
         let kb = pocket_library::import_kb::KnowledgeBase::load(&library_root);
         let explain = |message: &str, missing: &[String]| {
-            kb.explain(message, missing).message(pocket_library::import_problem::Lang::En)
+            kb.explain(message, missing)
+                .message(pocket_library::import_problem::Lang::En)
         };
         if let Err(e) = emu.load_pe(&exe) {
             summary_lines.push(explain(&format!("{e:#}"), &[]));
@@ -224,8 +225,13 @@ impl Runner {
 #[cfg(feature = "unicorn")]
 fn build_unicorn_for_machine(machine: u16) -> anyhow::Result<Emulator> {
     // Unicorn has no SuperH: SH3 builds (HP Jornada 54x) run on the interpreter.
-    if matches!(machine, pocket_core::pe::machine::SH3 | pocket_core::pe::machine::SH4) {
-        return Ok(Emulator::with_interp_cpu_for_arch(pocket_core::cpu::Arch::Sh));
+    if matches!(
+        machine,
+        pocket_core::pe::machine::SH3 | pocket_core::pe::machine::SH4
+    ) {
+        return Ok(Emulator::with_interp_cpu_for_arch(
+            pocket_core::cpu::Arch::Sh,
+        ));
     }
     if matches!(
         machine,

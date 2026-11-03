@@ -1478,7 +1478,10 @@ fn attribute(tag: &str, attr: &str) -> Option<String> {
 mod tests {
     #[test]
     fn a_code_page_name_keeps_its_sign() {
-        assert_eq!(super::decode_ascii(b"EverQuest\xAE for PPC\0x"), "EverQuest\u{AE} for PPC");
+        assert_eq!(
+            super::decode_ascii(b"EverQuest\xAE for PPC\0x"),
+            "EverQuest\u{AE} for PPC"
+        );
         assert_eq!(super::decode_ascii(b"plain\0"), "plain");
     }
 

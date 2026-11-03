@@ -22,3 +22,7 @@ thiserror.workspace = true
 log.workspace = true
 bitflags = "2"
 unicorn-engine = { workspace = true, optional = true }
+
+[lints.rust]
+# `--cfg guest_profile` turns on the guest code histogram in interp.rs.
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(guest_profile)"] }

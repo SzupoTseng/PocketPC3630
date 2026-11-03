@@ -439,8 +439,10 @@ impl PocketLauncher {
                 );
                 ui.add_space(8.0);
                 ui.label(
-                    RichText::new("Import a game you own: a .zip, .cab or the download as it came.")
-                        .color(Color32::from_gray(150)),
+                    RichText::new(
+                        "Import a game you own: a .zip, .cab or the download as it came.",
+                    )
+                    .color(Color32::from_gray(150)),
                 );
                 ui.add_space(20.0);
                 if ui.button(RichText::new("Import game").strong()).clicked() {
@@ -553,8 +555,16 @@ impl PocketLauncher {
             Pos2::new(card_rect.left(), card_rect.bottom() - 76.0),
             Vec2::new(size.x, 76.0),
         );
-        ui.painter()
-            .rect_filled(label_rect, egui::Rounding { nw: 0.0, ne: 0.0, sw: 14.0, se: 14.0 }, Color32::from_rgb(22, 23, 26));
+        ui.painter().rect_filled(
+            label_rect,
+            egui::Rounding {
+                nw: 0.0,
+                ne: 0.0,
+                sw: 14.0,
+                se: 14.0,
+            },
+            Color32::from_rgb(22, 23, 26),
+        );
         let text_rect = Rect::from_min_size(
             Pos2::new(label_rect.left() + 12.0, label_rect.top() + 8.0),
             Vec2::new(size.x - 24.0, 58.0),
@@ -1277,10 +1287,13 @@ impl PocketLauncher {
             let path = if picked.len() == 1 {
                 picked[0].clone()
             } else {
-                match pocket_library::bundle::bundle_files(&picked, &library_root.join(".bundles")) {
+                match pocket_library::bundle::bundle_files(&picked, &library_root.join(".bundles"))
+                {
                     Ok(path) => path,
                     Err(e) => {
-                        let _ = tx.send(UiEvent::ImportFinished(Err(format!("Could not put the files together: {e}"))));
+                        let _ = tx.send(UiEvent::ImportFinished(Err(format!(
+                            "Could not put the files together: {e}"
+                        ))));
                         return;
                     }
                 }

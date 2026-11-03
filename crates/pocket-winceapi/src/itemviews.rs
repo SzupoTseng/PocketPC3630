@@ -202,7 +202,11 @@ fn tree_message(
         }
         TVM_GETIMAGELIST => {
             let tree = tree_of(ctx, hwnd);
-            if wparam == 2 { tree.state_image_list } else { tree.image_list }
+            if wparam == 2 {
+                tree.state_image_list
+            } else {
+                tree.image_list
+            }
         }
         TVM_SETIMAGELIST => {
             let size = image_size(ctx, lparam);
@@ -275,7 +279,8 @@ fn tree_message(
         }
         TVM_GETITEMHEIGHT | TVM_SETITEMHEIGHT => {
             let tree = tree_of(ctx, hwnd);
-            (pocket_kernel::font::GLYPH_H + 6).max(tree.image_size.map(|s| s.1 + 1).unwrap_or(0)) as u32
+            (pocket_kernel::font::GLYPH_H + 6).max(tree.image_size.map(|s| s.1 + 1).unwrap_or(0))
+                as u32
         }
         TVM_GETITEMSTATE => tree_of(ctx, hwnd)
             .get(wparam)
@@ -303,7 +308,11 @@ fn tree_message(
                 wr(ctx, lparam + 28, item.selected_image as u32)?;
             }
             if mask & TVIF_CHILDREN != 0 {
-                let n = if item.children.is_empty() { item.has_children } else { 1 };
+                let n = if item.children.is_empty() {
+                    item.has_children
+                } else {
+                    1
+                };
                 wr(ctx, lparam + 32, n as u32)?;
             }
             if mask & TVIF_PARAM != 0 {
@@ -327,7 +336,9 @@ fn tree_message(
             let children = rd(ctx, lparam + 32)? as i32;
             let param = rd(ctx, lparam + 36)?;
             let tree = tree_of(ctx, hwnd);
-            let Some(item) = tree.get_mut(handle) else { return Ok(0) };
+            let Some(item) = tree.get_mut(handle) else {
+                return Ok(0);
+            };
             if let Some(text) = text {
                 item.text = text;
             }
@@ -459,15 +470,17 @@ fn list_message(
             1
         }
         LVM_GETNEXTITEM => list_of(ctx, hwnd).next_item(wparam as i32, lparam) as u32,
-        LVM_GETITEMRECT if lparam != 0 => match list_of(ctx, hwnd).item_rect(w, h, style, wparam as i32) {
-            Some((l, t, r, b)) => {
-                for (i, v) in [l, t, r, b].into_iter().enumerate() {
-                    wr(ctx, lparam + 4 * i as u32, v as u32)?;
+        LVM_GETITEMRECT if lparam != 0 => {
+            match list_of(ctx, hwnd).item_rect(w, h, style, wparam as i32) {
+                Some((l, t, r, b)) => {
+                    for (i, v) in [l, t, r, b].into_iter().enumerate() {
+                        wr(ctx, lparam + 4 * i as u32, v as u32)?;
+                    }
+                    1
                 }
-                1
+                None => 0,
             }
-            None => 0,
-        },
+        }
         LVM_HITTEST if lparam != 0 => {
             let px = rd(ctx, lparam)? as i32;
             let py = rd(ctx, lparam + 4)? as i32;
@@ -511,7 +524,11 @@ fn list_message(
             let width = match lparam as i32 {
                 // LVSCW_AUTOSIZE / LVSCW_AUTOSIZE_USEHEADER: fit the text.
                 -1 | -2 => {
-                    let head = l.columns.get(col).map(|c| pocket_kernel::font::str_width(&c.text)).unwrap_or(0);
+                    let head = l
+                        .columns
+                        .get(col)
+                        .map(|c| pocket_kernel::font::str_width(&c.text))
+                        .unwrap_or(0);
                     let body = l
                         .items
                         .iter()
@@ -724,7 +741,11 @@ fn list_message(
             if let Some(text) = text {
                 col.text = text;
             }
-            if msg == LVM_INSERTCOLUMNW { at as u32 } else { 1 }
+            if msg == LVM_INSERTCOLUMNW {
+                at as u32
+            } else {
+                1
+            }
         }
         LVM_GETCOLUMNW if lparam != 0 => {
             let mask = rd(ctx, lparam)?;
@@ -807,8 +828,13 @@ fn write_tvitem(ctx: &mut CallCtx<'_>, at: u32, hwnd: u32, handle: u32) -> Resul
         .and_then(|c| c.tree.as_ref())
         .and_then(|t| t.get(handle).cloned());
     let Some(item) = item else { return Ok(()) };
-    let mask = TVIF_HANDLE | TVIF_PARAM | TVIF_STATE | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_CHILDREN;
-    let children = if item.children.is_empty() { item.has_children } else { 1 };
+    let mask =
+        TVIF_HANDLE | TVIF_PARAM | TVIF_STATE | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_CHILDREN;
+    let children = if item.children.is_empty() {
+        item.has_children
+    } else {
+        1
+    };
     let fields = [
         mask,
         handle,
@@ -857,7 +883,11 @@ pub(crate) fn flush_notifications(ctx: &mut CallCtx<'_>) {
             }
             ViewEvent::TreeClick => posts.push((NM_CLICK, 12)),
             ViewEvent::TreeActivate { .. } => posts.push((NM_DBLCLK, 12)),
-            ViewEvent::ListChanged { item, new_state, old_state } => {
+            ViewEvent::ListChanged {
+                item,
+                new_state,
+                old_state,
+            } => {
                 posts.push((LVN_ITEMCHANGED, 48));
                 list_fill = Some((*item, 0, *new_state, *old_state, LVIF_STATE_CHANGED));
             }
@@ -876,12 +906,20 @@ pub(crate) fn flush_notifications(ctx: &mut CallCtx<'_>) {
             }
         }
         for (code, size) in posts {
-            let Some(p) = notify_buffer(ctx, size) else { continue };
+            let Some(p) = notify_buffer(ctx, size) else {
+                continue;
+            };
             let _ = wr(ctx, p, hwnd);
             let _ = wr(ctx, p + 4, id);
             let _ = wr(ctx, p + 8, code as u32);
             if let Some((action, old, new)) = tree_fill.filter(|_| size == 104) {
-                let action = if code == TVN_SELCHANGEDW { action } else if action == TVE_COLLAPSE { 1 } else { 2 };
+                let action = if code == TVN_SELCHANGEDW {
+                    action
+                } else if action == TVE_COLLAPSE {
+                    1
+                } else {
+                    2
+                };
                 let _ = wr(ctx, p + 12, action);
                 let _ = write_tvitem(ctx, p + 16, hwnd, old);
                 let _ = write_tvitem(ctx, p + 56, hwnd, new);
@@ -895,12 +933,21 @@ pub(crate) fn flush_notifications(ctx: &mut CallCtx<'_>) {
                     .and_then(|l| usize::try_from(item).ok().and_then(|i| l.items.get(i)))
                     .map(|it| it.lparam)
                     .unwrap_or(0);
-                for (off, v) in [(12, item as u32), (16, sub as u32), (20, new), (24, old), (28, changed), (40, lparam)] {
+                for (off, v) in [
+                    (12, item as u32),
+                    (16, sub as u32),
+                    (20, new),
+                    (24, old),
+                    (28, changed),
+                    (40, lparam),
+                ] {
                     let _ = wr(ctx, p + off, v);
                 }
             }
             if ctx.kernel.posted_messages.len() < 256 {
-                ctx.kernel.posted_messages.push_back((parent, WM_NOTIFY, id, p));
+                ctx.kernel
+                    .posted_messages
+                    .push_back((parent, WM_NOTIFY, id, p));
             }
             log::debug!("WM_NOTIFY(code={code}) from 0x{hwnd:08x} to 0x{parent:08x}");
         }

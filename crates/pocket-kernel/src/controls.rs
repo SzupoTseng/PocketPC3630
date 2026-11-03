@@ -405,7 +405,12 @@ impl ChildWindow {
 
     /// [`Self::render`] with the image lists a tree or list view draws
     /// its icons from.
-    pub fn render_with(&self, surf: &mut Surface<'_>, focused: bool, lists: &HashMap<u32, ImageList>) {
+    pub fn render_with(
+        &self,
+        surf: &mut Surface<'_>,
+        focused: bool,
+        lists: &HashMap<u32, ImageList>,
+    ) {
         if !self.visible || self.w <= 0 || self.h <= 0 {
             return;
         }
@@ -594,7 +599,11 @@ impl ChildWindow {
         // tall enough for more, is laid out from the top as Windows does.
         // Pocket Slay's "See:\r\n www.windowsgames.co.uk ..." showed its
         // line breaks as '?' on a single clipped line.
-        let color = if self.enabled { Self::TEXT } else { Self::SHADOW };
+        let color = if self.enabled {
+            Self::TEXT
+        } else {
+            Self::SHADOW
+        };
         for (i, line) in lines.iter().enumerate() {
             let y = self.y + i as i32 * font::GLYPH_H;
             if y + font::GLYPH_H > self.y + self.h {
@@ -618,7 +627,11 @@ fn wrap_static_text(text: &str, w: i32, h: i32) -> Vec<String> {
         let raw = raw.trim_end_matches('\r');
         let mut line = String::new();
         for word in raw.split(' ') {
-            let candidate = if line.is_empty() { word.to_string() } else { format!("{line} {word}") };
+            let candidate = if line.is_empty() {
+                word.to_string()
+            } else {
+                format!("{line} {word}")
+            };
             if candidate.chars().count() > per_line && !line.is_empty() && room_for_lines {
                 lines.push(std::mem::take(&mut line));
                 line = word.to_string();
@@ -806,7 +819,9 @@ impl Controls {
     /// the parent's client area. Returns `true` when the view used it.
     fn view_pointer_down(&mut self, hwnd: u32, px: i32, py: i32) -> bool {
         const TVC_BYMOUSE: u32 = 1;
-        let Some(child) = self.get_mut(hwnd) else { return false };
+        let Some(child) = self.get_mut(hwnd) else {
+            return false;
+        };
         let (x, y, w, h, style) = (child.x, child.y, child.w, child.h, child.style);
         let fit = child.rows_fit();
         let mut events = Vec::new();
@@ -835,7 +850,10 @@ impl Controls {
             match list.hit(x, y, w, h, style, px, py) {
                 ListHit::Item(i) => {
                     let again = list.focus == i
-                        && list.items.get(i as usize).is_some_and(|it| it.state & crate::itemview::LVIS_SELECTED != 0);
+                        && list
+                            .items
+                            .get(i as usize)
+                            .is_some_and(|it| it.state & crate::itemview::LVIS_SELECTED != 0);
                     events.extend(list.select_only(i));
                     events.push(ViewEvent::ListClick { item: i });
                     if again {
@@ -891,7 +909,10 @@ impl Controls {
                     }
                 }
                 VK_RIGHT => {
-                    if tree.get(sel).is_some_and(|i| i.expandable() && !i.expanded()) {
+                    if tree
+                        .get(sel)
+                        .is_some_and(|i| i.expandable() && !i.expanded())
+                    {
                         events.extend(tree.toggle_by_user(sel));
                     }
                 }
@@ -912,7 +933,11 @@ impl Controls {
             match vk {
                 VK_UP | VK_DOWN | VK_LEFT | VK_RIGHT if n > 0 => {
                     let step = if vk == VK_UP || vk == VK_LEFT { -1 } else { 1 };
-                    let next = if cur < 0 { 0 } else { (cur + step).clamp(0, n - 1) };
+                    let next = if cur < 0 {
+                        0
+                    } else {
+                        (cur + step).clamp(0, n - 1)
+                    };
                     events.extend(list.select_only(next));
                     list.ensure_visible(next, fit);
                 }

@@ -106,17 +106,26 @@ pub fn import<R: Read + Seek>(game_dir: &Path, input: R) -> io::Result<usize> {
         }
         let name = entry.name().to_string();
         let target = target_for(game_dir, &name).ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, format!("not part of a save: {name}"))
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("not part of a save: {name}"),
+            )
         })?;
         if entry.size() > LARGEST_ENTRY {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, format!("too large: {name}")));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("too large: {name}"),
+            ));
         }
         let mut bytes = Vec::with_capacity(entry.size() as usize);
         entry.read_to_end(&mut bytes)?;
         accepted.push((target, bytes));
     }
     if accepted.is_empty() {
-        return Err(io::Error::new(io::ErrorKind::InvalidData, "the zip holds no save"));
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "the zip holds no save",
+        ));
     }
     reset(game_dir)?;
     for (target, bytes) in &accepted {
@@ -143,7 +152,11 @@ mod tests {
         fs::create_dir_all(&saves).unwrap();
         fs::write(saves.join("hero.sav"), b"level 9").unwrap();
         fs::create_dir_all(dir.path().join("extracted")).unwrap();
-        fs::write(dir.path().join("extracted").join(REGISTRY_FILE), b"HKCU|x|1").unwrap();
+        fs::write(
+            dir.path().join("extracted").join(REGISTRY_FILE),
+            b"HKCU|x|1",
+        )
+        .unwrap();
         fs::write(dir.path().join("extracted").join("game.exe"), b"MZ").unwrap();
         dir
     }
@@ -178,7 +191,14 @@ mod tests {
         let game = Path::new("/g");
         assert!(target_for(game, "saves/a/b.sav").is_some());
         assert!(target_for(game, REGISTRY_FILE).is_some());
-        for bad in ["saves/../game.exe", "/etc/passwd", "game.exe", "saves", "saves\\..\\x", "extracted/x"] {
+        for bad in [
+            "saves/../game.exe",
+            "/etc/passwd",
+            "game.exe",
+            "saves",
+            "saves\\..\\x",
+            "extracted/x",
+        ] {
             assert!(target_for(game, bad).is_none(), "{bad}");
         }
     }

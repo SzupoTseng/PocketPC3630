@@ -225,10 +225,16 @@ impl KnowledgeBase {
         let entry = self.problems.iter().find(|entry| {
             if !entry.when_missing.is_empty() {
                 return missing.iter().any(|name| {
-                    entry.when_missing.iter().any(|part| name.contains(&part.to_lowercase()))
+                    entry
+                        .when_missing
+                        .iter()
+                        .any(|part| name.contains(&part.to_lowercase()))
                 });
             }
-            entry.matches.iter().any(|part| haystack.contains(&part.to_lowercase()))
+            entry
+                .matches
+                .iter()
+                .any(|part| haystack.contains(&part.to_lowercase()))
         });
         let (id, title, hint) = match entry {
             Some(entry) => (
@@ -270,7 +276,10 @@ impl KnowledgeBase {
             .filter(|term| lower.contains(&term.has.to_lowercase()))
             .map(|term| term.score)
             .sum();
-        name + machine.and_then(|m| self.ranking.machine.get(m)).copied().unwrap_or(0)
+        name + machine
+            .and_then(|m| self.ranking.machine.get(m))
+            .copied()
+            .unwrap_or(0)
     }
 }
 
@@ -306,7 +315,11 @@ impl Matcher {
         }
         if !self.name_has.is_empty() {
             let lower = name.to_lowercase();
-            if !self.name_has.iter().any(|part| lower.contains(&part.to_lowercase())) {
+            if !self
+                .name_has
+                .iter()
+                .any(|part| lower.contains(&part.to_lowercase()))
+            {
                 return false;
             }
         }
@@ -416,9 +429,13 @@ fn carve_cabs(bytes: &[u8]) -> Vec<&[u8]> {
 fn carve_zip(bytes: &[u8]) -> Option<&[u8]> {
     let mut search = bytes.len();
     while search >= 22 {
-        let end = (0..=search - 22).rev().find(|&i| bytes[i..i + 4] == *b"PK\x05\x06")?;
+        let end = (0..=search - 22)
+            .rev()
+            .find(|&i| bytes[i..i + 4] == *b"PK\x05\x06")?;
         let field = |offset: usize| -> Option<u32> {
-            bytes.get(end + offset..end + offset + 4).map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            bytes
+                .get(end + offset..end + offset + 4)
+                .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
         };
         let comment = bytes
             .get(end + 20..end + 22)
@@ -440,9 +457,16 @@ fn carve_zip(bytes: &[u8]) -> Option<&[u8]> {
 /// A copy of a cabinet whose data blocks carry no checksum, or `None` when it
 /// is not a cabinet or none of its checksums is set.
 fn clear_cab_checksums(bytes: &[u8]) -> Option<Vec<u8>> {
-    let u16_at = |at: usize| bytes.get(at..at + 2).map(|b| u16::from_le_bytes([b[0], b[1]]) as usize);
-    let u32_at =
-        |at: usize| bytes.get(at..at + 4).map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize);
+    let u16_at = |at: usize| {
+        bytes
+            .get(at..at + 2)
+            .map(|b| u16::from_le_bytes([b[0], b[1]]) as usize)
+    };
+    let u32_at = |at: usize| {
+        bytes
+            .get(at..at + 4)
+            .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize)
+    };
     if !bytes.starts_with(b"MSCF") {
         return None;
     }
@@ -491,9 +515,16 @@ fn is_zlib(bytes: &[u8]) -> bool {
 /// The data of every resource in a PE image, larger than a few bytes. Icons and
 /// version records come out too; they are simply not importable.
 fn pe_resources(bytes: &[u8]) -> Vec<&[u8]> {
-    let read16 = |at: usize| bytes.get(at..at + 2).map(|b| u16::from_le_bytes([b[0], b[1]]) as usize);
-    let read32 =
-        |at: usize| bytes.get(at..at + 4).map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize);
+    let read16 = |at: usize| {
+        bytes
+            .get(at..at + 2)
+            .map(|b| u16::from_le_bytes([b[0], b[1]]) as usize)
+    };
+    let read32 = |at: usize| {
+        bytes
+            .get(at..at + 4)
+            .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize)
+    };
     let mut out = Vec::new();
     let Some(pe) = read32(0x3C) else {
         return out;
@@ -520,8 +551,14 @@ fn pe_resources(bytes: &[u8]) -> Vec<&[u8]> {
     let to_offset = |rva: usize| -> Option<usize> {
         (0..sections).find_map(|i| {
             let at = table + i * 40;
-            let (virtual_size, address, raw_size, raw) = (read32(at + 8)?, read32(at + 12)?, read32(at + 16)?, read32(at + 20)?);
-            (address <= rva && rva < address + virtual_size.max(raw_size)).then(|| rva - address + raw)
+            let (virtual_size, address, raw_size, raw) = (
+                read32(at + 8)?,
+                read32(at + 12)?,
+                read32(at + 16)?,
+                read32(at + 20)?,
+            );
+            (address <= rva && rva < address + virtual_size.max(raw_size))
+                .then(|| rva - address + raw)
         })
     };
     let Some(base) = to_offset(resource_rva) else {
@@ -545,7 +582,9 @@ fn pe_resources(bytes: &[u8]) -> Vec<&[u8]> {
             };
             if target & 0x8000_0000 != 0 {
                 pending.push((target & 0x7FFF_FFFF, depth + 1));
-            } else if let (Some(rva), Some(size)) = (read32(base + target), read32(base + target + 4)) {
+            } else if let (Some(rva), Some(size)) =
+                (read32(base + target), read32(base + target + 4))
+            {
                 if let Some(start) = to_offset(rva) {
                     if size > 64 {
                         if let Some(data) = bytes.get(start..start + size) {
@@ -659,7 +698,10 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
             }
         }
         Action::CarveCab => {
-            let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+            let stem = path
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default();
             for (index, cab) in carve_cabs(bytes).into_iter().enumerate() {
                 let target = out.join(format!("{stem}.{index}.cab"));
                 if fs::write(&target, cab).is_ok() {
@@ -669,7 +711,10 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
         }
         Action::ClearCabChecksums => {
             if let Some(cleared) = clear_cab_checksums(bytes) {
-                let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+                let stem = path
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_default();
                 let target = out.join(format!("{stem}.cab"));
                 if fs::write(&target, cleared).is_ok() {
                     produced.push(target);
@@ -677,7 +722,10 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
             }
         }
         Action::ExpandSzdd => {
-            let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+            let stem = path
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default();
             for (index, expanded) in expand_szdd_all(bytes).into_iter().enumerate() {
                 let target = out.join(format!("{stem}.{index}.bin"));
                 if fs::write(&target, expanded).is_ok() {
@@ -698,10 +746,14 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
                 let mut inflated = Vec::new();
                 let decoder = flate2::read::ZlibDecoder::new(bytes);
                 // Bounded: a stream can claim to expand without end.
-                if io::Read::read_to_end(&mut io::Read::take(decoder, LARGEST_FILE), &mut inflated).is_ok()
+                if io::Read::read_to_end(&mut io::Read::take(decoder, LARGEST_FILE), &mut inflated)
+                    .is_ok()
                     && !inflated.is_empty()
                 {
-                    let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+                    let stem = path
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().into_owned())
+                        .unwrap_or_default();
                     let target = out.join(format!("{stem}.inflated"));
                     if fs::write(&target, inflated).is_ok() {
                         produced.push(target);
@@ -713,8 +765,10 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
             // A file that is already a zip from its first byte needs no carving.
             if !bytes.starts_with(b"PK\x03\x04") {
                 if let Some(zip) = carve_zip(bytes) {
-                    let stem =
-                        path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+                    let stem = path
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().into_owned())
+                        .unwrap_or_default();
                     let target = out.join(format!("{stem}.inner.zip"));
                     if fs::write(&target, zip).is_ok() {
                         produced.push(target);
@@ -770,7 +824,11 @@ pub fn explore(kb: &KnowledgeBase, download: &Path, work: &Path) -> Exploration 
             continue;
         };
         let name = path.to_string_lossy().into_owned();
-        let relative = path.strip_prefix(work).unwrap_or(&path).to_string_lossy().into_owned();
+        let relative = path
+            .strip_prefix(work)
+            .unwrap_or(&path)
+            .to_string_lossy()
+            .into_owned();
         let machine = pe_machine(&bytes);
         if !chain.is_empty() {
             if bytes.starts_with(b"MSCF") {
@@ -835,7 +893,10 @@ pub fn explore(kb: &KnowledgeBase, download: &Path, work: &Path) -> Exploration 
             for produced in apply(action, &path, &bytes, &out) {
                 written += fs::metadata(&produced).map(|m| m.len()).unwrap_or(0);
                 let mut next = chain.clone();
-                next.push(Step { action, take: relative_name(&produced, &out) });
+                next.push(Step {
+                    action,
+                    take: relative_name(&produced, &out),
+                });
                 queue.push((produced, next));
             }
         }
@@ -843,7 +904,9 @@ pub fn explore(kb: &KnowledgeBase, download: &Path, work: &Path) -> Exploration 
     // Other processors' builds stay as a last resort: the desktop version runs
     // MIPS, and elsewhere the player is told why it does not start.
     found.candidates.retain(|c| c.score > NEVER_IMPORT);
-    found.candidates.sort_by(|a, b| b.score.cmp(&a.score).then(a.path.cmp(&b.path)));
+    found
+        .candidates
+        .sort_by(|a, b| b.score.cmp(&a.score).then(a.path.cmp(&b.path)));
     found
 }
 
@@ -920,7 +983,9 @@ pub fn replay(kb: &KnowledgeBase, download: &Path, work: &Path) -> Option<(PathB
             .filter(|p| fs::read(p).is_ok_and(|b| pe_machine(&b) == Some("arm") && is_dll(&b)))
             .cloned()
             .collect();
-        current = produced.into_iter().find(|p| relative_name(p, &out) == step.take)?;
+        current = produced
+            .into_iter()
+            .find(|p| relative_name(p, &out) == step.take)?;
     }
     Some((current, libraries))
 }
@@ -928,7 +993,11 @@ pub fn replay(kb: &KnowledgeBase, download: &Path, work: &Path) -> Option<(PathB
 /// Remember how this exact download was imported, unless it is known already.
 pub fn learn_known(library_root: &Path, known: Known) -> io::Result<bool> {
     let mut user = read_user_kb(library_root).unwrap_or_default();
-    if user.known.iter().any(|k| k.fingerprint == known.fingerprint) {
+    if user
+        .known
+        .iter()
+        .any(|k| k.fingerprint == known.fingerprint)
+    {
         return Ok(false);
     }
     user.known.push(known);
@@ -949,8 +1018,14 @@ pub fn rule_for(name: &str, bytes: &[u8], action: Action) -> Rule {
     };
     let when = Matcher {
         magic: Some(to_hex(&bytes[..bytes.len().min(4)])),
-        contains_hex: if marker.is_empty() { Vec::new() } else { vec![marker.to_string()] },
-        pe_machine: pe_machine(bytes).map(|m| vec![m.to_string()]).unwrap_or_default(),
+        contains_hex: if marker.is_empty() {
+            Vec::new()
+        } else {
+            vec![marker.to_string()]
+        },
+        pe_machine: pe_machine(bytes)
+            .map(|m| vec![m.to_string()])
+            .unwrap_or_default(),
         ..Matcher::default()
     };
     Rule {
@@ -991,7 +1066,8 @@ mod tests {
     fn zip_of(files: &[(&str, &[u8])]) -> Vec<u8> {
         let mut zip = zip::ZipWriter::new(io::Cursor::new(Vec::new()));
         for (name, data) in files {
-            zip.start_file(*name, zip::write::FileOptions::default()).unwrap();
+            zip.start_file(*name, zip::write::FileOptions::default())
+                .unwrap();
             zip.write_all(data).unwrap();
         }
         zip.finish().unwrap().into_inner()
@@ -1018,8 +1094,17 @@ mod tests {
         assert!(found.guided);
         let best = &found.candidates[0];
         assert_eq!(best.chain[0].action, Action::OpenZip);
-        assert!(best.path.to_string_lossy().contains("game.arm.CAB"), "{best:?}");
-        assert!(found.candidates.last().unwrap().path.to_string_lossy().contains("mips"));
+        assert!(
+            best.path.to_string_lossy().contains("game.arm.CAB"),
+            "{best:?}"
+        );
+        assert!(found
+            .candidates
+            .last()
+            .unwrap()
+            .path
+            .to_string_lossy()
+            .contains("mips"));
     }
 
     #[test]
@@ -1030,7 +1115,11 @@ mod tests {
         bytes.extend(cab(b"payload"));
         let download = dir.path().join("odd.bin");
         fs::write(&download, &bytes).unwrap();
-        let found = explore(KnowledgeBase::builtin(), &download, &dir.path().join("work"));
+        let found = explore(
+            KnowledgeBase::builtin(),
+            &download,
+            &dir.path().join("work"),
+        );
         assert!(!found.guided);
         assert_eq!(found.candidates.len(), 1);
         assert_eq!(found.candidates[0].chain[0].action, Action::CarveCab);
@@ -1068,11 +1157,21 @@ mod tests {
         stream.extend([b'A', b'_']);
         stream.extend(9u32.to_le_bytes());
         let start = 4096 - 16;
-        stream.extend([0b0000_0111, b'a', b'b', b'c', (start & 0xFF) as u8, (((start >> 4) & 0xF0) | (6 - 3)) as u8]);
+        stream.extend([
+            0b0000_0111,
+            b'a',
+            b'b',
+            b'c',
+            (start & 0xFF) as u8,
+            (((start >> 4) & 0xF0) | (6 - 3)) as u8,
+        ]);
         let mut installer = x86_program(b"junk");
         installer.extend(&stream);
         assert_eq!(expand_szdd_all(&installer), [b"abcabcabc".to_vec()]);
-        assert_eq!(basic_actions(&installer, Some("x86")), [Action::ExpandSzdd, Action::ExtractResources]);
+        assert_eq!(
+            basic_actions(&installer, Some("x86")),
+            [Action::ExpandSzdd, Action::ExtractResources]
+        );
     }
 
     #[test]
@@ -1096,9 +1195,24 @@ mod tests {
         let mut launcher = x86_program(&[]);
         launcher[0x44..0x46].copy_from_slice(&0x01C0u16.to_le_bytes());
         let download = dir.path().join("game.zip");
-        fs::write(&download, zip_of(&[("Game - ARM.exe", &launcher), ("game.cab", &cab(b"x"))])).unwrap();
-        let found = explore(KnowledgeBase::builtin(), &download, &dir.path().join("work"));
-        assert!(found.candidates[0].path.to_string_lossy().ends_with("game.cab"), "{:?}", found.candidates);
+        fs::write(
+            &download,
+            zip_of(&[("Game - ARM.exe", &launcher), ("game.cab", &cab(b"x"))]),
+        )
+        .unwrap();
+        let found = explore(
+            KnowledgeBase::builtin(),
+            &download,
+            &dir.path().join("work"),
+        );
+        assert!(
+            found.candidates[0]
+                .path
+                .to_string_lossy()
+                .ends_with("game.cab"),
+            "{:?}",
+            found.candidates
+        );
     }
 
     #[test]
@@ -1108,7 +1222,12 @@ mod tests {
         let big = vec![0u8; 1024];
         let download = dir.path().join("x.zip");
         fs::write(&download, zip_of(&[("a.bin", &big)])).unwrap();
-        let out = apply(Action::OpenZip, &download, &fs::read(&download).unwrap(), &dir.path().join("o"));
+        let out = apply(
+            Action::OpenZip,
+            &download,
+            &fs::read(&download).unwrap(),
+            &dir.path().join("o"),
+        );
         assert_eq!(fs::metadata(&out[0]).unwrap().len(), 1024);
     }
 
@@ -1121,7 +1240,11 @@ mod tests {
         let found = explore(KnowledgeBase::builtin(), &download, &dir.path().join("w1"));
         let best = &found.candidates[0];
         let bytes = fs::read(&download).unwrap();
-        let known = Known { fingerprint: fingerprint(&bytes), name: "setup.exe".into(), steps: best.chain.clone() };
+        let known = Known {
+            fingerprint: fingerprint(&bytes),
+            name: "setup.exe".into(),
+            steps: best.chain.clone(),
+        };
         assert!(learn_known(dir.path(), known.clone()).unwrap());
         assert!(!learn_known(dir.path(), known).unwrap());
         let kb = KnowledgeBase::load(dir.path());
@@ -1143,13 +1266,18 @@ mod tests {
         let mut file = b"SOME-NEW-PACKER".to_vec();
         file.extend_from_slice(b"MSCF\0\0\0\0");
         assert_eq!(kb.actions_for("x", &file), [Action::CarveCab]);
-        assert!(kb.actions_for("x", b"SOME-NEW-PACKER without a cabinet").is_empty());
+        assert!(kb
+            .actions_for("x", b"SOME-NEW-PACKER without a cabinet")
+            .is_empty());
     }
 
     #[test]
     fn a_broken_user_file_falls_back_to_the_builtin_knowledge() {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join(USER_KB_FILE), "{ not json").unwrap();
-        assert_eq!(KnowledgeBase::load(dir.path()).problems.len(), KnowledgeBase::builtin().problems.len());
+        assert_eq!(
+            KnowledgeBase::load(dir.path()).problems.len(),
+            KnowledgeBase::builtin().problems.len()
+        );
     }
 }

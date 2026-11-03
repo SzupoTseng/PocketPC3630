@@ -34,7 +34,13 @@ pub struct TextFont {
 }
 
 fn face_of(bold: bool, mono: bool) -> FontRef<'static> {
-    let data = if mono { MONO } else if bold { BOLD } else { REGULAR };
+    let data = if mono {
+        MONO
+    } else if bold {
+        BOLD
+    } else {
+        REGULAR
+    };
     FontRef::try_from_slice(data).expect("embedded font parses")
 }
 
@@ -52,13 +58,18 @@ impl TextFont {
         let bold = weight >= 600;
         let f = face_of(bold, mono);
         // Line height (ascent - descent) per em.
-        let cell_per_em = (f.ascent_unscaled() - f.descent_unscaled()) / f.units_per_em().unwrap_or(2048.0);
+        let cell_per_em =
+            (f.ascent_unscaled() - f.descent_unscaled()) / f.units_per_em().unwrap_or(2048.0);
         let px = match height {
             h if h < 0 => (-h) as f32,
             h if h > 0 => h as f32 / cell_per_em,
             _ => DEFAULT_PX,
         };
-        Self { px: px.clamp(4.0, 96.0), bold, mono }
+        Self {
+            px: px.clamp(4.0, 96.0),
+            bold,
+            mono,
+        }
     }
 
     fn face(&self) -> FontRef<'static> {
@@ -68,7 +79,8 @@ impl TextFont {
     /// `ab_glyph` scales by line height (ascent - descent), not by em.
     fn scale(&self) -> PxScale {
         let f = self.face();
-        let cell_per_em = (f.ascent_unscaled() - f.descent_unscaled()) / f.units_per_em().unwrap_or(2048.0);
+        let cell_per_em =
+            (f.ascent_unscaled() - f.descent_unscaled()) / f.units_per_em().unwrap_or(2048.0);
         PxScale::from(self.px * cell_per_em)
     }
 
@@ -143,7 +155,13 @@ impl TextFont {
                 // blended edge pixel misses the key and shows as a pink fringe.
                 outline.draw(|gx, gy, coverage| {
                     if coverage >= 0.3 {
-                        blend(surf, bounds.min.x as i32 + gx as i32, bounds.min.y as i32 + gy as i32, color, 1.0);
+                        blend(
+                            surf,
+                            bounds.min.x as i32 + gx as i32,
+                            bounds.min.y as i32 + gy as i32,
+                            color,
+                            1.0,
+                        );
                     }
                 });
             }

@@ -418,8 +418,13 @@ fn run_game_to_completion(
 #[cfg(feature = "unicorn")]
 fn build_unicorn_for_machine(machine: u16) -> anyhow::Result<Emulator> {
     // Unicorn has no SuperH: SH3 builds (HP Jornada 54x) run on the interpreter.
-    if matches!(machine, pocket_core::pe::machine::SH3 | pocket_core::pe::machine::SH4) {
-        return Ok(Emulator::with_interp_cpu_for_arch(pocket_core::cpu::Arch::Sh));
+    if matches!(
+        machine,
+        pocket_core::pe::machine::SH3 | pocket_core::pe::machine::SH4
+    ) {
+        return Ok(Emulator::with_interp_cpu_for_arch(
+            pocket_core::cpu::Arch::Sh,
+        ));
     }
     if matches!(
         machine,
@@ -433,8 +438,13 @@ fn build_unicorn_for_machine(machine: u16) -> anyhow::Result<Emulator> {
 
 #[cfg(not(feature = "unicorn"))]
 fn build_unicorn_for_machine(machine: u16) -> anyhow::Result<Emulator> {
-    if matches!(machine, pocket_core::pe::machine::SH3 | pocket_core::pe::machine::SH4) {
-        return Ok(Emulator::with_interp_cpu_for_arch(pocket_core::cpu::Arch::Sh));
+    if matches!(
+        machine,
+        pocket_core::pe::machine::SH3 | pocket_core::pe::machine::SH4
+    ) {
+        return Ok(Emulator::with_interp_cpu_for_arch(
+            pocket_core::cpu::Arch::Sh,
+        ));
     }
     // Without Unicorn the portable interpreter runs both ARM games and the
     // MIPS builds of Pocket PC 2000 titles.
@@ -442,7 +452,9 @@ fn build_unicorn_for_machine(machine: u16) -> anyhow::Result<Emulator> {
         machine,
         pocket_core::pe::machine::MIPS_R3000 | pocket_core::pe::machine::MIPS_R4000
     ) {
-        return Ok(Emulator::with_interp_cpu_for_arch(pocket_core::cpu::Arch::Mips));
+        return Ok(Emulator::with_interp_cpu_for_arch(
+            pocket_core::cpu::Arch::Mips,
+        ));
     }
     Ok(Emulator::with_interp_cpu())
 }

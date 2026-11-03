@@ -842,7 +842,10 @@ fn guest_dll_on_disk(dirs: &[PathBuf], module: &str) -> bool {
     dirs.iter().any(|dir| {
         std::fs::read_dir(dir).is_ok_and(|entries| {
             entries.flatten().any(|entry| {
-                entry.file_name().to_string_lossy().eq_ignore_ascii_case(module)
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .eq_ignore_ascii_case(module)
                     && entry.path().is_file()
             })
         })
@@ -2117,14 +2120,11 @@ impl Process {
                 (ImportBinding::Name(n), _) => Some(n.as_str()),
                 _ => None,
             };
-            let native =
-                if !is_arm_machine(image.machine)
-                    || !cpu.supports_native_thunks()
-                {
-                    None
-                } else {
-                    native_name.and_then(|n| native_thunks::native_thunk_for(&imp.dll, n))
-                };
+            let native = if !is_arm_machine(image.machine) || !cpu.supports_native_thunks() {
+                None
+            } else {
+                native_name.and_then(|n| native_thunks::native_thunk_for(&imp.dll, n))
+            };
             // Build the thunk metadata up front so we can query the
             // dispatcher for a constant-return shortcut.
             let thunk = Thunk {
@@ -2236,8 +2236,7 @@ impl Process {
         )?;
         cpu.write_reg(ArmReg::Sp, stack_top - 16)?;
         cpu.write_reg(ArmReg::Lr, PROCESS_EXIT_TRAMPOLINE_VA)?;
-        if is_arm_machine(image.machine) && image_uses_thumb_entry(cpu, &image)?
-        {
+        if is_arm_machine(image.machine) && image_uses_thumb_entry(cpu, &image)? {
             let cpsr = cpu.read_reg(ArmReg::Cpsr)? | (1 << 5);
             cpu.write_reg(ArmReg::Cpsr, cpsr)?;
             log::debug!("starting Thumb-mode entry with CPSR.T set");
@@ -2665,7 +2664,12 @@ pub fn read_guest_framebuffer(cpu: &mut dyn Cpu, state: &mut KernelState) -> boo
         panel.resize(len, 0);
         let ok = match cpu.read_mem_into(SYNTHETIC_FRAMEBUFFER_BASE, &mut panel) {
             Ok(()) => {
-                ipaq_panel_to_portrait(&panel, &mut state.gx_readback_scratch, state.framebuffer.width, state.framebuffer.height);
+                ipaq_panel_to_portrait(
+                    &panel,
+                    &mut state.gx_readback_scratch,
+                    state.framebuffer.width,
+                    state.framebuffer.height,
+                );
                 true
             }
             Err(error) => {
@@ -2709,7 +2713,12 @@ pub fn write_guest_framebuffer(
     if state.gx_ipaq_layout {
         let mut panel = std::mem::take(&mut state.mem_op_scratch_b);
         panel.resize(state.framebuffer.pixels.len(), 0);
-        portrait_to_ipaq_panel(&state.framebuffer.pixels, &mut panel, state.framebuffer.width, state.framebuffer.height);
+        portrait_to_ipaq_panel(
+            &state.framebuffer.pixels,
+            &mut panel,
+            state.framebuffer.width,
+            state.framebuffer.height,
+        );
         let result = cpu.write_mem(SYNTHETIC_FRAMEBUFFER_BASE, &panel);
         state.mem_op_scratch_b = panel;
         return result;

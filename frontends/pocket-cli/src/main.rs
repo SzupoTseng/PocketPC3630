@@ -573,7 +573,10 @@ fn cmd_play(path: &std::path::Path, library: Option<PathBuf>) -> Result<()> {
     }
     // Pocket PC 2000 software also came as MIPS builds (Casio Cassiopeia);
     // Unicorn runs those when the executable says it is one.
-    let backend = match std::fs::read(&exe).ok().and_then(|bytes| pocket_library::import_kb::pe_machine(&bytes)) {
+    let backend = match std::fs::read(&exe)
+        .ok()
+        .and_then(|bytes| pocket_library::import_kb::pe_machine(&bytes))
+    {
         #[cfg(feature = "unicorn")]
         Some("mips") => CpuBackend::Mips,
         // Unicorn has no SuperH; SH3 builds run on the interpreter.
@@ -610,7 +613,10 @@ fn cmd_play(path: &std::path::Path, library: Option<PathBuf>) -> Result<()> {
 
 /// An import failure as the knowledge base explains it: what happened, what to
 /// do, and the technical detail.
-fn explained_import_error(root: &std::path::Path, error: &pocket_library::LibraryError) -> anyhow::Error {
+fn explained_import_error(
+    root: &std::path::Path,
+    error: &pocket_library::LibraryError,
+) -> anyhow::Error {
     let problem = pocket_library::import_kb::KnowledgeBase::load(root).explain_import(error);
     anyhow::anyhow!(problem.message(pocket_library::import_problem::Lang::En))
 }
@@ -782,7 +788,9 @@ fn cmd_run(
         #[cfg(feature = "unicorn")]
         CpuBackend::Unicorn => match Emulator::arch_of_executable(path) {
             // Unicorn has no SuperH: an SH3 build always runs on the interpreter.
-            Some(pocket_core::cpu::Arch::Sh) => Emulator::with_interp_cpu_for_arch(pocket_core::cpu::Arch::Sh),
+            Some(pocket_core::cpu::Arch::Sh) => {
+                Emulator::with_interp_cpu_for_arch(pocket_core::cpu::Arch::Sh)
+            }
             _ => Emulator::with_unicorn_cpu()?,
         },
         #[cfg(feature = "unicorn")]
@@ -885,10 +893,11 @@ fn cmd_run(
             save_dir.display()
         );
     }
-    if let Some((prefix, dir)) = std::env::var(PLAY_SAVE_ENV)
-        .ok()
-        .and_then(|value| value.split_once('|').map(|(p, d)| (p.to_string(), d.to_string())))
-    {
+    if let Some((prefix, dir)) = std::env::var(PLAY_SAVE_ENV).ok().and_then(|value| {
+        value
+            .split_once('|')
+            .map(|(p, d)| (p.to_string(), d.to_string()))
+    }) {
         emu.mount_save_dir(&prefix, PathBuf::from(&dir));
         println!("Save data: {dir} -> {prefix:?}");
     }
@@ -1799,11 +1808,42 @@ mod display_window {
         use minifb::Key as K;
         let digit = key as u32;
         Some(match key {
-            K::Key0 | K::Key1 | K::Key2 | K::Key3 | K::Key4 | K::Key5 | K::Key6 | K::Key7
-            | K::Key8 | K::Key9 => (0x30 + (digit - K::Key0 as u32)) as _,
-            K::A | K::B | K::C | K::D | K::E | K::F | K::G | K::H | K::I | K::J | K::K | K::L
-            | K::M | K::N | K::O | K::P | K::Q | K::R | K::S | K::T | K::U | K::V | K::W | K::X
-            | K::Y | K::Z => (0x41 + (digit - K::A as u32)) as _,
+            K::Key0
+            | K::Key1
+            | K::Key2
+            | K::Key3
+            | K::Key4
+            | K::Key5
+            | K::Key6
+            | K::Key7
+            | K::Key8
+            | K::Key9 => (0x30 + (digit - K::Key0 as u32)) as _,
+            K::A
+            | K::B
+            | K::C
+            | K::D
+            | K::E
+            | K::F
+            | K::G
+            | K::H
+            | K::I
+            | K::J
+            | K::K
+            | K::L
+            | K::M
+            | K::N
+            | K::O
+            | K::P
+            | K::Q
+            | K::R
+            | K::S
+            | K::T
+            | K::U
+            | K::V
+            | K::W
+            | K::X
+            | K::Y
+            | K::Z => (0x41 + (digit - K::A as u32)) as _,
             K::Enter => 0x0D,
             K::Backspace => 0x08,
             K::Space => 0x20,

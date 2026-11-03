@@ -7,7 +7,10 @@
 //! `tools/sh_vectors.py` records programs run by QEMU's SH-4, whose integer
 //! instructions are the SH-3's, and `tests/sh_vectors.rs` replays them here.
 
-use super::{bad, InterpCpu, DEFAULT_SLICE, IMPLICIT_CALL_HIGH, IMPLICIT_CALL_LOW, PAGE_MASK, PAGE_SHIFT, RETIRED};
+use super::{
+    bad, InterpCpu, DEFAULT_SLICE, IMPLICIT_CALL_HIGH, IMPLICIT_CALL_LOW, PAGE_MASK, PAGE_SHIFT,
+    RETIRED,
+};
 use crate::{regs::ArmReg, CpuError, StopReason};
 use std::sync::atomic::Ordering;
 
@@ -61,7 +64,9 @@ enum Flow {
 }
 
 fn trap(kind: &str, pc: u32) -> CpuError {
-    CpuError::Backend(format!("emu_start: EXCEPTION ({kind}) at guest address 0x{pc:08x}"))
+    CpuError::Backend(format!(
+        "emu_start: EXCEPTION ({kind}) at guest address 0x{pc:08x}"
+    ))
 }
 
 fn sext8(x: u32) -> u32 {
@@ -259,7 +264,8 @@ impl InterpCpu {
                     _ => return Err(trap("privileged instruction", pc)),
                 },
                 0xC => {
-                    self.sh.r[n] = sext8(u32::from(self.read8(r(self, m).wrapping_add(r(self, 0)))?));
+                    self.sh.r[n] =
+                        sext8(u32::from(self.read8(r(self, m).wrapping_add(r(self, 0)))?));
                     next
                 }
                 0xD => {
@@ -308,7 +314,9 @@ impl InterpCpu {
                     }
                     0x7 => {
                         let (qn, mm) = (rn >> 31 != 0, rm >> 31 != 0);
-                        self.sh.sr = (self.sh.sr & !(Q | M)) | if qn { Q } else { 0 } | if mm { M } else { 0 };
+                        self.sh.sr = (self.sh.sr & !(Q | M))
+                            | if qn { Q } else { 0 }
+                            | if mm { M } else { 0 };
                         self.set_t(qn != mm);
                     }
                     0x8 => self.set_t(rn & rm == 0),
@@ -322,7 +330,9 @@ impl InterpCpu {
                     0xD => self.sh.r[n] = (rn >> 16) | (rm << 16),
                     0xE => self.sh.macl = (rn & 0xFFFF).wrapping_mul(rm & 0xFFFF),
                     0xF => {
-                        self.sh.macl = ((rn as u16 as i16 as i32).wrapping_mul(rm as u16 as i16 as i32)) as u32;
+                        self.sh.macl = ((rn as u16 as i16 as i32)
+                            .wrapping_mul(rm as u16 as i16 as i32))
+                            as u32;
                     }
                     _ => return Err(trap("reserved instruction", pc)),
                 }
@@ -542,11 +552,18 @@ impl InterpCpu {
                     0x0 => self.write8(rm.wrapping_add(d4), r(self, 0) as u8)?,
                     0x1 => self.sh_write16(rm.wrapping_add(d4 * 2), r(self, 0))?,
                     0x4 => self.sh.r[0] = sext8(u32::from(self.read8(rm.wrapping_add(d4))?)),
-                    0x5 => self.sh.r[0] = self.sh_read16(rm.wrapping_add(d4 * 2))? as u16 as i16 as i32 as u32,
+                    0x5 => {
+                        self.sh.r[0] =
+                            self.sh_read16(rm.wrapping_add(d4 * 2))? as u16 as i16 as i32 as u32
+                    }
                     0x8 => self.set_t(r(self, 0) == sext8(d8)),
                     0x9 | 0xB | 0xD | 0xF => {
                         let target = pc.wrapping_add(4).wrapping_add(sext8(d8) << 1);
-                        let taken = if n == 0x9 || n == 0xD { self.t() } else { !self.t() };
+                        let taken = if n == 0x9 || n == 0xD {
+                            self.t()
+                        } else {
+                            !self.t()
+                        };
                         return Ok(match (taken, n >= 0xD) {
                             (true, true) => Flow::Delayed(target),
                             (true, false) => Flow::Jump(target),
@@ -575,7 +592,10 @@ impl InterpCpu {
                     0x2 => self.sh_write32(gbr.wrapping_add(d8 * 4), r(self, 0))?,
                     0x3 => return Err(trap("trapa", pc)),
                     0x4 => self.sh.r[0] = sext8(u32::from(self.read8(gbr.wrapping_add(d8))?)),
-                    0x5 => self.sh.r[0] = self.sh_read16(gbr.wrapping_add(d8 * 2))? as u16 as i16 as i32 as u32,
+                    0x5 => {
+                        self.sh.r[0] =
+                            self.sh_read16(gbr.wrapping_add(d8 * 2))? as u16 as i16 as i32 as u32
+                    }
                     0x6 => self.sh.r[0] = self.sh_read32(gbr.wrapping_add(d8 * 4))?,
                     0x7 => self.sh.r[0] = (pc & !3).wrapping_add(4).wrapping_add(d8 * 4),
                     0x8 => self.set_t(r(self, 0) & d8 == 0),
@@ -608,9 +628,17 @@ impl InterpCpu {
         })
     }
 
-    pub(super) fn run_sh(&mut self, start_va: u32, max_instructions: u64) -> Result<StopReason, CpuError> {
+    pub(super) fn run_sh(
+        &mut self,
+        start_va: u32,
+        max_instructions: u64,
+    ) -> Result<StopReason, CpuError> {
         self.stop = false;
-        let budget = if max_instructions == 0 { DEFAULT_SLICE } else { max_instructions };
+        let budget = if max_instructions == 0 {
+            DEFAULT_SLICE
+        } else {
+            max_instructions
+        };
         let mut pc = start_va;
         let mut executed = 0u64;
         let result = 'run: loop {

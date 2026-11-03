@@ -132,5 +132,3 @@ fn read_status_text(ctx: &mut CallCtx<'_>, p: u32) -> Vec<u16> {
 fn ok(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     Ok(DispatchOutcome::ReturnedR0(1))
 }
-
-

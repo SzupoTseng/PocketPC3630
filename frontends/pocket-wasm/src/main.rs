@@ -249,7 +249,10 @@ pub extern "C" fn pocket_save_reset(index: i32) -> i32 {
     let Some(dir) = game_dir(index) else {
         return -1;
     };
-    report_count(pocket_library::save_archive::reset(&dir), "cannot reset the save")
+    report_count(
+        pocket_library::save_archive::reset(&dir),
+        "cannot reset the save",
+    )
 }
 
 fn report_count(result: std::io::Result<usize>, what: &str) -> i32 {
@@ -279,7 +282,8 @@ pub extern "C" fn pocket_game_name(index: i32) -> *const u8 {
 
 fn prepare(entry: &GameEntry, root: &Path) -> anyhow::Result<Emulator> {
     // ARM, or MIPS for the Pocket PC 2000 builds made for the Casio Cassiopeia.
-    let arch = Emulator::arch_of_executable(entry.launch_path(root)).unwrap_or(pocket_core::cpu::Arch::Arm);
+    let arch = Emulator::arch_of_executable(entry.launch_path(root))
+        .unwrap_or(pocket_core::cpu::Arch::Arm);
     let mut emu = Emulator::with_interp_cpu_for_arch(arch);
     emu.max_slices = 0;
     emu.instruction_budget_per_slice = entry.settings.instructions_per_slice;
@@ -487,7 +491,11 @@ pub extern "C" fn pocket_tick() -> i32 {
 /// Address of the RGBA frame.
 #[no_mangle]
 pub extern "C" fn pocket_frame_ptr() -> *const u8 {
-    SESSION.with(|slot| slot.borrow().as_ref().map_or(std::ptr::null(), |s| s.frame.as_ptr()))
+    SESSION.with(|slot| {
+        slot.borrow()
+            .as_ref()
+            .map_or(std::ptr::null(), |s| s.frame.as_ptr())
+    })
 }
 
 /// Changes whenever the frame does.
@@ -546,12 +554,12 @@ pub extern "C" fn pocket_audio(output: *mut f32, frames: u32, rate: u32) {
     }
     // SAFETY: the page allocated `frames * 2` floats at `output`.
     let buffer = unsafe { std::slice::from_raw_parts_mut(output, frames as usize * 2) };
-    SESSION.with(|slot| {
-        match slot.borrow().as_ref().and_then(|s| s.audio.as_ref()) {
+    SESSION.with(
+        |slot| match slot.borrow().as_ref().and_then(|s| s.audio.as_ref()) {
             Some(tap) => tap.render_mix(buffer, rate, 2),
             None => buffer.fill(0.0),
-        }
-    });
+        },
+    );
 }
 
 /// Guest instructions executed so far, in millions.

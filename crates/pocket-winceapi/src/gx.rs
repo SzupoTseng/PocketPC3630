@@ -133,8 +133,8 @@ fn ensure_fb_mapped(ctx: &mut CallCtx<'_>) -> Result<(), KernelError> {
     }
     let pitch = initial_guest_pitch(ctx);
     ctx.kernel.guest_fb_pitch = pitch;
-    ctx.kernel.gx_ipaq_layout = wants_ipaq_layout(ctx)
-        && pocket_kernel::ipaq_layout_fits(&ctx.kernel.framebuffer);
+    ctx.kernel.gx_ipaq_layout =
+        wants_ipaq_layout(ctx) && pocket_kernel::ipaq_layout_fits(&ctx.kernel.framebuffer);
     let bytes = page_align_up(
         pitch
             .saturating_mul(ctx.kernel.framebuffer.height)
@@ -503,11 +503,16 @@ pub(crate) mod tests {
         gx_open_display(&mut c).unwrap();
         assert!(c.kernel.gx_ipaq_layout);
         c.cpu.write_reg(ArmReg::R0, 0x1000).unwrap();
-        c.cpu.map_region(0x1000, 0x1000, Prot::READ | Prot::WRITE).unwrap();
+        c.cpu
+            .map_region(0x1000, 0x1000, Prot::READ | Prot::WRITE)
+            .unwrap();
         gx_get_display_properties(&mut c).unwrap();
         let props = c.cpu.read_mem(0x1000, 24).unwrap();
         let field = |i: usize| i32::from_le_bytes(props[i * 4..i * 4 + 4].try_into().unwrap());
-        assert_eq!((field(0), field(1), field(2), field(3)), (240, 320, 640, -2));
+        assert_eq!(
+            (field(0), field(1), field(2), field(3)),
+            (240, 320, 640, -2)
+        );
         assert_eq!(field(5), 0xA8);
         // Portrait pixel (x=3, y=5) is written through the GAPI pitches.
         let origin = match gx_begin_draw(&mut c).unwrap() {

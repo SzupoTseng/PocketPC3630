@@ -7,7 +7,10 @@
 //! MIPS16, the compressed encoding some VR41xx builds use, is reported as
 //! unsupported. `tests/interp_diff.rs` checks this against Unicorn's MIPS.
 
-use super::{bad, InterpCpu, DEFAULT_SLICE, IMPLICIT_CALL_HIGH, IMPLICIT_CALL_LOW, PAGE_MASK, PAGE_SHIFT, RETIRED};
+use super::{
+    bad, InterpCpu, DEFAULT_SLICE, IMPLICIT_CALL_HIGH, IMPLICIT_CALL_LOW, PAGE_MASK, PAGE_SHIFT,
+    RETIRED,
+};
 use crate::{regs::ArmReg, CpuError, StopReason};
 use std::sync::atomic::Ordering;
 
@@ -55,7 +58,9 @@ enum Flow {
 }
 
 fn trap(kind: &str, pc: u32) -> CpuError {
-    CpuError::Backend(format!("emu_start: EXCEPTION ({kind}) at guest address 0x{pc:08x}"))
+    CpuError::Backend(format!(
+        "emu_start: EXCEPTION ({kind}) at guest address 0x{pc:08x}"
+    ))
 }
 
 impl InterpCpu {
@@ -78,7 +83,12 @@ impl InterpCpu {
         match &self.pages[(pc >> PAGE_SHIFT) as usize] {
             Some(page) => {
                 let at = (pc & PAGE_MASK) as usize;
-                Ok(u32::from_le_bytes([page[at], page[at + 1], page[at + 2], page[at + 3]]))
+                Ok(u32::from_le_bytes([
+                    page[at],
+                    page[at + 1],
+                    page[at + 2],
+                    page[at + 3],
+                ]))
             }
             None => Err(bad("FETCH unmapped", pc)),
         }
@@ -345,7 +355,11 @@ impl InterpCpu {
                     return Err(trap("READ unaligned", address));
                 }
                 let half = self.read16(address)?;
-                let value = if op == 0x21 { half as i16 as i32 as u32 } else { u32::from(half) };
+                let value = if op == 0x21 {
+                    half as i16 as i32 as u32
+                } else {
+                    u32::from(half)
+                };
                 self.set(rt, value);
                 Flow::Next
             }
@@ -363,7 +377,11 @@ impl InterpCpu {
                 let byte = address & 3;
                 let word = self.read32(address & !3)?;
                 let shift = 8 * (3 - byte);
-                let keep = if byte == 3 { 0 } else { u32::MAX >> (8 * (byte + 1)) };
+                let keep = if byte == 3 {
+                    0
+                } else {
+                    u32::MAX >> (8 * (byte + 1))
+                };
                 self.set(rt, (t & keep) | (word << shift));
                 Flow::Next
             }
@@ -372,7 +390,11 @@ impl InterpCpu {
                 // word's end fill the bottom of the register.
                 let byte = address & 3;
                 let word = self.read32(address & !3)?;
-                let keep = if byte == 0 { 0 } else { !(u32::MAX >> (8 * byte)) };
+                let keep = if byte == 0 {
+                    0
+                } else {
+                    !(u32::MAX >> (8 * byte))
+                };
                 self.set(rt, (t & keep) | (word >> (8 * byte)));
                 Flow::Next
             }
@@ -416,7 +438,11 @@ impl InterpCpu {
                 let byte = address & 3;
                 let at = address & !3;
                 let word = self.read32(at)?;
-                let keep = if byte == 0 { 0 } else { u32::MAX >> (8 * (4 - byte)) };
+                let keep = if byte == 0 {
+                    0
+                } else {
+                    u32::MAX >> (8 * (4 - byte))
+                };
                 self.write32(at, (word & keep) | (t << (8 * byte)))?;
                 Flow::Next
             }
@@ -425,9 +451,17 @@ impl InterpCpu {
         })
     }
 
-    pub(super) fn run_mips(&mut self, start_va: u32, max_instructions: u64) -> Result<StopReason, CpuError> {
+    pub(super) fn run_mips(
+        &mut self,
+        start_va: u32,
+        max_instructions: u64,
+    ) -> Result<StopReason, CpuError> {
         self.stop = false;
-        let budget = if max_instructions == 0 { DEFAULT_SLICE } else { max_instructions };
+        let budget = if max_instructions == 0 {
+            DEFAULT_SLICE
+        } else {
+            max_instructions
+        };
         let mut pc = start_va;
         let mut executed = 0u64;
         let result = 'run: loop {

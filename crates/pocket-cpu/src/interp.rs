@@ -93,7 +93,10 @@ impl InterpCpu {
 
     /// An interpreter for `arch`: ARM, or MIPS for Pocket PC 2000 builds.
     pub fn new_for(arch: Arch) -> Self {
-        Self { arch, ..Self::new() }
+        Self {
+            arch,
+            ..Self::new()
+        }
     }
 
     /// SuperH general register `n`, for tests and debugging: the kernel's
@@ -140,7 +143,9 @@ impl InterpCpu {
         if self.hook_pages[page / 64] >> (page % 64) & 1 == 0 {
             return false;
         }
-        self.hook_ranges.iter().any(|(lo, hi)| (*lo..=*hi).contains(&pc))
+        self.hook_ranges
+            .iter()
+            .any(|(lo, hi)| (*lo..=*hi).contains(&pc))
     }
 
     #[inline(always)]
@@ -504,11 +509,7 @@ impl InterpCpu {
         let up = i >> 23 & 1 != 0;
         let pre = i >> 24 & 1 != 0;
         let total = count * 4;
-        let lowest = if up {
-            base
-        } else {
-            base.wrapping_sub(total)
-        };
+        let lowest = if up { base } else { base.wrapping_sub(total) };
         let mut address = if up == pre {
             lowest.wrapping_add(4)
         } else {
@@ -677,8 +678,8 @@ impl InterpCpu {
             let mut src_row = vec![0u8; bytes];
             let mut dst_row = vec![0u8; bytes];
             for _ in 0..height.max(0) {
-                let overlap = src.wrapping_sub(dst) < bytes as u32
-                    || dst.wrapping_sub(src) < bytes as u32;
+                let overlap =
+                    src.wrapping_sub(dst) < bytes as u32 || dst.wrapping_sub(src) < bytes as u32;
                 if overlap {
                     // The guest loop writes as it reads; keep that order.
                     for offset in (0..bytes as u32).step_by(2) {
@@ -935,11 +936,14 @@ impl Cpu for InterpCpu {
                 };
                 code = bytes.as_ptr();
                 code_page = page;
-                page_has_hooks =
-                    self.hook_pages[page as usize / 64] >> (page % 64) & 1 != 0;
+                page_has_hooks = self.hook_pages[page as usize / 64] >> (page % 64) & 1 != 0;
             }
             if page_has_hooks {
-                let intrinsic = self.intrinsics.iter().find(|(va, _)| *va == pc).map(|i| i.1);
+                let intrinsic = self
+                    .intrinsics
+                    .iter()
+                    .find(|(va, _)| *va == pc)
+                    .map(|i| i.1);
                 if let Some(intrinsic) = intrinsic {
                     match self.run_intrinsic(pc, intrinsic) {
                         Ok(Some(next)) => {
@@ -989,8 +993,8 @@ fn blend565(src: u16, dst: u16, alpha: u32) -> u16 {
     const GREEN: u32 = 0x07E0;
     let (src, dst) = (u32::from(src), u32::from(dst));
     let red_blue = dst & RED_BLUE;
-    let red_blue = red_blue
-        .wrapping_add(((src & RED_BLUE).wrapping_sub(red_blue)).wrapping_mul(alpha) >> 6);
+    let red_blue =
+        red_blue.wrapping_add(((src & RED_BLUE).wrapping_sub(red_blue)).wrapping_mul(alpha) >> 6);
     let green = dst & GREEN;
     let green = green.wrapping_add(((src & GREEN).wrapping_sub(green)).wrapping_mul(alpha) >> 6);
     (((green ^ red_blue) & GREEN) ^ (red_blue & 0xFFFF)) as u16
@@ -1038,7 +1042,10 @@ mod guest_profile {
                 state.start.elapsed().as_secs_f64()
             );
             for (count, address) in rows.iter().take(30) {
-                text += &format!("{address:08x} {:.2}%\n", *count as f64 * 100.0 / state.tick as f64);
+                text += &format!(
+                    "{address:08x} {:.2}%\n",
+                    *count as f64 * 100.0 / state.tick as f64
+                );
             }
             let _ = std::fs::write("guest_profile.txt", text);
         }

@@ -134,7 +134,10 @@ mod tests {
         assert_eq!(sh(2027).as_deref(), Some("sh__itod"));
         assert_eq!(mips(2022).as_deref(), Some("__fpadd"));
         assert_eq!(mips(2005).as_deref(), Some("__ll_div"));
-        assert_eq!(super::lookup_for_machine(0x01c0, "COREDLL.dll", 2006).as_deref(), Some("__rt_sdiv10"));
+        assert_eq!(
+            super::lookup_for_machine(0x01c0, "COREDLL.dll", 2006).as_deref(),
+            Some("__rt_sdiv10")
+        );
         // Ordinary APIs share the ARM numbering on every processor.
         assert_eq!(sh(2).as_deref(), Some("InitializeCriticalSection"));
     }
@@ -177,7 +180,12 @@ mod tests {
 /// guest loads itself (MFC) need the names.
 static COMMCTRL_ORDINALS: Lazy<HashMap<u16, String>> = Lazy::new(|| {
     serde_json::from_str::<OrdinalFile>(COMMCTRL_JSON)
-        .map(|file| file.map.into_iter().filter_map(|(k, v)| k.parse().ok().map(|k| (k, v))).collect())
+        .map(|file| {
+            file.map
+                .into_iter()
+                .filter_map(|(k, v)| k.parse().ok().map(|k| (k, v)))
+                .collect()
+        })
         .unwrap_or_default()
 });
 

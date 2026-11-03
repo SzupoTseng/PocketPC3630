@@ -96,7 +96,9 @@ fn describe_steps(source: &str, steps: &[import_kb::Step], taken: &str) -> Strin
 }
 
 fn kb_steps_for(kb: &import_kb::KnowledgeBase, path: &Path) -> Vec<import_kb::Step> {
-    let print = fs::read(path).map(|b| import_kb::fingerprint(&b)).unwrap_or_default();
+    let print = fs::read(path)
+        .map(|b| import_kb::fingerprint(&b))
+        .unwrap_or_default();
     kb.known
         .iter()
         .find(|known| known.fingerprint == print)
@@ -1347,7 +1349,12 @@ impl Library {
             let id = self.import_cab(&cab)?.id.clone();
             let exe = self
                 .get(&id)
-                .map(|entry| self.root.join("games").join(&entry.id).join(&entry.executable))
+                .map(|entry| {
+                    self.root
+                        .join("games")
+                        .join(&entry.id)
+                        .join(&entry.executable)
+                })
                 .ok_or(LibraryError::NoExecutable)?;
             let target = exe.parent().ok_or(LibraryError::NoExecutable)?;
             for (leaf, source) in &extras {
@@ -1497,8 +1504,16 @@ impl Library {
             if let Ok(entry) = self.import_direct(&target) {
                 let id = entry.id.clone();
                 self.copy_libraries(&id, &libraries);
-                let source = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
-                let taken = target.file_name().unwrap_or_default().to_string_lossy().into_owned();
+                let source = path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned();
+                let taken = target
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned();
                 let steps = kb_steps_for(&kb, path);
                 self.last_import_note = Some(describe_steps(&source, &steps, &taken));
                 let _ = fs::remove_dir_all(&work);
@@ -1515,8 +1530,17 @@ impl Library {
         }
         if let Some((id, candidate)) = &imported {
             self.copy_libraries(id, &found.libraries);
-            let source = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
-            let taken = candidate.path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+            let source = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
+            let taken = candidate
+                .path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
             log::info!("imported {source} through {:?} ({taken})", candidate.chain);
             self.last_import_note = Some(describe_steps(&source, &candidate.chain, &taken));
             if let Ok(bytes) = fs::read(path) {
@@ -1529,7 +1553,10 @@ impl Library {
                 };
                 let _ = import_kb::learn_known(&self.root, known);
                 if let (false, Some(first)) = (found.guided, candidate.chain.first()) {
-                    let _ = import_kb::learn(&self.root, import_kb::rule_for(&source, &bytes, first.action));
+                    let _ = import_kb::learn(
+                        &self.root,
+                        import_kb::rule_for(&source, &bytes, first.action),
+                    );
                 }
             }
         }
@@ -2442,10 +2469,20 @@ fn guess_screen(
 mod tests {
     #[test]
     fn a_cabinet_for_an_arm_device_is_preferred() {
-        for arm in ["ptaipei.arm.CAB", "x.PPC_2577.cab", "psol.sa.CAB", "Fpower.Arm 1100 (4K).CAB"] {
+        for arm in [
+            "ptaipei.arm.CAB",
+            "x.PPC_2577.cab",
+            "psol.sa.CAB",
+            "Fpower.Arm 1100 (4K).CAB",
+        ] {
             assert_eq!(super::cab_name_processor_rank(arm), 0, "{arm}");
         }
-        for other in ["a.mips.CAB", "x.PPC_4000.cab", "Fpower.SH 3 (1K).CAB", "a.sh3.cab"] {
+        for other in [
+            "a.mips.CAB",
+            "x.PPC_4000.cab",
+            "Fpower.SH 3 (1K).CAB",
+            "a.sh3.cab",
+        ] {
             assert_eq!(super::cab_name_processor_rank(other), 2, "{other}");
         }
         assert_eq!(super::cab_name_processor_rank("game.cab"), 1);
@@ -2458,9 +2495,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("game.zip");
         let mut zip = zip::ZipWriter::new(fs::File::create(&path).unwrap());
-        zip.start_file("a.cab", zip::write::FileOptions::default()).unwrap();
+        zip.start_file("a.cab", zip::write::FileOptions::default())
+            .unwrap();
         zip.write_all(b"not a cabinet").unwrap();
-        zip.start_file("data/b.bin", zip::write::FileOptions::default()).unwrap();
+        zip.start_file("data/b.bin", zip::write::FileOptions::default())
+            .unwrap();
         zip.write_all(b"x").unwrap();
         zip.finish().unwrap();
         let mut library = Library::open(dir.path().join("library")).unwrap();
