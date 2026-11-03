@@ -11,17 +11,38 @@ android {
         applicationId = "com.pockethle.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 5
-        versionName = "0.5.0"
+        versionCode = 6
+        versionName = "0.5.1"
 
         ndk {
             abiFilters += listOf("arm64-v8a", "x86_64")
         }
     }
 
+    // Every published APK is signed with one fixed key, so a new version
+    // installs over the old one. The key never enters the repository: the
+    // release workflow and local release builds pass it in through these
+    // environment variables, and a plain developer build keeps Gradle's
+    // own debug key.
+    val keystore = System.getenv("POCKETPC_KEYSTORE")
+    signingConfigs {
+        if (keystore != null) {
+            create("published") {
+                storeFile = file(keystore)
+                storePassword = System.getenv("POCKETPC_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("POCKETPC_KEY_ALIAS") ?: "pocketpc3630"
+                keyPassword = System.getenv("POCKETPC_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (keystore != null) signingConfig = signingConfigs.getByName("published")
+        }
+        debug {
+            if (keystore != null) signingConfig = signingConfigs.getByName("published")
         }
     }
 

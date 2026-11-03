@@ -56,7 +56,7 @@ That is why it needs no Microsoft ROM and starts in a second.
 
 | | How | |
 |---|---|---|
-| 🌐 **Browser** | Open **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**, choose *Import game*, pick a `.zip` or `.cab`. | Nothing to install. Browse the **software library** of 910 Pocket PC programs (73 play with one click), in 11 languages. Your games and saves stay in your browser. |
+| 🌐 **Browser** | Open **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**, choose *Import game*, pick a `.zip` or `.cab`. | Nothing to install. Browse the **software library** of 759 Pocket PC programs (73 play with one click), in 11 languages. Your games and saves stay in your browser. |
 | 🪟 **Windows** | **[Download the zip](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-windows-x64.zip)**, unzip, run `PocketPC3630.exe`, then *Import game*. | Desktop library with icons, saves, keyboard and mouse. |
 | 🤖 **Android** | **[Download the APK](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-android.apk)** and install it. | Touch controls with a D-pad, action buttons and Turbo. |
 | ⌨️ **Command line** | `pockethle play MyGame.zip` | For testing, tracing and screenshots. |

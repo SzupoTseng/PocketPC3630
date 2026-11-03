@@ -83,7 +83,17 @@ jobs:
           gradle-version: '8.7'
       - name: build APK
         working-directory: frontends/pocket-android
-        run: gradle assembleDebug --no-daemon
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          POCKETPC_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            export POCKETPC_KEYSTORE="$RUNNER_TEMP/release.jks"
+          else
+            echo "::warning::No signing key in secrets; the APK is signed with a throwaway debug key and will not update earlier installs."
+          fi
+          gradle assembleDebug --no-daemon
       - name: rename
         run: cp frontends/pocket-android/app/build/outputs/apk/debug/*.apk PocketPC3630-android.apk
       - uses: actions/upload-artifact@v4
