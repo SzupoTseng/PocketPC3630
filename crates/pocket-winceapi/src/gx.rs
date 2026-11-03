@@ -194,6 +194,7 @@ fn gx_begin_draw(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> 
 
 fn gx_end_draw(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     ctx.kernel.gx_draw_open = false;
+    ctx.kernel.complete_frames = ctx.kernel.complete_frames.wrapping_add(1);
     if !ctx.kernel.fb_mapped {
         return Ok(DispatchOutcome::ReturnedR0(1));
     }
@@ -372,11 +373,14 @@ pub(crate) mod tests {
             guest_fb_pitch: 0,
             gx_ipaq_layout: false,
             direct_fb_frames: 0,
+            complete_frames: 0,
             gx_readback_scratch: Vec::new(),
             mem_op_scratch: Vec::new(),
             mem_op_scratch_b: Vec::new(),
             bit_blt_src_scratch: Vec::new(),
             image_lists: std::collections::HashMap::new(),
+            guest_windows: std::collections::HashMap::new(),
+            next_window_hwnd: pocket_kernel::GUEST_WINDOW_HWND_BASE,
             command_bar_menu: 0,
             other_timers: Vec::new(),
             dib_sync_scratch: Vec::new(),

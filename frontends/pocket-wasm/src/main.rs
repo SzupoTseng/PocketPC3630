@@ -28,6 +28,10 @@ struct Session {
     height: u32,
     frame_serial: u32,
     seen_counter: u64,
+    /// `complete_frames` when a frame was last shown.
+    seen_complete: u64,
+    /// Ticks since a frame was last shown.
+    ticks_since_shown: u32,
     input: VecDeque<InputEvent>,
     last_error: String,
 }
@@ -168,6 +172,26 @@ pub extern "C" fn pocket_import(path: *const c_char) -> i32 {
 }
 
 /// How many games the library holds.
+/// Delete game number `index`: its files and its entry in the library index.
+/// Removing only the files left the name behind with no icon after a reload.
+/// Returns 0 on success, -1 on failure.
+#[no_mangle]
+pub extern "C" fn pocket_delete_game(index: i32) -> i32 {
+    let Ok(mut library) = Library::open(LIBRARY_ROOT) else {
+        return -1;
+    };
+    let Some(id) = library.games().get(index as usize).map(|g| g.id.clone()) else {
+        return -1;
+    };
+    match library.remove(&id) {
+        Ok(()) => 0,
+        Err(error) => {
+            set_error(error.to_string());
+            -1
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn pocket_game_count() -> i32 {
     Library::open(LIBRARY_ROOT).map_or(0, |library| library.games().len() as i32)
@@ -374,6 +398,8 @@ pub extern "C" fn pocket_boot(index: i32) -> i32 {
                     height,
                     frame_serial: 0,
                     seen_counter: 0,
+                    seen_complete: 0,
+                    ticks_since_shown: 0,
                     input: VecDeque::new(),
                     last_error: String::new(),
                 });
@@ -401,6 +427,8 @@ pub extern "C" fn pocket_tick() -> i32 {
             frame,
             frame_serial,
             seen_counter,
+            seen_complete,
+            ticks_since_shown,
             input,
             last_error,
             ..
@@ -426,7 +454,18 @@ pub extern "C" fn pocket_tick() -> i32 {
             return -1;
         }
         let state = &process.state;
-        if state.framebuffer.frame_counter != *seen_counter {
+        // Show a frame only at a point where the guest's screen is whole:
+        // when it waits (Sleep, an idle message loop, a dialog), when it
+        // finishes a frame, or at the latest every few ticks. A tick that
+        // simply ran out of time can end halfway through a redraw, and
+        // showing that made EverQuest's character slots flash black.
+        *ticks_since_shown += 1;
+        let whole = state.host_yield_ms.is_some()
+            || state.complete_frames != *seen_complete
+            || *ticks_since_shown >= 6;
+        if whole && state.framebuffer.frame_counter != *seen_counter {
+            *ticks_since_shown = 0;
+            *seen_complete = state.complete_frames;
             *seen_counter = state.framebuffer.frame_counter;
             *frame_serial = frame_serial.wrapping_add(1);
             for (rgba, pixel) in frame

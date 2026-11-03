@@ -81,6 +81,7 @@ fn is_live_hwnd(hwnd: u32) -> bool {
         || hwnd == FAKE_DESKTOP_HWND
         || hwnd == FAKE_STATUSBAR_HWND
         || Controls::is_child_hwnd(hwnd)
+        || is_guest_window(hwnd)
 }
 const PAINTSTRUCT_BYTES: u32 = 32;
 
@@ -3391,6 +3392,16 @@ fn resolve_module_import(
             "DecompressImageIndirect".to_string()
         }
         pocket_pe::ImportBinding::Name(name) => name.clone(),
+        // MFC imports commctrl and aygshell by ordinal. Answering those
+        // with a zero stub made SHCreateMenuBar (#34) "fail", so every MFC
+        // frame refused its own WM_CREATE; the import libraries' tables
+        // turn the ordinal back into the function it is.
+        pocket_pe::ImportBinding::Ordinal(ordinal)
+            if matches!(module_file_name(dll).as_str(), "commctrl.dll" | "aygshell.dll") =>
+        {
+            crate::ordinals::lookup_for_guest_module(&module_file_name(dll), *ordinal)
+                .unwrap_or_else(|| format!("#{ordinal}"))
+        }
         pocket_pe::ImportBinding::Ordinal(ordinal) => format!("#{ordinal}"),
     };
     if let Some(handle) = system_module_handle(dll) {
@@ -3898,6 +3909,12 @@ fn memcpy(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     Ok(DispatchOutcome::ReturnedR0(dst))
 }
 
+thread_local! {
+    /// Destination of the previous memcpy into the framebuffer, to tell a
+    /// top-down line-by-line present from a bottom-up one.
+    static LAST_FB_COPY: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
 fn sync_direct_framebuffer_write(
     ctx: &mut CallCtx<'_>,
     dst: u32,
@@ -3909,6 +3926,22 @@ fn sync_direct_framebuffer_write(
     if dst >= end || write_end <= base {
         return Ok(());
     }
+    // GapiDraw presents a frame one scanline per memcpy. Taking a snapshot
+    // after every line showed whatever mix of new and old lines the screen
+    // held when the browser's tick ended: EverQuest's moving pen and
+    // character silhouettes flickered between two positions. A frame is
+    // shown once its copy has reached the far end of the screen, in
+    // whichever direction the lines are going; a copy of half the screen
+    // or more is a frame by itself.
+    let row = ctx.kernel.framebuffer.stride_bytes().max(1);
+    let previous = LAST_FB_COPY.with(|c| c.replace(dst));
+    let whole = len as u32 >= ctx.kernel.framebuffer.byte_size() / 2;
+    let descending = dst < previous;
+    let finished = if descending { dst < base.saturating_add(row) } else { write_end.saturating_add(row) > end };
+    if !whole && !finished {
+        return Ok(());
+    }
+    ctx.kernel.complete_frames = ctx.kernel.complete_frames.wrapping_add(1);
     let fb_len = ctx.kernel.framebuffer.pixels.len();
     if ctx.kernel.gx_readback_scratch.len() != fb_len {
         ctx.kernel.gx_readback_scratch.resize(fb_len, 0);
@@ -7348,6 +7381,10 @@ fn is_uno_executable(module_path: &str) -> bool {
 }
 
 fn create_window_ex_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    // A window with a handle of its own coming back from its WM_CREATE.
+    if let Some(outcome) = finish_guest_window_create(ctx)? {
+        return Ok(outcome);
+    }
     // Must be the first thing we do: the thunk re-fires this whole handler
     // when the hijacked `WndProc` returns, and by then R0..R3 hold the
     // callback's result rather than the original arguments.
@@ -7420,6 +7457,9 @@ fn create_window_ex_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelEr
             "CreateWindowExW(class={class_name:?}, id={id}, text={text:?}) -> child hwnd=0x{hwnd:08x}"
         );
         return Ok(DispatchOutcome::ReturnedR0(hwnd));
+    }
+    if separate_windows(ctx) && ctx.kernel.synthetic_create_sent {
+        return create_guest_window(ctx, &class_name, class_arg);
     }
     let wnd_proc = ctx
         .kernel
@@ -7533,6 +7573,252 @@ fn create_window_ex_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelEr
     Ok(DispatchOutcome::ReturnedR0(FAKE_HWND))
 }
 
+/// The window procedure of a window the system owns (the menu bar, a
+/// command bar) as a subclasser sees it: `DefWindowProcW`. MFC subclasses
+/// the menu bar and passes every message it does not handle on to the
+/// previous procedure; reporting the main window's procedure there sent
+/// those messages straight back to MFC, which recursed until the stack ran
+/// out.
+fn system_window_proc(ctx: &CallCtx<'_>, hwnd: u32) -> Option<u32> {
+    if hwnd == FAKE_HWND || !(separate_windows(ctx) || is_shared_system_window(hwnd)) {
+        return None;
+    }
+    if is_guest_window(hwnd) && ctx.kernel.window_procs.contains_key(&hwnd) {
+        return None;
+    }
+    ctx.kernel
+        .dynamic_exports
+        .get(&FAKE_MODULE_HANDLE)
+        .and_then(|exports| exports.get("DefWindowProcW"))
+        .copied()
+}
+
+/// A window the system owns, such as a menu bar: a handle of its own with
+/// no application procedure, so messages to it get the default answer.
+/// Each menu bar is a separate window on a device; handing every
+/// `SHCreateMenuBar` the same handle let MFC subclass it twice, once from
+/// the frame and once from a dialog, and each subclass called the other.
+pub(crate) fn new_system_window(ctx: &mut CallCtx<'_>, parent: u32, class: &str) -> u32 {
+    let hwnd = ctx.kernel.next_window_hwnd;
+    if hwnd >= pocket_kernel::GUEST_WINDOW_HWND_END {
+        return 0;
+    }
+    ctx.kernel.next_window_hwnd += 1;
+    ctx.kernel.guest_windows.insert(
+        hwnd,
+        pocket_kernel::GuestWindow { parent, class: class.to_string(), ..Default::default() },
+    );
+    ctx.kernel.window_classes.insert(hwnd, class.to_string());
+    hwnd
+}
+
+/// Does this program get a handle per window?
+///
+/// Every window used to share the main window's handle, which is all a
+/// game needs and what the 120-odd programs that run were tested with.
+/// MFC is the exception: it keeps a map from handle to `CWnd` and builds a
+/// frame, then a view inside it, from the frame's `OnCreate`. With one
+/// shared handle the view's creation re-attached the frame's handle to the
+/// view, and Haali Reader's frame answered its own WM_CREATE with -1. So
+/// programs that load MFC get real separate windows; everything else
+/// keeps the single-window model for now.
+pub(crate) fn separate_windows(ctx: &CallCtx<'_>) -> bool {
+    // Off unless `POCKETHLE_MFC_WINDOWS=1`. Giving MFC apps real windows
+    // of their own is not finished: with it on, MFC programs that already
+    // ran (CommLog, dotPocket, Pretec CompactGPS, ZIO SimCity 2000) recursed
+    // through a window procedure until the guest stack ran out, and Haali
+    // Reader still shows a black screen. One shared window keeps them
+    // running until the separate-window model is complete.
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ENABLED.get_or_init(|| std::env::var("POCKETHLE_MFC_WINDOWS").is_ok_and(|v| v == "1"))
+        && ctx.kernel.modules.iter().any(|m| m.name.starts_with("mfcce"))
+}
+
+/// The menu bar and command bar handles every app shares when windows are
+/// not separate. MFC subclasses the menu bar as soon as `SHCreateMenuBar`
+/// reports it in `hwndMB`; answering that subclass with the main window's
+/// procedure made MFC's procedure its own "previous" one, so CommLog,
+/// dotPocket and ZIO SimCity 2000 recursed until the guest stack ran out.
+fn is_shared_system_window(hwnd: u32) -> bool {
+    hwnd == crate::aygshell::FAKE_MENUBAR_HWND || hwnd == FAKE_COMMANDBAR_HWND
+}
+
+fn is_guest_window(hwnd: u32) -> bool {
+    (pocket_kernel::GUEST_WINDOW_HWND_BASE..pocket_kernel::GUEST_WINDOW_HWND_END).contains(&hwnd)
+}
+
+thread_local! {
+    /// `CreateWindowExW` calls waiting for their window's WM_CREATE to
+    /// return, innermost last: MFC creates the view from inside the
+    /// frame's WM_CREATE.
+    static GUEST_CREATES: std::cell::RefCell<Vec<(GuestCallFrame, u32, u32)>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Create a window with a handle of its own and send it WM_CREATE, as
+/// `CreateWindowExW` does on a device before it returns.
+fn create_guest_window(ctx: &mut CallCtx<'_>, class_name: &str, class_arg: u32) -> Result<DispatchOutcome, KernelError> {
+    const CW_USEDEFAULT: i32 = i32::MIN;
+    let ex_style = ctx.arg_u32(0)?;
+    let window_name = ctx.arg_u32(2)?;
+    let style = ctx.arg_u32(3)?;
+    let mut x = ctx.arg_u32(4)? as i32;
+    let mut y = ctx.arg_u32(5)? as i32;
+    let mut w = ctx.arg_u32(6)? as i32;
+    let mut h = ctx.arg_u32(7)? as i32;
+    let parent = ctx.arg_u32(8)?;
+    let h_menu = ctx.arg_u32(9)?;
+    let h_instance = ctx.arg_u32(10)?;
+    let create_params = ctx.arg_u32(11)?;
+    let (screen_w, screen_h) = screen_dims(ctx);
+    if x == CW_USEDEFAULT { x = 0; y = 0; }
+    if w == CW_USEDEFAULT || w <= 0 && h <= 0 && style & WS_CHILD_STYLE == 0 {
+        w = screen_w as i32;
+        h = screen_h as i32;
+    }
+    let hwnd = ctx.kernel.next_window_hwnd;
+    if hwnd >= pocket_kernel::GUEST_WINDOW_HWND_END {
+        return Ok(DispatchOutcome::ReturnedR0(0));
+    }
+    ctx.kernel.next_window_hwnd += 1;
+    let proc_ = ctx
+        .kernel
+        .window_class_procs
+        .iter()
+        .find_map(|(name, p)| name.eq_ignore_ascii_case(class_name).then_some(*p))
+        .unwrap_or(0);
+    ctx.kernel.guest_windows.insert(
+        hwnd,
+        pocket_kernel::GuestWindow {
+            parent: if style & WS_CHILD_STYLE != 0 { parent } else { 0 },
+            class: class_name.to_string(),
+            style,
+            x,
+            y,
+            w,
+            h,
+            visible: style & WS_VISIBLE_STYLE != 0,
+        },
+    );
+    ctx.kernel.window_classes.insert(hwnd, class_name.to_string());
+    if proc_ == 0 {
+        log::debug!("CreateWindowExW(class={class_name:?}) -> 0x{hwnd:08x}, no class procedure");
+        return Ok(DispatchOutcome::ReturnedR0(hwnd));
+    }
+    ctx.kernel.window_procs.insert(hwnd, proc_);
+    let Some(create_struct) = ctx.kernel.heap.alloc(0x30) else {
+        return Ok(DispatchOutcome::ReturnedR0(hwnd));
+    };
+    let h_instance = if h_instance != 0 { h_instance } else { FAKE_MODULE_HANDLE };
+    let fields: [u32; 12] = [
+        create_params, h_instance, h_menu, parent, h as u32, w as u32, y as u32, x as u32,
+        style, window_name, class_arg, ex_style,
+    ];
+    let mut buf = [0u8; 0x30];
+    for (i, v) in fields.iter().enumerate() {
+        buf[i * 4..i * 4 + 4].copy_from_slice(&v.to_le_bytes());
+    }
+    ctx.cpu.write_mem(create_struct, &buf)?;
+    let frame = GuestCallFrame {
+        args: [
+            ctx.cpu.read_reg(ArmReg::R0)?,
+            ctx.cpu.read_reg(ArmReg::R1)?,
+            ctx.cpu.read_reg(ArmReg::R2)?,
+            ctx.cpu.read_reg(ArmReg::R3)?,
+        ],
+        lr: ctx.cpu.read_reg(ArmReg::Lr)?,
+        sp: ctx.cpu.read_reg(ArmReg::Sp)?,
+    };
+    GUEST_CREATES.with(|c| c.borrow_mut().push((frame, hwnd, create_struct)));
+    ctx.cpu.write_reg(ArmReg::R0, hwnd)?;
+    ctx.cpu.write_reg(ArmReg::R1, WM_CREATE)?;
+    ctx.cpu.write_reg(ArmReg::R2, 0)?;
+    ctx.cpu.write_reg(ArmReg::R3, create_struct)?;
+    ctx.cpu.write_reg(ArmReg::Lr, ctx.thunk.thunk_va)?;
+    log::debug!("CreateWindowExW(class={class_name:?}, parent=0x{parent:08x}) -> 0x{hwnd:08x}, WM_CREATE to 0x{proc_:08x}");
+    Ok(DispatchOutcome::JumpTo(proc_))
+}
+
+/// The WM_CREATE sent by [`create_guest_window`] has returned: hand the
+/// new handle back, or NULL if the window refused to be created.
+fn finish_guest_window_create(ctx: &mut CallCtx<'_>) -> Result<Option<DispatchOutcome>, KernelError> {
+    let Some(sp) = GUEST_CREATES.with(|c| c.borrow().last().map(|e| e.0.sp)) else {
+        return Ok(None);
+    };
+    // A CreateWindowExW made from inside that WM_CREATE runs deeper.
+    if ctx.cpu.read_reg(ArmReg::Sp)? < sp {
+        return Ok(None);
+    }
+    let (frame, hwnd, create_struct) = GUEST_CREATES.with(|c| c.borrow_mut().pop()).unwrap();
+    let result = ctx.cpu.read_reg(ArmReg::R0)?;
+    ctx.kernel.heap.free(create_struct);
+    ctx.cpu.write_reg(ArmReg::Sp, frame.sp)?;
+    ctx.cpu.write_reg(ArmReg::R1, frame.args[1])?;
+    ctx.cpu.write_reg(ArmReg::R2, frame.args[2])?;
+    ctx.cpu.write_reg(ArmReg::R3, frame.args[3])?;
+    ctx.cpu.write_reg(ArmReg::Lr, frame.lr)?;
+    if result as i32 == -1 {
+        log::debug!("WM_CREATE for 0x{hwnd:08x} returned -1: creation fails");
+        ctx.kernel.guest_windows.remove(&hwnd);
+        ctx.kernel.window_procs.remove(&hwnd);
+        return Ok(Some(DispatchOutcome::ReturnedR0(0)));
+    }
+    if let Some(win) = ctx.kernel.guest_windows.get(&hwnd) {
+        let size = (win.w as u32 & 0xFFFF) | ((win.h as u32 & 0xFFFF) << 16);
+        if ctx.kernel.posted_messages.len() < 256 {
+            ctx.kernel.posted_messages.push_back((hwnd, WM_SIZE, 0, size));
+        }
+    }
+    Ok(Some(DispatchOutcome::ReturnedR0(hwnd)))
+}
+
+
+/// Each repaint of the main window also repaints the other windows on
+/// screen, parents before their children, the order a device composes
+/// them in.
+fn queue_guest_paints(ctx: &mut CallCtx<'_>) {
+    if ctx.kernel.guest_windows.is_empty() {
+        return;
+    }
+    let mut order: Vec<(bool, u32)> = ctx
+        .kernel
+        .guest_windows
+        .iter()
+        .filter(|(_, w)| w.visible)
+        .map(|(h, w)| (w.parent != 0, *h))
+        .collect();
+    order.sort();
+    for (_, hwnd) in order {
+        let queued = ctx.kernel.posted_messages.iter().any(|m| m.0 == hwnd && m.1 == WM_PAINT);
+        if !queued && ctx.kernel.posted_messages.len() < 256 {
+            ctx.kernel.posted_messages.push_back((hwnd, WM_PAINT, 0, 0));
+        }
+    }
+}
+
+/// Move and/or resize a [`pocket_kernel::GuestWindow`], telling it its new
+/// size with WM_SIZE the way the window manager does.
+fn resize_guest_window(ctx: &mut CallCtx<'_>, hwnd: u32, pos: Option<(i32, i32)>, size: Option<(i32, i32)>) {
+    let Some(win) = ctx.kernel.guest_windows.get_mut(&hwnd) else { return };
+    if let Some((x, y)) = pos {
+        win.x = x;
+        win.y = y;
+    }
+    let mut resized = false;
+    if let Some((w, h)) = size {
+        resized = (w, h) != (win.w, win.h);
+        win.w = w;
+        win.h = h;
+    }
+    let lparam = (win.w as u32 & 0xFFFF) | ((win.h as u32 & 0xFFFF) << 16);
+    log::debug!("guest window 0x{hwnd:08x} -> ({},{},{},{})", win.x, win.y, win.w, win.h);
+    if resized && ctx.kernel.posted_messages.len() < 256 {
+        ctx.kernel.posted_messages.push_back((hwnd, WM_SIZE, 0, lparam));
+    }
+}
+
+const WS_CHILD_STYLE: u32 = 0x4000_0000;
+const WS_VISIBLE_STYLE: u32 = 0x1000_0000;
+
 /// `BOOL ShowWindow(HWND hWnd, int nCmdShow)`.
 ///
 /// Real Windows sizes the window here and dispatches `WM_SIZE`
@@ -7565,6 +7851,15 @@ fn show_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
         }
     }
     let hwnd = ctx.arg_u32(0)?;
+    let show_cmd = ctx.arg_u32(1).unwrap_or(1);
+    if let Some(win) = ctx.kernel.guest_windows.get_mut(&hwnd) {
+        let was = win.visible;
+        win.visible = show_cmd != SW_HIDE;
+        if win.visible && ctx.kernel.posted_messages.len() < 256 {
+            ctx.kernel.posted_messages.push_back((hwnd, WM_PAINT, 0, 0));
+        }
+        return Ok(DispatchOutcome::ReturnedR0(u32::from(was)));
+    }
     // A control or panel: `ShowWindow` is how an app hides part of a
     // dialog it built from a template. Solitaire shows and hides its
     // Time and Score readouts this way.
@@ -8146,6 +8441,10 @@ fn send_message_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError>
     if Controls::is_child_hwnd(hwnd) {
         let r = control_message(ctx, hwnd, message, wparam, lparam)?;
         return Ok(DispatchOutcome::ReturnedR0(r));
+    }
+    if is_guest_window(hwnd) && !ctx.kernel.window_procs.contains_key(&hwnd) {
+        // A system-owned window (a menu bar): the default answer.
+        return Ok(DispatchOutcome::ReturnedR0(0));
     }
     let proc = ctx
         .kernel
@@ -8871,6 +9170,13 @@ fn set_focus(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 /// without this the buttons and the edit field would never acquire a
 /// rectangle and nothing would be drawn or hit-tested.
 fn move_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let guest_hwnd = ctx.arg_u32(0)?;
+    if ctx.kernel.guest_windows.contains_key(&guest_hwnd) {
+        let hwnd = ctx.arg_u32(0)?;
+        let (x, y, w, h) = (ctx.arg_u32(1)? as i32, ctx.arg_u32(2)? as i32, ctx.arg_u32(3)? as i32, ctx.arg_u32(4)? as i32);
+        resize_guest_window(ctx, hwnd, Some((x, y)), Some((w, h)));
+        return Ok(DispatchOutcome::ReturnedR0(1));
+    }
     let hwnd = ctx.arg_u32(0)?;
     let x = ctx.arg_u32(1)? as i32;
     let y = ctx.arg_u32(2)? as i32;
@@ -8893,6 +9199,27 @@ fn move_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 /// route: the caller may ask for the move only, the resize only, or
 /// neither, via `SWP_NOMOVE` / `SWP_NOSIZE`.
 fn set_window_pos(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let guest_hwnd = ctx.arg_u32(0)?;
+    if ctx.kernel.guest_windows.contains_key(&guest_hwnd) {
+        let hwnd = ctx.arg_u32(0)?;
+        let (x, y, w, h) = (ctx.arg_u32(2)? as i32, ctx.arg_u32(3)? as i32, ctx.arg_u32(4)? as i32, ctx.arg_u32(5)? as i32);
+        let flags = ctx.arg_u32(6).unwrap_or(0);
+        const SWP_NOSIZE: u32 = 0x0001;
+        const SWP_NOMOVE: u32 = 0x0002;
+        const SWP_SHOWWINDOW: u32 = 0x0040;
+        const SWP_HIDEWINDOW: u32 = 0x0080;
+        if let Some(win) = ctx.kernel.guest_windows.get_mut(&hwnd) {
+            if flags & SWP_SHOWWINDOW != 0 { win.visible = true; }
+            if flags & SWP_HIDEWINDOW != 0 { win.visible = false; }
+        }
+        resize_guest_window(
+            ctx,
+            hwnd,
+            (flags & SWP_NOMOVE == 0).then_some((x, y)),
+            (flags & SWP_NOSIZE == 0).then_some((w, h)),
+        );
+        return Ok(DispatchOutcome::ReturnedR0(1));
+    }
     /// `SWP_NOSIZE`.
     const SWP_NOSIZE: u32 = 0x0001;
     /// `SWP_NOMOVE`.
@@ -9041,6 +9368,7 @@ fn synthetic_message_for(ctx: &mut CallCtx<'_>) -> (u32, u32, u32, u32) {
         return message;
     }
     ctx.kernel.synthetic_paint_next_ms = monotonic_ms().saturating_add(SYNTHETIC_PAINT_INTERVAL_MS);
+    queue_guest_paints(ctx);
     (FAKE_HWND, WM_PAINT, 0, 0)
 }
 
@@ -9192,6 +9520,7 @@ fn synthetic_message_if_due(ctx: &mut CallCtx<'_>) -> Option<(u32, u32, u32, u32
             SYNTHETIC_PAINT_INTERVAL_MS,
             now,
         );
+        queue_guest_paints(ctx);
         return Some((FAKE_HWND, WM_PAINT, 0, 0));
     }
     None
@@ -11545,6 +11874,10 @@ fn enum_windows(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 /// be visible made the app skip its own `ShowWindow(SW_SHOW)` and left
 /// both readouts permanently blank.
 fn is_window_visible(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let guest_hwnd = ctx.arg_u32(0)?;
+    if let Some(win) = ctx.kernel.guest_windows.get(&guest_hwnd) {
+        return Ok(DispatchOutcome::ReturnedR0(u32::from(win.visible)));
+    }
     let hwnd = ctx.arg_u32(0)?;
     let visible = ctx
         .kernel
@@ -11600,6 +11933,25 @@ fn output_debug_string_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, Kerne
 /// and expects the `WM_DESTROY` that follows to reach its `WndProc`,
 /// which is where its `PostQuitMessage` lives.
 fn destroy_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let target = ctx.arg_u32(0)?;
+    if ctx.kernel.guest_windows.contains_key(&target) {
+        // Children go with their parent, and each hears WM_DESTROY.
+        let mut doomed = vec![target];
+        let mut i = 0;
+        while i < doomed.len() {
+            let p = doomed[i];
+            doomed.extend(ctx.kernel.guest_windows.iter().filter(|(_, w)| w.parent == p).map(|(h, _)| *h));
+            i += 1;
+        }
+        for h in doomed {
+            ctx.kernel.guest_windows.remove(&h);
+            ctx.kernel.controls.destroy_children_of(h);
+            if ctx.kernel.posted_messages.len() < 256 {
+                ctx.kernel.posted_messages.push_back((h, WM_DESTROY, 0, 0));
+            }
+        }
+        return Ok(DispatchOutcome::ReturnedR0(1));
+    }
     let hwnd = ctx.arg_u32(0)?;
     if Controls::is_child_hwnd(hwnd) {
         ctx.kernel.controls.destroy(hwnd);
@@ -11645,9 +11997,29 @@ fn set_window_long_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelErr
                     .get(&hwnd)
                     .and_then(|class| ctx.kernel.window_class_procs.get(class).copied())
             })
+            .or_else(|| system_window_proc(ctx, hwnd))
             .unwrap_or(ctx.kernel.wnd_proc);
-        log::info!("SetWindowLongW(GWL_WNDPROC) re-binding WndProc=0x{new_long:08x} (previous=0x{previous:08x})");
-        ctx.kernel.wnd_proc = new_long;
+        // A previous procedure equal to the new one can only recurse when
+        // the subclass passes a message on. It happens when two windows
+        // share one handle here: Sorcery PDA's MFC subclasses the shared
+        // menu bar from its frame and again from a dialog, and the second
+        // subclass saw its own procedure as the one before it.
+        let previous = if previous == new_long {
+            ctx.kernel
+                .dynamic_exports
+                .get(&FAKE_MODULE_HANDLE)
+                .and_then(|exports| exports.get("DefWindowProcW"))
+                .copied()
+                .unwrap_or(previous)
+        } else {
+            previous
+        };
+        log::info!("SetWindowLongW(hwnd=0x{hwnd:08x}, GWL_WNDPROC) re-binding WndProc=0x{new_long:08x} (previous=0x{previous:08x})");
+        // Subclassing another window must not replace the main window's
+        // procedure: MFC subclasses the menu bar right after creating it.
+        if !((separate_windows(ctx) && hwnd != FAKE_HWND) || is_shared_system_window(hwnd)) {
+            ctx.kernel.wnd_proc = new_long;
+        }
         ctx.kernel.window_procs.insert(hwnd, new_long);
         previous
     } else if n_index == -21 {
@@ -11683,6 +12055,7 @@ fn get_window_long_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelErr
                     .get(&hwnd)
                     .and_then(|class| ctx.kernel.window_class_procs.get(class).copied())
             })
+            .or_else(|| system_window_proc(ctx, hwnd))
             .unwrap_or(ctx.kernel.wnd_proc)
     } else if n_index == -21 {
         ctx.kernel
@@ -12116,6 +12489,18 @@ fn window_from_point(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelErr
 }
 
 fn get_client_rect(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let guest_hwnd = ctx.arg_u32(0)?;
+    if let Some(win) = ctx.kernel.guest_windows.get(&guest_hwnd).cloned() {
+        let lp = ctx.arg_u32(1)?;
+        if lp != 0 {
+        let mut buf = [0u8; 16];
+        for (i, v) in [0, 0, win.w, win.h].into_iter().enumerate() {
+            buf[i * 4..i * 4 + 4].copy_from_slice(&(v as u32).to_le_bytes());
+        }
+            ctx.cpu.write_mem(lp, &buf)?;
+        }
+        return Ok(DispatchOutcome::ReturnedR0(1));
+    }
     // GetClientRect(hWnd, lpRect) -> BOOL. A control's client rect is
     // its own size with the origin at zero, not the whole screen — and a
     // dialog's is its window less the border and caption, which is what
@@ -12158,6 +12543,19 @@ fn get_client_rect(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError
 }
 
 fn get_window_rect(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let hwnd0 = ctx.arg_u32(0)?;
+    if let Some(win) = ctx.kernel.guest_windows.get(&hwnd0).cloned() {
+        let (ox, oy) = ctx.kernel.guest_windows.get(&win.parent).map(|p| (p.x, p.y)).unwrap_or((0, 0));
+        let lp = ctx.arg_u32(1)?;
+        if lp != 0 {
+        let mut buf = [0u8; 16];
+        for (i, v) in [ox + win.x, oy + win.y, ox + win.x + win.w, oy + win.y + win.h].into_iter().enumerate() {
+            buf[i * 4..i * 4 + 4].copy_from_slice(&(v as u32).to_le_bytes());
+        }
+            ctx.cpu.write_mem(lp, &buf)?;
+        }
+        return Ok(DispatchOutcome::ReturnedR0(1));
+    }
     let hwnd = ctx.arg_u32(0)?;
     let lp_rect = ctx.arg_u32(1)?;
     // A control's window rect is where it sits on screen, which for a
@@ -16838,6 +17236,11 @@ fn get_foreground_window(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, Kern
 }
 
 fn get_parent(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let guest_hwnd = ctx.arg_u32(0)?;
+    if let Some(win) = ctx.kernel.guest_windows.get(&guest_hwnd) {
+        let parent = if win.parent == 0 { 0 } else { win.parent };
+        return Ok(DispatchOutcome::ReturnedR0(parent));
+    }
     // A top-level window has no parent, and neither does the desktop.
     // EverQuest's MFC climbs `GetParent` to its top-level frame and then sends
     // that window WM_ACTIVATETOPLEVEL; answering the desktop made it message a
@@ -17401,11 +17804,14 @@ pub(crate) mod tests {
             guest_fb_pitch: 0,
             gx_ipaq_layout: false,
             direct_fb_frames: 0,
+            complete_frames: 0,
             gx_readback_scratch: Vec::new(),
             mem_op_scratch: Vec::new(),
             mem_op_scratch_b: Vec::new(),
             bit_blt_src_scratch: Vec::new(),
             image_lists: std::collections::HashMap::new(),
+            guest_windows: std::collections::HashMap::new(),
+            next_window_hwnd: pocket_kernel::GUEST_WINDOW_HWND_BASE,
             command_bar_menu: 0,
             other_timers: Vec::new(),
             dib_sync_scratch: Vec::new(),

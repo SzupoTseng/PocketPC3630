@@ -204,5 +204,8 @@
  "lib.dl.androidSub": ".apk · install directly",
  "lib.dl.version": "Latest: {version}",
  "lib.total": "{total} programs",
- "lib.moreN": "Show more ({n} left)"
+ "lib.moreN": "Show more ({n} left)",
+ "play.keyboard": "Keyboard",
+ "js.clearAll": "Clear library",
+ "js.confirmClear": "Delete all {n} games in your library and their progress? Saves you have not downloaded cannot be recovered."
 }

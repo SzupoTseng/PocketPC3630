@@ -848,6 +848,27 @@ fn guest_dll_on_disk(dirs: &[PathBuf], module: &str) -> bool {
     })
 }
 
+/// A window created by the guest with a handle of its own: everything but
+/// the main window, which stays on the fixed handle every frontend knows.
+#[derive(Debug, Clone, Default)]
+pub struct GuestWindow {
+    pub parent: u32,
+    pub class: String,
+    pub style: u32,
+    /// Rectangle in the parent's client coordinates.
+    pub x: i32,
+    pub y: i32,
+    pub w: i32,
+    pub h: i32,
+    pub visible: bool,
+}
+
+/// First handle given to a [`GuestWindow`]; the range stays clear of the
+/// controls' and the other synthetic handles.
+pub const GUEST_WINDOW_HWND_BASE: u32 = 0xDEAD_C000;
+/// One past the last [`GuestWindow`] handle.
+pub const GUEST_WINDOW_HWND_END: u32 = 0xDEAD_C800;
+
 /// A DLL the guest pulled in at runtime with `LoadLibraryW`.
 ///
 /// Modules with exports are relocated, have their system imports bound to
@@ -987,6 +1008,11 @@ pub struct KernelState {
     /// decide how often that poll is worth running; see
     /// [`PRESENT_POLL_BACKOFF`].
     pub direct_fb_frames: u64,
+    /// Frames the guest has finished: a `GXEndDraw`, or a line-by-line copy
+    /// into the framebuffer that reached its far end. A frontend that can
+    /// choose when to show a frame waits for one of these (or for the guest
+    /// to sleep) rather than showing a half-drawn screen.
+    pub complete_frames: u64,
     /// Pre-allocated scratch buffer the GAPI flush uses when copying
     /// the guest-mapped framebuffer back into [`Framebuffer::pixels`].
     /// Sized to `FB_BYTES` once on first use so there is no
@@ -1093,6 +1119,13 @@ pub struct KernelState {
     pub cedb: crate::cedb::DatabaseStore,
     /// Window handles and their class procedures.
     pub window_procs: HashMap<u32, u32>,
+    /// Windows other than the main one, each with a handle of its own.
+    /// MFC builds a frame and then a view inside it and keeps a map from
+    /// handle to C++ object; collapsing both onto the main window's handle
+    /// made the view's creation tear the frame down. See [`GuestWindow`].
+    pub guest_windows: HashMap<u32, GuestWindow>,
+    /// Next handle [`Self::guest_windows`] hands out.
+    pub next_window_hwnd: u32,
     /// Window handles and their user data pointers.
     pub window_userdata: HashMap<u32, u32>,
     /// Window handles and their class names.
@@ -2436,11 +2469,14 @@ impl Process {
                 guest_fb_pitch: 0,
                 gx_ipaq_layout: false,
                 direct_fb_frames: 0,
+                complete_frames: 0,
                 gx_readback_scratch: Vec::new(),
                 mem_op_scratch: Vec::new(),
                 mem_op_scratch_b: Vec::new(),
                 bit_blt_src_scratch: Vec::new(),
                 image_lists: std::collections::HashMap::new(),
+                guest_windows: HashMap::new(),
+                next_window_hwnd: GUEST_WINDOW_HWND_BASE,
                 command_bar_menu: 0,
                 other_timers: Vec::new(),
                 dib_sync_scratch: Vec::new(),

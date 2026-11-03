@@ -204,5 +204,8 @@
  "lib.dl.androidSub": ".apk · instalación directa",
  "lib.dl.version": "Última versión: {version}",
  "lib.total": "{total} programas",
- "lib.moreN": "Mostrar más (quedan {n})"
+ "lib.moreN": "Mostrar más (quedan {n})",
+ "play.keyboard": "Teclado",
+ "js.clearAll": "Vaciar biblioteca",
+ "js.confirmClear": "¿Borrar los {n} juegos de tu biblioteca y su progreso? Las partidas que no hayas descargado no se podrán recuperar."
 }

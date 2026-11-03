@@ -204,5 +204,8 @@
  "lib.dl.androidSub": ".apk · installation directe",
  "lib.dl.version": "Dernière version : {version}",
  "lib.total": "{total} programmes",
- "lib.moreN": "Afficher plus ({n} restants)"
+ "lib.moreN": "Afficher plus ({n} restants)",
+ "play.keyboard": "Clavier",
+ "js.clearAll": "Vider la ludothèque",
+ "js.confirmClear": "Supprimer les {n} jeux de votre ludothèque et leur progression ? Les sauvegardes non téléchargées seront perdues."
 }

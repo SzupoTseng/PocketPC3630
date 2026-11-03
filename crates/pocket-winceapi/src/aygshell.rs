@@ -170,19 +170,28 @@ fn sh_create_menu_bar(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelEr
             return Ok(DispatchOutcome::ReturnedR0(1));
         }
     };
-    // The 32-byte (WM5) layout puts hwndMB at +0x18, the 36-byte
-    // (PPC2002) one at +0x1c. Pick by cbSize; for an unrecognised
-    // size write both so the caller finds a handle either way.
+    // SHMENUBARINFO keeps hwndMB at +0x1c whatever its size; the 36-byte
+    // form only adds clrBk after it. MFC's frame reads +0x1c straight back
+    // and refuses to be created when it is NULL, which is what writing only
+    // +0x18 for a 32-byte structure did to every MFC program. +0x18 is
+    // still written for the callers this code was first tuned on.
     let offsets: &[u32] = match cb_size {
-        32 => &[0x18],
         36 => &[0x1c],
         _ => &[0x18, 0x1c],
     };
+    let hwnd_mb = if crate::coredll::separate_windows(ctx) {
+        let parent = ctx.cpu.read_u32_le(pmb + 4).unwrap_or(0);
+        match crate::coredll::new_system_window(ctx, parent, "menu_worker") {
+            0 => FAKE_MENUBAR_HWND,
+            h => h,
+        }
+    } else {
+        FAKE_MENUBAR_HWND
+    };
     for off in offsets {
-        ctx.cpu
-            .write_mem(pmb + off, &FAKE_MENUBAR_HWND.to_le_bytes())?;
+        ctx.cpu.write_mem(pmb + off, &hwnd_mb.to_le_bytes())?;
     }
-    log::debug!("SHCreateMenuBar(cbSize={cb_size}) -> hwndMB=0x{FAKE_MENUBAR_HWND:08x}");
+    log::debug!("SHCreateMenuBar(cbSize={cb_size}) -> hwndMB=0x{hwnd_mb:08x}");
     Ok(DispatchOutcome::ReturnedR0(1))
 }
 

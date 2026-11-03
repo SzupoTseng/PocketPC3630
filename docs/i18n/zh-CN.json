@@ -204,5 +204,8 @@
  "lib.dl.androidSub": ".apk・直接安装",
  "lib.dl.version": "最新版本 {version}",
  "lib.total": "共 {total} 个",
- "lib.moreN": "显示更多（还有 {n} 个）"
+ "lib.moreN": "显示更多（还有 {n} 个）",
+ "play.keyboard": "键盘",
+ "js.clearAll": "清空游戏库",
+ "js.confirmClear": "要删除游戏库里全部 {n} 个游戏及其进度吗？未下载的存档将无法恢复。"
 }

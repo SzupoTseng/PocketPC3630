@@ -204,5 +204,8 @@
  "lib.dl.androidSub": ".apk · direkt installieren",
  "lib.dl.version": "Neueste Version: {version}",
  "lib.total": "{total} Programme",
- "lib.moreN": "Mehr anzeigen (noch {n})"
+ "lib.moreN": "Mehr anzeigen (noch {n})",
+ "play.keyboard": "Tastatur",
+ "js.clearAll": "Bibliothek leeren",
+ "js.confirmClear": "Alle {n} Spiele deiner Bibliothek samt Fortschritt löschen? Nicht heruntergeladene Spielstände lassen sich nicht wiederherstellen."
 }
