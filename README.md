@@ -118,8 +118,8 @@ We downloaded **every Pocket PC item we could find on archive.org**, imported ea
 
 | | Result | Count |
 |---|---|---:|
-| ✅ | **Runs** — starts and draws the game or program | **102** |
-| 🟡 | **Partly works** — starts, but the screen stays blank or it stops early | 149 |
+| ✅ | **Runs** — starts and draws the game or program | **123** |
+| 🟡 | **Partly works** — starts, but the screen stays blank or it stops early | 128 |
 | 🟥 | **Does not start** — imports, then fails while starting | 388 |
 | ⛔ | **Not importable** — no Pocket PC program in the download | 384 |
 | ⚪ | **Not tested** — no package in the item, or the download failed | 420 |
@@ -135,7 +135,7 @@ Showcase titles, each verified by hand:
 |---|---|---|
 | **EverQuest for the Pocket PC** | ARM | Character creation, the world, saving and loading, on all three platforms |
 | **Pocket Quake** | ARM | Menus and gameplay in the browser, with on-screen controls |
-| **Pocket Slay** | ARM · MIPS · SH3 | Tap a tree, then OK in *New Game*. Full colour map on all three builds |
+| **Pocket Slay** | ARM · MIPS · SH3 | Starts on a black screen: tap it, then OK in *New Game*. Full colour map on all three builds |
 | **FreeCell** (Pocket-G) | ARM · MIPS · SH3 | All three builds deal the same game |
 
 ## 🔧 How it works

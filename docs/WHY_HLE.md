@@ -88,7 +88,7 @@ Examples from this project:
 - Pocket Hustler only understands the Compaq iPAQ 3630's display memory layout (a sideways 320×240 panel), so GAPI has to answer the way that device did.
 - File managers need system controls such as `SysTreeView32` and `SysListView32`, with their whole set of messages and notifications.
 
-Compatibility grows one API and one behaviour at a time. Today 102 of the 1,023 downloads start and draw their screen.
+Compatibility grows one API and one behaviour at a time. Today 123 of the 1,023 downloads start and draw their screen.
 
 ## In short
 

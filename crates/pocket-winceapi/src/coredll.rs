@@ -12400,8 +12400,9 @@ fn dialog_box_indirect_param_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome,
     // between them, so a dialog also stays up for a while: Pocket Slay's
     // new-game dialog was cancelled before a scripted tap on OK reached it.
     let up_ms = monotonic_ms().saturating_sub(opened_frame);
-    if (spins >= MESSAGE_BOX_MAX_SPINS && up_ms >= MODAL_DIALOG_MIN_MS)
-        || spins >= MESSAGE_BOX_MAX_SPINS * 20
+    if headless_run(ctx)
+        && ((spins >= MESSAGE_BOX_MAX_SPINS && up_ms >= MODAL_DIALOG_MIN_MS)
+            || spins >= MESSAGE_BOX_MAX_SPINS * 20)
     {
         log::debug!("DialogBoxIndirectParamW unanswered after {spins} spins, reporting cancelled");
         // IDCANCEL, the same answer dismissing the dialog would give.
@@ -12417,7 +12418,30 @@ fn dialog_box_indirect_param_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome,
     } else if let Some(outcome) = park_worker_and_retry(ctx)? {
         return Ok(outcome);
     }
+    yield_while_modal(ctx);
     Ok(DispatchOutcome::JumpTo(ctx.thunk.thunk_va))
+}
+
+/// Is anyone there to answer a dialog?
+///
+/// The windowed frontends (desktop, Android, the browser) set an unlimited
+/// message budget because a real user is in the loop; only a headless
+/// command-line run has a finite one. A modal dialog or message box on a
+/// device waits for its answer forever, and so must ours in front of a
+/// user: answering it ourselves after a spin count cancelled Pocket Slay's
+/// New Game dialog in well under a second, so the game never started and
+/// its board stayed black. A headless run still gives up eventually, or a
+/// test with nobody to tap OK would never finish.
+fn headless_run(ctx: &CallCtx<'_>) -> bool {
+    ctx.kernel.synthetic_message_budget != 0
+}
+
+/// While a modal dialog or message box waits, a browser tab gets its
+/// frame back rather than spinning through the rest of the tick.
+fn yield_while_modal(ctx: &mut CallCtx<'_>) {
+    if ctx.kernel.cooperative_host {
+        ctx.kernel.host_yield_ms = Some(16);
+    }
 }
 
 /// Drop a finished modal dialog: its controls, its panel, its proc
@@ -12550,7 +12574,7 @@ fn message_box_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> 
 
     // Still waiting. Give up rather than hang a headless run forever.
     ctx.kernel.message_box_spins = ctx.kernel.message_box_spins.saturating_add(1);
-    if ctx.kernel.message_box_spins >= MESSAGE_BOX_MAX_SPINS {
+    if headless_run(ctx) && ctx.kernel.message_box_spins >= MESSAGE_BOX_MAX_SPINS {
         let fallback = ctx
             .kernel
             .modal
@@ -12568,6 +12592,7 @@ fn message_box_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> 
 
     // Re-enter our own thunk: the call blocks, exactly as it does on the
     // device, and the run loop gets to present a frame in between.
+    yield_while_modal(ctx);
     Ok(DispatchOutcome::JumpTo(ctx.thunk.thunk_va))
 }
 
