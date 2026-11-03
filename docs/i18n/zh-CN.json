@@ -202,5 +202,7 @@
  "lib.dl.winSub": ".zip・解压即可运行",
  "lib.dl.android": "Android 版",
  "lib.dl.androidSub": ".apk・直接安装",
- "lib.dl.version": "最新版本 {version}"
+ "lib.dl.version": "最新版本 {version}",
+ "lib.total": "共 {total} 个",
+ "lib.moreN": "显示更多（还有 {n} 个）"
 }

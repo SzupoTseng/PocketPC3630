@@ -202,5 +202,7 @@
  "lib.dl.winSub": ".zip · 압축 풀고 바로 실행",
  "lib.dl.android": "Android 버전",
  "lib.dl.androidSub": ".apk · 바로 설치",
- "lib.dl.version": "최신 버전 {version}"
+ "lib.dl.version": "최신 버전 {version}",
+ "lib.total": "총 {total}개",
+ "lib.moreN": "더 보기 ({n}개 남음)"
 }

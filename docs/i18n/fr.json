@@ -202,5 +202,7 @@
  "lib.dl.winSub": ".zip · décompressez et lancez",
  "lib.dl.android": "Android",
  "lib.dl.androidSub": ".apk · installation directe",
- "lib.dl.version": "Dernière version : {version}"
+ "lib.dl.version": "Dernière version : {version}",
+ "lib.total": "{total} programmes",
+ "lib.moreN": "Afficher plus ({n} restants)"
 }

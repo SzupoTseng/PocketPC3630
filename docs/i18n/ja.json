@@ -202,5 +202,7 @@
  "lib.dl.winSub": ".zip・展開してすぐ起動",
  "lib.dl.android": "Android 版",
  "lib.dl.androidSub": ".apk・そのままインストール",
- "lib.dl.version": "最新版 {version}"
+ "lib.dl.version": "最新版 {version}",
+ "lib.total": "全 {total} 件",
+ "lib.moreN": "さらに表示（残り {n} 件）"
 }

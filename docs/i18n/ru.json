@@ -202,5 +202,7 @@
  "lib.dl.winSub": ".zip · распакуйте и запустите",
  "lib.dl.android": "Android",
  "lib.dl.androidSub": ".apk · прямая установка",
- "lib.dl.version": "Последняя версия: {version}"
+ "lib.dl.version": "Последняя версия: {version}",
+ "lib.total": "Программ: {total}",
+ "lib.moreN": "Показать ещё (осталось {n})"
 }

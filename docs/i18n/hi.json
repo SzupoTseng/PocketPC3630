@@ -202,5 +202,7 @@
  "lib.dl.winSub": ".zip · अनज़िप करें और चलाएँ",
  "lib.dl.android": "Android",
  "lib.dl.androidSub": ".apk · सीधे इंस्टॉल करें",
- "lib.dl.version": "नवीनतम संस्करण: {version}"
+ "lib.dl.version": "नवीनतम संस्करण: {version}",
+ "lib.total": "कुल {total} प्रोग्राम",
+ "lib.moreN": "और दिखाएँ ({n} बाकी)"
 }

@@ -202,5 +202,7 @@
  "lib.dl.winSub": ".zip · entpacken und starten",
  "lib.dl.android": "Android",
  "lib.dl.androidSub": ".apk · direkt installieren",
- "lib.dl.version": "Neueste Version: {version}"
+ "lib.dl.version": "Neueste Version: {version}",
+ "lib.total": "{total} Programme",
+ "lib.moreN": "Mehr anzeigen (noch {n})"
 }
