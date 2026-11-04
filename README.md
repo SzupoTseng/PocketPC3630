@@ -56,7 +56,7 @@ That is why it needs no Microsoft ROM and starts in a second.
 
 | | How | |
 |---|---|---|
-| 🌐 **Browser** | Open **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**, choose *Import game*, pick a `.zip` or `.cab`. | Nothing to install. Browse the **software library** of 759 Pocket PC programs (73 play with one click), in 11 languages. Your games and saves stay in your browser. |
+| 🌐 **Browser** | Open **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**, choose *Import game*, pick a `.zip` or `.cab`. | Nothing to install. Browse the **software library** of 1,203 Pocket PC programs (74 play with one click), in 11 languages, with box covers, screenshots or program icons, filters and sorting. Your games and saves stay in your browser. |
 | 🪟 **Windows** | **[Download the zip](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-windows-x64.zip)**, unzip, run `PocketPC3630.exe`, then *Import game*. | Desktop library with icons, saves, keyboard and mouse. |
 | 🤖 **Android** | **[Download the APK](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-android.apk)** and install it. | Touch controls with a D-pad, action buttons and Turbo. |
 | ⌨️ **Command line** | `pockethle play MyGame.zip` | For testing, tracing and screenshots. |
@@ -95,11 +95,30 @@ Most Pocket PC software on the internet is not a neat `.cab`. It is a desktop in
 The importer opens these without ever running them:
 
 - **Basic rules, compiled in and fast:** zip, self-extracting zip, CABs carved out of installers, SZDD (`EXPAND.EXE`) files, PE resources, zlib streams, and CABs whose checksums were damaged.
+- **Desktop setup programs:** Wise, InstallShield (including InstallShield 3 archives), Inno Setup, Setup Factory and NSIS installers nested inside each other are opened as data, never run. Downloads that only hold a MIPS or SH3 build are imported too.
 - **A knowledge base in JSON** decides between builds (ARM first, then MIPS, then SH3; never x86), remembers the exact recipe for files it has seen (`size:crc32` → steps), and holds every error message in English and Traditional Chinese.
 - **It learns.** When no rule fits, it explores every way of looking inside, within limits on files, bytes and time. If that finds a game, the recipe is written to `import_kb.json` in your library, and the next file of that kind imports directly.
 - **Plain-language errors.** "This is an SH3 build...", "This needs `mfcce300.dll` from your device...", "This is a .NET program...", each with what to do next.
 
 See [docs/PACKAGE_FORMAT.md](docs/PACKAGE_FORMAT.md) for exactly what a package may contain.
+
+### A software library worth browsing
+The website's library lists **1,203 Pocket PC programs**: the archive.org downloads, a retail disc collection, Wikipedia's Pocket PC game lists and the programs recommended in Mobile01's Pocket PC threads.
+
+- **Pictures on every card:** 606 have a box cover or a screenshot, 216 more show the program's own icon taken from its executable, and the rest show a drawing for their category.
+- **Honest status:** *plays in one click* (74), *runs* (207), *partly works* (168), *does not start* (407), *not tested* (186). Downloads that turned out not to be Pocket PC programs (161) stay listed with the reason: a desktop program, a plug-in, an installer with nothing inside, and so on.
+- **Easy to find things:** search over names, descriptions, collections and notes; quick filters for *with pictures* and *picks*; sorting; descriptions in six languages and the interface in eleven. 80 entries carry the Mobile01 poster's recommendation.
+
+### Smoother on the web and Android
+The browser and Android use the portable interpreter, so the hottest runtime helpers now run inside it instead of going through a full system call: integer division and the 34 soft-float helpers (`__adds` … `__dtos`, the compares). Web ticks are bounded by time (14 ms) instead of only by instruction count, so a busy game cannot freeze the page. On the same machine:
+
+| Program | Before | After |
+|---|---:|---:|
+| PowerVR Racer | 11 fps | 39 fps |
+| PowerVR Demos | 34 fps | 53 fps |
+| Bejeweled 2 | 1 fps | 10 fps |
+| Bookworm | 0.4 fps | 9 fps |
+| Doodle Jump | 0.3 fps | 10 fps |
 
 ### Windows CE, rebuilt piece by piece
 Highlights of what this fork added on top of PocketHLE:
@@ -187,7 +206,7 @@ target/release/pockethle play MyGame.zip
 - MFC programs that open more than one window (Haali Reader, SimCity 2000) do not start yet: every top-level window currently shares one handle, which confuses MFC's window map. Separate windows are the next big piece of work.
 - A few rarely used MIPS and SH3 helpers (64-bit maths on SH3, `setjmp` on both) are not implemented yet.
 - MIPS16 code (some MIPS builds) and SH-4 floating point instructions are not supported yet.
-- .NET Compact Framework programs, Wise installers and x86 builds do not run.
+- .NET Compact Framework programs and x86 builds do not run.
 - Programs that use MFC need `mfcce300.dll`. The web version fetches it for you from Microsoft's Pocket PC 2000 SDK on the Internet Archive. By hand: open [the SDK](https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe) with 7-Zip and take `Program Files/mfc/lib/arm/mfcce300.dll` and `olece300.dll` (`mips` or `sh3` for those builds). ARM programs built for Pocket PC 2002 need the newer DLL from the [Pocket PC 2002 SDK](https://archive.org/download/WMSDK/ppc2002_sdk.exe): `program files/Pocket PC 2002/mfc/Lib/ARM/mfcce300.dll`.
 - Pocket Slay runs at about 1.5 frames per second in the browser.
 

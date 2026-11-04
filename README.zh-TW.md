@@ -41,7 +41,7 @@ PocketPC3630 的名字來自 **Compaq iPAQ H3630**，那台讓 Pocket PC 紅起�
 
 | | 方式 | |
 |---|---|---|
-| 🌐 **瀏覽器** | 打開 **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**，按「匯入遊戲」，選 `.zip` 或 `.cab`。 | 免安裝。內建 **程式圖書館**：收錄 759 個 Pocket PC 程式（73 個一鍵就能玩），支援 11 種語言。遊戲與存檔只留在你的瀏覽器。 |
+| 🌐 **瀏覽器** | 打開 **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**，按「匯入遊戲」，選 `.zip` 或 `.cab`。 | 免安裝。內建 **程式圖書館**：收錄 1,203 個 Pocket PC 程式（74 個一鍵就能玩），支援 11 種語言，有盒裝封面、遊戲畫面或程式圖示，可篩選與排序。遊戲與存檔只留在你的瀏覽器。 |
 | 🪟 **Windows** | **[下載 zip](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-windows-x64.zip)**，解壓縮後執行 `PocketPC3630.exe`，按 *Import game*。 | 桌面遊戲庫，有圖示、存檔、鍵盤滑鼠操作。 |
 | 🤖 **Android** | **[下載 APK](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-android.apk)** 並安裝。 | 觸控方向鍵、動作鍵與連發鍵。 |
 | ⌨️ **命令列** | `pockethle play MyGame.zip` | 測試、追蹤呼叫與截圖用。 |
@@ -76,11 +76,30 @@ PocketPC3630 **不附任何遊戲，也不附微軟的檔案**。請使用你合
 匯入器能打開這些檔案，而且**絕不執行它們**：
 
 - **內建的基本規則（快）：** zip、自解壓 zip、從安裝程式切出 CAB、SZDD（`EXPAND.EXE`）、PE 資源、zlib 資料流、校驗碼損壞的 CAB。
+- **桌面安裝程式：** Wise、InstallShield（含 InstallShield 3 壓縮檔）、Inno Setup、Setup Factory，以及層層包住的 NSIS 安裝程式，都當成資料拆開，絕不執行。只有 MIPS 或 SH3 版本的下載檔也能匯入。
 - **JSON 知識庫：** 決定挑哪個版本（先 ARM、再 MIPS、再 SH3，永遠不選 x86）；記住看過的檔案的確切步驟（`size:crc32` → 步驟）；所有錯誤訊息都有英文與繁體中文。
 - **會學習：** 沒有規則適用時，它會在檔案數、位元組數與時間的上限內嘗試所有拆解方式；找到遊戲就把步驟寫進遊戲庫的 `import_kb.json`，下次同類檔案直接匯入。
 - **白話的錯誤說明：**「這是 SH3 版……」「需要裝置內建的 `mfcce300.dll`……」「這是 .NET 程式……」，並告訴你下一步該怎麼做。
 
 遊戲包可以放什麼，請見 [docs/PACKAGE_FORMAT.md](docs/PACKAGE_FORMAT.md)。
+
+### 值得逛的程式圖書館
+網站的圖書館收錄 **1,203 個 Pocket PC 程式**：archive.org 的下載檔、一套零售光碟收藏、維基百科的 Pocket PC 遊戲列表，以及 Mobile01 Pocket PC 討論串推薦的軟體。
+
+- **每張卡片都有圖：** 606 個有盒裝封面或遊戲畫面，另外 216 個顯示從執行檔取出的程式圖示，其餘顯示所屬分類的插圖。
+- **誠實的狀態：** 一鍵就能玩（74）、可執行（207）、部分可用（168）、無法啟動（407）、未測試（186）。結果不是 Pocket PC 程式的下載檔（161）仍保留在清單上，並寫明原因：桌面程式、外掛、裡面沒有東西的安裝程式等。
+- **好找：** 可搜尋名稱、說明、收藏與備註；「有圖片」「推薦」快速篩選；排序；說明有六種語言，介面有十一種。80 筆附上 Mobile01 原 PO 的推薦心得。
+
+### 網頁版與 Android 更流暢
+瀏覽器與 Android 用的是可攜式直譯器，現在最常用的執行期輔助函式直接在直譯器裡完成，不必走完整的系統呼叫：整數除法與 34 個軟體浮點函式（`__adds` … `__dtos` 與各種比較）。網頁每一輪的執行改成以時間（14 毫秒）為上限，不再只看指令數，忙碌的遊戲不會讓頁面卡住。同一台電腦上：
+
+| 程式 | 之前 | 之後 |
+|---|---:|---:|
+| PowerVR Racer | 11 fps | 39 fps |
+| PowerVR Demos | 34 fps | 53 fps |
+| Bejeweled 2 | 1 fps | 10 fps |
+| Bookworm | 0.4 fps | 9 fps |
+| Doodle Jump | 0.3 fps | 10 fps |
 
 ### 一塊一塊重建 Windows CE
 這個 fork 在 PocketHLE 之上新增的重點：
@@ -157,7 +176,7 @@ target/release/pockethle play MyGame.zip
 - 會開啟多個視窗的 MFC 程式（Haali Reader、SimCity 2000）還無法啟動：目前所有頂層視窗共用同一個 handle，讓 MFC 的視窗對照表出錯。支援獨立視窗是下一個主要工作。
 - 少數較少用的 MIPS 與 SH3 輔助函式（SH3 的 64 位元運算、兩者的 `setjmp`）尚未實作。
 - 尚不支援 MIPS16 程式碼（部分 MIPS 版）與 SH-4 浮點指令。
-- .NET Compact Framework 程式、Wise 安裝程式、x86 版本無法執行。
+- .NET Compact Framework 程式與 x86 版本無法執行。
 - 使用 MFC 的程式需要 `mfcce300.dll`。網頁版會自動從 Internet Archive 上微軟的 Pocket PC 2000 SDK 取得。手動方式：用 7-Zip 打開 [SDK](https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe)，取出 `Program Files/mfc/lib/arm/mfcce300.dll` 與 `olece300.dll`（MIPS、SH3 版改用 `mips`、`sh3` 資料夾）。為 Pocket PC 2002 編譯的 ARM 程式需要較新的版本，在 [Pocket PC 2002 SDK](https://archive.org/download/WMSDK/ppc2002_sdk.exe) 的 `program files/Pocket PC 2002/mfc/Lib/ARM/mfcce300.dll`。
 - Pocket Slay 在瀏覽器中約 1.5 幀/秒。
 
