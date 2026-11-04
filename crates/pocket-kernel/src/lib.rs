@@ -787,6 +787,13 @@ pub struct StaticGuestLink {
 
 /// API calls a [`KernelState::cooperative_host`] run may make before returning.
 const COOPERATIVE_SLICE_LIMIT: u64 = 4_000;
+/// Wall-clock time a [`KernelState::cooperative_host`] run may take before it
+/// returns, about one display frame. Counting API calls alone stopped
+/// bounding a tick once the interpreter answered the divide and soft-float
+/// helpers itself: PowerVR Racer then ran three guest frames per tick, the
+/// browser showed only the last, and the picture got choppier as the game
+/// got faster.
+const COOPERATIVE_TICK_TIME: std::time::Duration = std::time::Duration::from_millis(14);
 
 /// Guest page holding the bootstrap that loads static guest DLLs before entry.
 pub const GUEST_BOOT_STUB_VA: u32 = MODULE_REGION_BASE - 0x1_0000;
@@ -2125,6 +2132,11 @@ impl Process {
             } else {
                 native_name.and_then(|n| native_thunks::native_thunk_for(&imp.dll, n))
             };
+            // The interpreter (web, Android) has no hardware divide, so the
+            // native thunks above are not for it; it answers these helpers
+            // itself at the slot instead of leaving the slice.
+            let interp_intrinsic =
+                native_name.and_then(|n| pocket_cpu::helper_intrinsic(&imp.dll, n));
             // Build the thunk metadata up front so we can query the
             // dispatcher for a constant-return shortcut.
             let thunk = Thunk {
@@ -2158,6 +2170,11 @@ impl Process {
                 }
                 cpu.write_mem(thunk_va, &buf)?;
                 hooked_slots.push(thunk_va);
+                // The hook stays as the fallback; only the interpreter takes
+                // the intrinsic (other backends ignore it).
+                if let (Arch::Arm, Some(intrinsic)) = (cpu.arch(), interp_intrinsic) {
+                    cpu.install_intrinsic(thunk_va, intrinsic);
+                }
             }
             let mut iat_bytes = [0u8; 4];
             LittleEndian::write_u32(&mut iat_bytes, thunk_va);
@@ -2209,6 +2226,19 @@ impl Process {
                 }
                 cpu.write_mem(thunk_va, &buf)?;
                 hooked_slots.push(thunk_va);
+                // Programs that fetch the divide helpers with GetProcAddress
+                // (Metalion does) get the interpreter intrinsic here too: the divides
+                // and the soft-float helpers.
+                let name = friendly_name.as_deref().or(match &binding {
+                    ImportBinding::Name(n) => Some(n.as_str()),
+                    _ => None,
+                });
+                if let (Arch::Arm, Some(intrinsic)) = (
+                    cpu.arch(),
+                    name.and_then(|n| pocket_cpu::helper_intrinsic(&dll, n)),
+                ) {
+                    cpu.install_intrinsic(thunk_va, intrinsic);
+                }
                 thunks.push(Thunk {
                     thunk_va,
                     iat_va: 0,
@@ -2933,15 +2963,26 @@ pub fn run_main_loop_with_hook(
     // that told us; see [`PRESENT_POLL_BACKOFF`].
     let mut last_direct_frames = process.state.direct_fb_frames;
     let mut last_direct_present: Option<Instant> = None;
+    let tick_start = Instant::now();
+    // Reading the clock is not free in a browser, and an API-heavy guest
+    // makes thousands of slices a tick: look at it every few slices, or right
+    // after a slice that used its whole instruction budget (a long one).
+    let mut slices_since_clock = 0u32;
+    let mut long_slice = false;
     loop {
         if max_slices != 0 && slice >= max_slices {
             break;
         }
         // A browser tab must get control back to draw and to deliver input:
-        // when the guest sleeps, and at the latest after a bounded run of API
-        // calls for a guest that never does.
+        // when the guest sleeps, and at the latest after about one display
+        // frame or a bounded run of API calls for a guest that never does.
         if process.state.cooperative_host
-            && (process.state.host_yield_ms.is_some() || slice >= COOPERATIVE_SLICE_LIMIT)
+            && (process.state.host_yield_ms.is_some()
+                || slice >= COOPERATIVE_SLICE_LIMIT
+                || ((long_slice || slices_since_clock >= 32) && {
+                    slices_since_clock = 0;
+                    tick_start.elapsed() >= COOPERATIVE_TICK_TIME
+                }))
         {
             process.resume_pc = Some(pc);
             return Ok(());
@@ -2987,6 +3028,8 @@ pub fn run_main_loop_with_hook(
         let t_cpu = prof.mark();
         let stop = cpu.run_until_hook(pc, instruction_budget_per_slice);
         prof.add_cpu(t_cpu);
+        slices_since_clock += 1;
+        long_slice = matches!(stop, Ok(StopReason::InstructionLimit));
         let stop = match stop {
             Ok(s) => s,
             Err(e) => {

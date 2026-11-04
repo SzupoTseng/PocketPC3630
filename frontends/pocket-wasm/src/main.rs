@@ -288,7 +288,11 @@ fn prepare(entry: &GameEntry, root: &Path) -> anyhow::Result<Emulator> {
         .unwrap_or(pocket_core::cpu::Arch::Arm);
     let mut emu = Emulator::with_interp_cpu_for_arch(arch);
     emu.max_slices = 0;
-    emu.instruction_budget_per_slice = entry.settings.instructions_per_slice;
+    // A slice has to end often enough for the run loop's ~14 ms tick limit
+    // to be checked: with the divide and soft-float helpers answered inside
+    // the interpreter, a game can go a million instructions (~20 ms here)
+    // without an API call.
+    emu.instruction_budget_per_slice = entry.settings.instructions_per_slice.min(200_000);
     emu.load_pe(entry.launch_path(root))?;
     for value in &entry.registry {
         if let Some(text) = value.string.as_deref() {

@@ -657,6 +657,107 @@ impl InterpCpu {
                 self.v = false;
                 Ok(Some(pc.wrapping_add(8)))
             }
+            Intrinsic::RtSdiv => {
+                let (divisor, dividend) = (self.r[0] as i32, self.r[1] as i32);
+                let (q, r) = if divisor == 0 {
+                    (0, 0)
+                } else {
+                    (
+                        dividend.wrapping_div(divisor),
+                        dividend.wrapping_rem(divisor),
+                    )
+                };
+                self.r[0] = q as u32;
+                self.r[1] = r as u32;
+                Ok(Some(self.r[14] & !3))
+            }
+            Intrinsic::SoftFloat(op) => {
+                self.soft_float(op);
+                Ok(Some(self.r[14] & !3))
+            }
+            Intrinsic::RtUdiv => {
+                let (divisor, dividend) = (self.r[0], self.r[1]);
+                let (q, r) = (
+                    dividend.checked_div(divisor).unwrap_or(0),
+                    dividend.checked_rem(divisor).unwrap_or(0),
+                );
+                self.r[0] = q;
+                self.r[1] = r;
+                Ok(Some(self.r[14] & !3))
+            }
+        }
+    }
+
+    /// One soft-float helper on the argument registers, as the HLE handler
+    /// computes it. Single results go to `r0` (leaving `r1`), doubles and
+    /// nothing else to `r0:r1`.
+    fn soft_float(&mut self, op: crate::SoftOp) {
+        use crate::SoftOp::*;
+        let s = |v: u32| f32::from_bits(v);
+        let d = |lo: u32, hi: u32| f64::from_bits(u64::from(hi) << 32 | u64::from(lo));
+        let (a, b) = (s(self.r[0]), s(self.r[1]));
+        let (x, y) = (d(self.r[0], self.r[1]), d(self.r[2], self.r[3]));
+        let unsigned_s = |v: f32| {
+            if v < 0.0 || !v.is_finite() {
+                0
+            } else {
+                v as u32
+            }
+        };
+        let unsigned_d = |v: f64| {
+            if v < 0.0 || !v.is_finite() {
+                0
+            } else {
+                v as u32
+            }
+        };
+        let order = |o: Option<std::cmp::Ordering>| match o {
+            Some(std::cmp::Ordering::Less) => u32::MAX,
+            Some(std::cmp::Ordering::Greater) => 1,
+            _ => 0,
+        };
+        let single = |cpu: &mut Self, v: f32| cpu.r[0] = v.to_bits();
+        let double = |cpu: &mut Self, v: f64| {
+            let bits = v.to_bits();
+            cpu.r[0] = bits as u32;
+            cpu.r[1] = (bits >> 32) as u32;
+        };
+        match op {
+            Adds => single(self, a + b),
+            Subs => single(self, a - b),
+            Muls => single(self, a * b),
+            Divs => single(self, a / b),
+            Negs => single(self, -a),
+            Stoi => self.r[0] = a as i32 as u32,
+            Stou => self.r[0] = unsigned_s(a),
+            Itos => single(self, self.r[0] as i32 as f32),
+            Utos => single(self, self.r[0] as f32),
+            Addd => double(self, x + y),
+            Subd => double(self, x - y),
+            Muld => double(self, x * y),
+            Divd => double(self, x / y),
+            Negd => double(self, -x),
+            Dtoi => self.r[0] = x as i32 as u32,
+            Dtou => self.r[0] = unsigned_d(x),
+            Itod => double(self, self.r[0] as i32 as f64),
+            Utod => double(self, self.r[0] as f64),
+            Stod => double(self, a as f64),
+            Dtos => single(self, x as f32),
+            // Comparisons answer 1 or 0 (`__cmp*`: -1, 0 or 1; unordered is 0).
+            Cmps => self.r[0] = order(a.partial_cmp(&b)),
+            Eqs => self.r[0] = u32::from(a == b),
+            Nes => self.r[0] = u32::from(a != b),
+            Lts => self.r[0] = u32::from(a < b),
+            Les => self.r[0] = u32::from(a <= b),
+            Gts => self.r[0] = u32::from(a > b),
+            Ges => self.r[0] = u32::from(a >= b),
+            Cmpd => self.r[0] = order(x.partial_cmp(&y)),
+            Eqd => self.r[0] = u32::from(x == y),
+            Ned => self.r[0] = u32::from(x != y),
+            Ltd => self.r[0] = u32::from(x < y),
+            Led => self.r[0] = u32::from(x <= y),
+            Gtd => self.r[0] = u32::from(x > y),
+            Ged => self.r[0] = u32::from(x >= y),
         }
     }
 

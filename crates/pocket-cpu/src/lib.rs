@@ -149,6 +149,108 @@ pub enum Intrinsic {
     /// The word loop inside GapiDraw's rectangle fill: stores `r2` at `r3`,
     /// `r1` times, then carries on two instructions later.
     FillWords,
+    /// `coredll!__rt_sdiv`: divisor in `r0`, dividend in `r1`; quotient to
+    /// `r0`, remainder to `r1`, both 0 for a zero divisor (as the HLE
+    /// handler answers). ARMv4 has no divide instruction, so games call this
+    /// for every `/` and `%` on signed ints: Metalion ~237 000 times a
+    /// frame. Through the dispatcher each call cost a whole slice exit.
+    RtSdiv,
+    /// `coredll!__rt_udiv`, the unsigned counterpart of [`Intrinsic::RtSdiv`].
+    RtUdiv,
+    /// A `coredll` soft-float helper (`__muls`, `__stoi`, …). ARMv4 has no
+    /// FPU, so every float operation in a 3D game is one of these calls:
+    /// PowerVR Racer makes ~8 000 a frame. Same arithmetic and conversions as
+    /// the HLE handlers (IEEE operations; float-to-int saturates, NaN is 0).
+    SoftFloat(SoftOp),
+}
+
+/// The soft-float helpers [`Intrinsic::SoftFloat`] answers. Singles travel in
+/// `r0` (and `r1`); doubles in `r0:r1` (and `r2:r3`), low word first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SoftOp {
+    Adds,
+    Subs,
+    Muls,
+    Divs,
+    Negs,
+    Stoi,
+    Stou,
+    Itos,
+    Utos,
+    Addd,
+    Subd,
+    Muld,
+    Divd,
+    Negd,
+    Dtoi,
+    Dtou,
+    Itod,
+    Utod,
+    Stod,
+    Dtos,
+    Cmps,
+    Eqs,
+    Nes,
+    Lts,
+    Les,
+    Gts,
+    Ges,
+    Cmpd,
+    Eqd,
+    Ned,
+    Ltd,
+    Led,
+    Gtd,
+    Ged,
+}
+
+/// The interpreter intrinsic for a `coredll` export, if it has one: the
+/// integer divides and the soft-float helpers.
+pub fn helper_intrinsic(dll: &str, name: &str) -> Option<Intrinsic> {
+    if !dll.eq_ignore_ascii_case("coredll.dll") {
+        return None;
+    }
+    use SoftOp::*;
+    let op = match name {
+        "__rt_sdiv" => return Some(Intrinsic::RtSdiv),
+        "__rt_udiv" => return Some(Intrinsic::RtUdiv),
+        "__adds" => Adds,
+        "__subs" => Subs,
+        "__muls" => Muls,
+        "__divs" => Divs,
+        "__negs" => Negs,
+        "__stoi" => Stoi,
+        "__stou" => Stou,
+        "__itos" => Itos,
+        "__utos" => Utos,
+        "__addd" => Addd,
+        "__subd" => Subd,
+        "__muld" => Muld,
+        "__divd" => Divd,
+        "__negd" => Negd,
+        "__dtoi" => Dtoi,
+        "__dtou" => Dtou,
+        "__itod" => Itod,
+        "__utod" => Utod,
+        "__stod" => Stod,
+        "__dtos" => Dtos,
+        "__cmps" => Cmps,
+        "__eqs" => Eqs,
+        "__nes" => Nes,
+        "__lts" => Lts,
+        "__les" => Les,
+        "__gts" => Gts,
+        "__ges" => Ges,
+        "__cmpd" => Cmpd,
+        "__eqd" => Eqd,
+        "__ned" => Ned,
+        "__ltd" => Ltd,
+        "__led" => Led,
+        "__gtd" => Gtd,
+        "__ged" => Ged,
+        _ => return None,
+    };
+    Some(Intrinsic::SoftFloat(op))
 }
 
 /// Where a routine sits in `GD104.dll`, and the ARM code it must match. A module

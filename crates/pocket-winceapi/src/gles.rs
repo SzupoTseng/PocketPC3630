@@ -1317,6 +1317,10 @@ fn egl_swap_buffers(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelErro
             .to_rgb565(&mut ctx.kernel.framebuffer.pixels[..fb_len]);
     });
     ctx.kernel.framebuffer.mark_dirty();
+    // A swap is a finished frame: the browser shows frames only when one is
+    // whole, and a tick that ends on its time limit mid-frame otherwise
+    // skipped the OpenGL ES titles' pictures (PowerVR Demos fell to a third).
+    ctx.kernel.complete_frames = ctx.kernel.complete_frames.wrapping_add(1);
     // A guest can open GAPI for its input side alone: COD2 calls
     // GXOpenDisplay/GXOpenInput/GXGetDefaultKeys to pick up the device
     // key mapping and then renders exclusively through EGL. That maps
