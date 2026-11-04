@@ -7666,7 +7666,16 @@ pub(crate) fn separate_windows(ctx: &CallCtx<'_>) -> bool {
     // that already ran (CommLog, dotPocket, Pretec CompactGPS, ZIO SimCity
     // 2000, Sorcery PDA) recursed through their menu-bar subclass; with
     // that fixed, the 157-program regression is the same with it on.
+    //
+    // `POCKETHLE_SEPARATE_WINDOWS=1` gives every program separate windows,
+    // for the window test program (tools/wince-window-test) and for trying
+    // the model on programs that do not use MFC.
     static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    static EVERYONE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if *EVERYONE.get_or_init(|| std::env::var("POCKETHLE_SEPARATE_WINDOWS").is_ok_and(|v| v == "1"))
+    {
+        return true;
+    }
     *ENABLED.get_or_init(|| !std::env::var("POCKETHLE_MFC_WINDOWS").is_ok_and(|v| v == "0"))
         && ctx
             .kernel

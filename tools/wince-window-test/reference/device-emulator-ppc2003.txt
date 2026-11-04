@@ -1,0 +1,177 @@
+window-test 1
+register 1
+create A
+  msg A 1 w=0 l=*
+created A -> A
+create B
+  msg B 1 w=0 l=*
+  msg B 3 w=0 l=0
+  msg B 5 w=0 l=*
+created B -> B
+create C
+  msg C 1 w=0 l=*
+created C -> C
+state after create: focus=0 active=0 foreground=?
+  window A: alive=1 parent=0 owner=0 child=B
+  window B: alive=1 parent=A owner=0 child=0
+  window C: alive=1 parent=A owner=A child=0
+pump after create
+show A
+  msg A 3 w=0 l=*
+  msg A 5 w=0 l=*
+  msg A 86 w=1 l=0
+  msg A 6 w=1 l=0
+  msg A 281 w=1 l=*
+  msg A 282 w=2 l=0
+  msg A 7 w=0 l=0
+  msg A 47 w=0 l=*
+pump after show A
+  msg A c003 w=3 l=0
+state after show A: focus=A active=A foreground=?
+  window A: alive=1 parent=0 owner=0 child=B
+  window B: alive=1 parent=A owner=0 child=0
+  window C: alive=1 parent=A owner=A child=0
+show C
+  msg C 3 w=0 l=*
+  msg C 5 w=0 l=*
+  msg A 86 w=0 l=0
+  msg A 6 w=0 l=C
+  msg C 86 w=1 l=0
+  msg C 6 w=1 l=A
+  msg A 8 w=C l=0
+  msg A 281 w=0 l=*
+  msg C 281 w=1 l=*
+  msg A 282 w=1 l=0
+  msg C 282 w=2 l=0
+  msg C 7 w=A l=0
+  msg C 47 w=0 l=*
+pump after show C
+state after show C: focus=C active=C foreground=?
+  window A: alive=1 parent=0 owner=0 child=B
+  window B: alive=1 parent=A owner=0 child=0
+  window C: alive=1 parent=A owner=A child=0
+set active A
+  msg C 86 w=0 l=0
+  msg C 6 w=0 l=A
+  msg A 47 w=0 l=*
+  msg A 86 w=1 l=0
+  msg A 6 w=1 l=C
+  msg C 8 w=A l=0
+  msg C 281 w=0 l=*
+  msg A 281 w=1 l=*
+  msg C 282 w=1 l=0
+  msg A 282 w=2 l=0
+  msg A 7 w=C l=0
+pump after set active A
+state after set active A: focus=A active=A foreground=?
+  window A: alive=1 parent=0 owner=0 child=B
+  window B: alive=1 parent=A owner=0 child=0
+  window C: alive=1 parent=A owner=A child=0
+set foreground C
+  msg A 86 w=0 l=0
+  msg A 6 w=0 l=C
+  msg C 47 w=0 l=*
+  msg C 86 w=1 l=0
+  msg C 30f w=0 l=0
+  msg C 6 w=1 l=A
+  msg A 8 w=C l=0
+  msg A 281 w=0 l=*
+  msg C 281 w=1 l=*
+  msg A 282 w=1 l=0
+  msg C 282 w=2 l=0
+  msg C 7 w=A l=0
+pump after set foreground C
+  msg C f w=0 l=0
+  msg C 14 w=31d l=0
+state after set foreground C: focus=C active=C foreground=C
+  window A: alive=1 parent=0 owner=0 child=B
+  window B: alive=1 parent=A owner=0 child=0
+  window C: alive=1 parent=A owner=A child=0
+set focus B
+  msg C 86 w=0 l=0
+  msg C 6 w=0 l=A
+  msg A 47 w=0 l=*
+  msg A 86 w=1 l=0
+  msg A 30f w=0 l=0
+  msg A 6 w=1 l=C
+  msg C 8 w=A l=0
+  msg C 281 w=0 l=*
+  msg A 281 w=1 l=*
+  msg C 282 w=1 l=0
+  msg A 282 w=2 l=0
+  msg A 7 w=C l=0
+  msg A 8 w=B l=0
+  msg A 281 w=0 l=*
+  msg B 281 w=1 l=*
+  msg B 7 w=A l=0
+pump after set focus B
+state after set focus B: focus=B active=A foreground=A
+  window A: alive=1 parent=0 owner=0 child=B
+  window B: alive=1 parent=A owner=0 child=0
+  window C: alive=1 parent=A owner=A child=0
+create D
+  msg D 1 w=0 l=*
+  msg A 86 w=0 l=0
+  msg A 6 w=0 l=D
+  msg D 86 w=1 l=0
+  msg D 30f w=0 l=0
+  msg D 6 w=1 l=A
+  msg B 8 w=D l=0
+  msg B 281 w=0 l=*
+  msg D 281 w=1 l=*
+  msg B 282 w=1 l=0
+  msg D 282 w=2 l=0
+  msg D 7 w=B l=0
+  msg D 47 w=0 l=*
+created D -> D
+pump after create D
+  msg D c003 w=3 l=0
+  msg D f w=0 l=0
+  msg D 14 w=* l=0
+state after create D: focus=D active=D foreground=D
+  window A: alive=1 parent=0 owner=0 child=B
+  window B: alive=1 parent=A owner=0 child=0
+  window C: alive=1 parent=A owner=A child=0
+  window D: alive=1 parent=0 owner=0 child=0
+disable A
+  msg A a w=0 l=0
+pump after disable A
+state after disable A: focus=D active=D foreground=D
+  window A: alive=1 parent=0 owner=0 child=B
+  window B: alive=1 parent=A owner=0 child=0
+  window C: alive=1 parent=A owner=A child=0
+  window D: alive=1 parent=0 owner=0 child=0
+  msg A a w=1 l=0
+send A user+1
+  msg A 401 w=1 l=2
+post A user+2 and thread user+3
+pump after posts
+  msg A 402 w=3 l=4
+  thread msg 403 w=5
+destroy A
+  msg A 47 w=0 l=*
+  msg C 47 w=0 l=*
+  msg C 2 w=0 l=0
+  msg A 2 w=0 l=0
+  msg B 2 w=0 l=0
+pump after destroy A
+state after destroy A: focus=D active=D foreground=D
+  window A: alive=0 parent=0 owner=0 child=0
+  window B: alive=0 parent=0 owner=0 child=0
+  window C: alive=0 parent=0 owner=0 child=0
+  window D: alive=1 parent=0 owner=0 child=0
+destroy D
+  msg D 47 w=0 l=*
+  msg D 86 w=0 l=0
+  msg D 6 w=0 l=0
+  msg D 8 w=0 l=0
+  msg D 281 w=0 l=*
+  msg D 282 w=1 l=0
+  msg D 2 w=0 l=0
+pump after destroy D
+state after destroy D: focus=0 active=0 foreground=?
+  window A: alive=0 parent=0 owner=0 child=0
+  window B: alive=0 parent=0 owner=0 child=0
+  window C: alive=0 parent=0 owner=0 child=0
+  window D: alive=0 parent=0 owner=0 child=0
+end

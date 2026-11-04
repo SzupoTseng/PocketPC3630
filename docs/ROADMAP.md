@@ -52,6 +52,26 @@ owns which queue. The same program runs on Device Emulator and here; the two
 logs are compared. Our own API traces show only what we do, so they cannot be
 the reference.
 
+**Done:** `tools/wince-window-test` builds the program without a Windows CE
+compiler (Rust for ARMv5, `rust-lld`, a small ELF-to-PE converter), and
+`reference/device-emulator-ppc2003.txt` is its log from Device Emulator.
+Building it found a CPU bug on the way: the interpreter (browser and
+Android) skipped ARMv5's `BLX Rm` and took `LDRD` for a halfword store.
+
+With a handle per window (`POCKETHLE_SEPARATE_WINDOWS=1`) the comparison
+lists what to fix in step 4:
+- an owned pop-up's owner is lost (`GetParent` and `GW_OWNER` give 0);
+- `GetWindow(GW_CHILD)` answers 0;
+- focus and activation are not tracked per window: `SetFocus`,
+  `SetActiveWindow`, `SetForegroundWindow` and `ShowWindow` send no
+  `WM_ACTIVATE`, `WM_SETFOCUS` or `WM_KILLFOCUS`, and focus stays on the
+  first window;
+- `DestroyWindow` sends `WM_DESTROY` later instead of at once, leaves owned
+  and child windows alive, and `IsWindow` still answers 1;
+- a child window gets `WM_MOVE` and `WM_SIZE` during `CreateWindowEx` on a
+  device, later here;
+- `EnableWindow` sends no `WM_ENABLE`.
+
 ## 4. Haali Reader and SimCity 2000
 Run both with API traces and check them against what step 3 established. Each
 stop is tied to a named difference or a missing API before anything is fixed;
