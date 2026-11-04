@@ -203,7 +203,7 @@ target/release/pockethle play MyGame.zip
 ## 🚧 Known limitations
 
 - Games made for a landscape device are drawn sideways; *Rotate screen* in the browser version turns them upright. Games built only for the Compaq iPAQ 3630's sideways display memory (Pocket Hustler) get that layout automatically.
-- MFC programs that open more than one window (Haali Reader, SimCity 2000) do not start yet: every top-level window currently shares one handle, which confuses MFC's window map. Separate windows are the next big piece of work.
+- MFC programs that open more than one window (Haali Reader, SimCity 2000) do not start yet. Each window has its own handle (`POCKETHLE_MFC_WINDOWS=0` brings back the old shared one); what still differs from a device is being worked out against a window test program run on Device Emulator. See [docs/ROADMAP.md](docs/ROADMAP.md).
 - A few rarely used MIPS and SH3 helpers (64-bit maths on SH3, `setjmp` on both) are not implemented yet.
 - MIPS16 code (some MIPS builds) and SH-4 floating point instructions are not supported yet.
 - .NET Compact Framework programs and x86 builds do not run.

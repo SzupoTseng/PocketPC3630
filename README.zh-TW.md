@@ -173,7 +173,7 @@ target/release/pockethle play MyGame.zip
 ## 🚧 已知限制
 
 - 為橫向裝置設計的遊戲會畫成側躺的樣子，可以用網頁版的「旋轉畫面」轉正。只支援 Compaq iPAQ 3630 側向畫面記憶體的遊戲（Pocket Hustler）會自動改用那種排列。
-- 會開啟多個視窗的 MFC 程式（Haali Reader、SimCity 2000）還無法啟動：目前所有頂層視窗共用同一個 handle，讓 MFC 的視窗對照表出錯。支援獨立視窗是下一個主要工作。
+- 會開啟多個視窗的 MFC 程式（Haali Reader、SimCity 2000）還無法啟動。現在每個視窗都有自己的 handle（設 `POCKETHLE_MFC_WINDOWS=0` 會回到舊的共用 handle）；和真機還有哪些差異，正用一支在 Device Emulator 上執行的視窗測試程式逐項比對。見 [docs/ROADMAP.md](docs/ROADMAP.md)。
 - 少數較少用的 MIPS 與 SH3 輔助函式（SH3 的 64 位元運算、兩者的 `setjmp`）尚未實作。
 - 尚不支援 MIPS16 程式碼（部分 MIPS 版）與 SH-4 浮點指令。
 - .NET Compact Framework 程式與 x86 版本無法執行。
