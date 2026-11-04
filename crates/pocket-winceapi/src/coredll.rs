@@ -7751,6 +7751,11 @@ fn create_guest_window(
             } else {
                 0
             },
+            owner: if style & WS_CHILD_STYLE != 0 {
+                0
+            } else {
+                parent
+            },
             class: class_name.to_string(),
             style,
             x,
@@ -16748,6 +16753,7 @@ fn start_next_dialog_custom(
             hwnd,
             pocket_kernel::GuestWindow {
                 parent: FAKE_DIALOG_HWND,
+                owner: 0,
                 class: item.class.clone(),
                 style: item.style,
                 x,
@@ -18103,7 +18109,14 @@ fn get_foreground_window(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, Kern
 fn get_parent(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let guest_hwnd = ctx.arg_u32(0)?;
     if let Some(win) = ctx.kernel.guest_windows.get(&guest_hwnd) {
-        let parent = if win.parent == 0 { 0 } else { win.parent };
+        // A child's parent, or a pop-up's owner: on Windows CE, as on the
+        // desktop, `GetParent` answers the owner for an owned window
+        // (Device Emulator, tools/wince-window-test).
+        let parent = if win.parent != 0 {
+            win.parent
+        } else {
+            win.owner
+        };
         return Ok(DispatchOutcome::ReturnedR0(parent));
     }
     // A top-level window has no parent, and neither does the desktop.
@@ -18120,10 +18133,68 @@ fn get_parent(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     Ok(DispatchOutcome::ReturnedR0(parent))
 }
 
-/// `HWND GetWindow(HWND, UINT)` — for synthetic windows we have no
-/// Z-order, so always say "no neighbour" (`NULL`).
-fn get_window(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
-    Ok(DispatchOutcome::ReturnedR0(0))
+/// `HWND GetWindow(HWND, UINT)`, for the windows created with handles of
+/// their own.
+///
+/// Child windows are kept in a device's Z-order: a window created with
+/// `CreateWindowExW` goes on top of its siblings, so `GW_CHILD` is the
+/// newest child; a dialog's controls stay in template order, the first
+/// control on top. `GW_OWNER` is a pop-up's owner. Anything else answers
+/// "no neighbour" (`NULL`).
+fn get_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    const GW_HWNDFIRST: u32 = 0;
+    const GW_HWNDLAST: u32 = 1;
+    const GW_HWNDNEXT: u32 = 2;
+    const GW_HWNDPREV: u32 = 3;
+    const GW_OWNER: u32 = 4;
+    const GW_CHILD: u32 = 5;
+    let hwnd = ctx.arg_u32(0)?;
+    let relation = ctx.arg_u32(1)?;
+    let windows = &ctx.kernel.guest_windows;
+    // The children of `parent`, top of the Z-order first.
+    let children = |parent: u32| -> Vec<u32> {
+        let mut found: Vec<u32> = windows
+            .iter()
+            .filter(|(_, win)| win.parent == parent && win.style & WS_CHILD_STYLE != 0)
+            .map(|(child, _)| *child)
+            .collect();
+        found.sort_unstable();
+        if parent != FAKE_DIALOG_HWND {
+            found.reverse();
+        }
+        found
+    };
+    let siblings = || {
+        windows
+            .get(&hwnd)
+            .filter(|win| win.style & WS_CHILD_STYLE != 0)
+            .map(|win| children(win.parent))
+            .unwrap_or_default()
+    };
+    let at = |list: &[u32]| list.iter().position(|w| *w == hwnd);
+    let answer = match relation {
+        GW_OWNER => windows.get(&hwnd).map_or(0, |win| win.owner),
+        GW_CHILD if hwnd != 0 => children(hwnd).first().copied().unwrap_or(0),
+        GW_HWNDFIRST => siblings().first().copied().unwrap_or(0),
+        GW_HWNDLAST => siblings().last().copied().unwrap_or(0),
+        GW_HWNDNEXT => {
+            let list = siblings();
+            at(&list)
+                .and_then(|i| list.get(i + 1))
+                .copied()
+                .unwrap_or(0)
+        }
+        GW_HWNDPREV => {
+            let list = siblings();
+            at(&list)
+                .and_then(|i| i.checked_sub(1))
+                .and_then(|i| list.get(i))
+                .copied()
+                .unwrap_or(0)
+        }
+        _ => 0,
+    };
+    Ok(DispatchOutcome::ReturnedR0(answer))
 }
 
 // ---------- Time helpers -------------------------------------------

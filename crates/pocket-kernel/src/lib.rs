@@ -863,7 +863,12 @@ fn guest_dll_on_disk(dirs: &[PathBuf], module: &str) -> bool {
 /// the main window, which stays on the fixed handle every frontend knows.
 #[derive(Debug, Clone, Default)]
 pub struct GuestWindow {
+    /// The parent of a child window (`WS_CHILD`); 0 for any other.
     pub parent: u32,
+    /// The owner of a top-level window created with a parent window: a
+    /// pop-up or dialog belongs to it, is destroyed with it and reports
+    /// it from `GetParent` and `GetWindow(GW_OWNER)`.
+    pub owner: u32,
     pub class: String,
     pub style: u32,
     /// Rectangle in the parent's client coordinates.
