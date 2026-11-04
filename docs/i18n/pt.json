@@ -230,5 +230,6 @@
  "lib.reason.palm": "É a versão para Palm OS (.prc/.pdb), não um programa de Pocket PC",
  "lib.reason.plugin": "Um plug-in para outro programa (como um codec de um leitor), não um programa que abre sozinho",
  "lib.m01": "Tópico do Mobile01",
- "lib.variant.retail": "Registo do disco comercial"
+ "lib.variant.retail": "Registo do disco comercial",
+ "lib.m01note": "Nota de um membro do Mobile01 (2003, em chinês)"
 }
