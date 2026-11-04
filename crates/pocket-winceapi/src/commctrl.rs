@@ -15,43 +15,18 @@ pub fn register(d: &mut WinCeDispatcher) {
     let dll = "commctrl.dll";
 
     // Named exports — present in the WM5/WM6 SDK headers even when
-    // the lib stripped names.
+    // the lib stripped names — that succeed without doing anything. The
+    // image list calls we model come from `register_image_lists`.
     for f in [
         "InitCommonControls",
         "InitCommonControlsEx",
-        "ImageList_Create",
-        "ImageList_Destroy",
-        "ImageList_Add",
-        "ImageList_AddMasked",
-        "ImageList_Draw",
-        "ImageList_DrawEx",
-        "ImageList_GetIconSize",
-        "ImageList_SetIconSize",
-        "ImageList_GetImageCount",
-        "ImageList_Replace",
         "ImageList_ReplaceIcon",
-        "ImageList_SetBkColor",
         "_TrackMouseEvent",
     ] {
         d.register_handler(dll, f, ok);
     }
-    // The real image list calls replace the placeholders above.
     crate::coredll::register_image_lists(d, dll);
     crate::coredll::register_command_bars(d, dll);
-
-    // Stub ordinals 1..=80 by default, then override the ones we do
-    // model. The most-frequent culprits for "unimplemented call ->
-    // commctrl.dll!#N" on Pocket PC are:
-    //
-    //   #1  InitCommonControls
-    //   #2  InitCommonControlsEx
-    //   #6  CreateUpDownControl
-    //
-    // Returning success leaves the control invisible but doesn't crash
-    // anything downstream.
-    for ord in 1u16..=80 {
-        d.register_handler(dll, &format!("ord:{ord}"), ok);
-    }
 
     // #2, #4 and #5 are successful no-op common-control calls in the
     // PPC2003 ordinal space used by Cubis.
@@ -78,6 +53,23 @@ pub fn register(d: &mut WinCeDispatcher) {
     d.register_handler(dll, "ord:17", create_status_window);
     for f in ["CreateStatusWindow", "CreateStatusWindowW"] {
         d.register_handler(dll, f, create_status_window);
+    }
+
+    // Every other ordinal from 1 to 80 succeeds without doing anything.
+    // The most-frequent culprits for "unimplemented call ->
+    // commctrl.dll!#N" on Pocket PC are:
+    //
+    //   #1  InitCommonControls
+    //   #2  InitCommonControlsEx
+    //   #6  CreateUpDownControl
+    //
+    // Returning success leaves the control invisible but doesn't crash
+    // anything downstream.
+    for ord in 1u16..=80 {
+        let name = format!("ord:{ord}");
+        if !d.has_handler(dll, &name) {
+            d.register_handler(dll, &name, ok);
+        }
     }
 }
 

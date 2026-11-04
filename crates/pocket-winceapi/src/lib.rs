@@ -195,6 +195,11 @@ pub struct WinCeDispatcher {
     pub halt_on_unimplemented: bool,
     /// Optional JSON-lines sink. One record per dispatched call.
     trace_sink: Option<Box<dyn Write + Send>>,
+    /// Names registered a second time with a different handler or
+    /// constant, as `dll!name`. The later registration wins, which is
+    /// easy to do by accident across ~2,000 registrations; the
+    /// registration tests require this to stay empty.
+    conflicts: Vec<String>,
 }
 
 impl Default for WinCeDispatcher {
@@ -211,6 +216,7 @@ impl WinCeDispatcher {
             by_thunk_va: HashMap::new(),
             halt_on_unimplemented: false,
             trace_sink: None,
+            conflicts: Vec::new(),
         };
         coredll::register(&mut d);
         cedb::register(&mut d);
@@ -244,8 +250,52 @@ impl WinCeDispatcher {
         d
     }
 
+    /// Note `key` being registered again with a different handler or
+    /// constant (see [`Self::registration_conflicts`]).
+    fn note_conflict(&mut self, key: &(String, String), handler: Handler, value: Option<u32>) {
+        let Some(previous) = self.by_name.get(key) else {
+            return;
+        };
+        let other_handler = *previous as usize != handler as usize;
+        let other_value = self.by_name_constant.get(key).copied() != value;
+        if other_handler || other_value {
+            self.conflicts.push(format!("{}!{}", key.0, key.1));
+        }
+    }
+
+    /// Names registered twice with different handlers or constants.
+    pub fn registration_conflicts(&self) -> &[String] {
+        &self.conflicts
+    }
+
+    /// Whether `dll!name` has a handler.
+    pub fn has_handler(&self, dll: &str, name: &str) -> bool {
+        self.by_name
+            .contains_key(&(dll.to_ascii_lowercase(), name.to_string()))
+    }
+
+    /// The constant `dll!name` was registered with, if any.
+    pub fn registered_constant(&self, dll: &str, name: &str) -> Option<u32> {
+        self.by_name_constant
+            .get(&(dll.to_ascii_lowercase(), name.to_string()))
+            .copied()
+    }
+
+    /// Whether `dll!a` and `dll!b` are answered by the same handler.
+    pub fn same_handler(&self, dll: &str, a: &str, b: &str) -> bool {
+        let dll = dll.to_ascii_lowercase();
+        match (
+            self.by_name.get(&(dll.clone(), a.to_string())),
+            self.by_name.get(&(dll, b.to_string())),
+        ) {
+            (Some(x), Some(y)) => *x as usize == *y as usize,
+            _ => false,
+        }
+    }
+
     pub fn register_handler(&mut self, dll: &str, name: &str, handler: Handler) {
         let key = (dll.to_ascii_lowercase(), name.to_string());
+        self.note_conflict(&key, handler, None);
         self.by_name.insert(key.clone(), handler);
         // A new handler shadows any prior constant-return
         // registration for the same (dll, name).
@@ -266,6 +316,7 @@ impl WinCeDispatcher {
     /// runtime `GetProcAddress`).
     pub fn register_constant(&mut self, dll: &str, name: &str, value: u32, handler: Handler) {
         let key = (dll.to_ascii_lowercase(), name.to_string());
+        self.note_conflict(&key, handler, Some(value));
         self.by_name.insert(key.clone(), handler);
         self.by_name_constant.insert(key, value);
         self.by_thunk_va.clear();

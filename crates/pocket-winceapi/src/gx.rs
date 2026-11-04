@@ -38,13 +38,10 @@ pub fn register(d: &mut WinCeDispatcher) {
     // import directory of the JumpyBall PE. We strip mangling for
     // dispatch lookup.
     d.register_handler(dll, "?GXOpenDisplay@@YAHPAUHWND__@@K@Z", gx_open_display);
-    d.register_handler(dll, "?GXCloseDisplay@@YAHXZ", gx_close_display);
     d.register_constant(dll, "?GXCloseDisplay@@YAHXZ", 1, gx_close_display);
     d.register_handler(dll, "?GXBeginDraw@@YAPAXXZ", gx_begin_draw);
     d.register_handler(dll, "?GXEndDraw@@YAHXZ", gx_end_draw);
-    d.register_handler(dll, "?GXSuspend@@YAHXZ", gx_suspend);
     d.register_constant(dll, "?GXSuspend@@YAHXZ", 1, gx_suspend);
-    d.register_handler(dll, "?GXResume@@YAHXZ", gx_resume);
     d.register_constant(dll, "?GXResume@@YAHXZ", 1, gx_resume);
     d.register_handler(dll, "?GXOpenInput@@YAHXZ", gx_open_input);
     d.register_handler(dll, "?GXCloseInput@@YAHXZ", gx_close_input);
