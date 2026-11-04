@@ -429,6 +429,30 @@ impl InterpCpu {
         let load = i >> 20 & 1 != 0;
         let rd = i >> 12 & 15;
         let writeback = !pre || i >> 21 & 1 != 0;
+        // ARMv5TE's LDRD and STRD share this encoding with L clear: SH 2
+        // loads Rd and Rd+1 from two words, SH 3 stores them. Without
+        // this, LDRD stored a halfword instead.
+        if !load && i >> 6 & 1 != 0 && rd & 1 == 0 && rd < 14 {
+            let address = address & !3;
+            if i >> 5 & 1 == 0 {
+                let low = self.read32(address)?;
+                let high = self.read32(address.wrapping_add(4))?;
+                if writeback {
+                    self.r[rn_index as usize] = moved;
+                }
+                self.r[rd as usize] = low;
+                self.r[rd as usize + 1] = high;
+            } else {
+                let low = self.reg(rd, pc);
+                let high = self.reg(rd + 1, pc);
+                self.write32(address, low)?;
+                self.write32(address.wrapping_add(4), high)?;
+                if writeback {
+                    self.r[rn_index as usize] = moved;
+                }
+            }
+            return Ok(());
+        }
         if load {
             let value = match i >> 5 & 3 {
                 1 => u32::from(self.read16(address)?),
@@ -559,10 +583,17 @@ impl InterpCpu {
     fn execute(&mut self, i: u32, pc: u32, next: &mut u32) -> Result<(), CpuError> {
         match i >> 25 & 7 {
             0 => {
-                if i & 0x0FFF_FFF0 == 0x012F_FF10 {
+                if i & 0x0FFF_FFD0 == 0x012F_FF10 {
+                    // BX Rm, and ARMv5's BLX Rm, which also sets LR to the
+                    // next instruction. Programs built for XScale call
+                    // through function pointers with BLX; taken as data
+                    // processing, the call was silently skipped.
                     let target = self.reg(i & 15, pc);
                     if target & 1 != 0 {
                         return Err(CpuError::Unsupported("Thumb state"));
+                    }
+                    if i & 0x20 != 0 {
+                        self.r[14] = pc.wrapping_add(4);
                     }
                     *next = target & !3;
                 } else if i & 0x0FC0_00F0 == 0x0000_0090 {

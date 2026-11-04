@@ -37,7 +37,7 @@ fn random_instruction(rng: &mut Rng) -> u32 {
             if (8..=11).contains(&op) { 0 } else { rd },
         )
     };
-    let body = match rng.below(9) {
+    let body = match rng.below(10) {
         0 => {
             // Data processing, immediate.
             let op = rng.below(16);
@@ -126,6 +126,22 @@ fn random_instruction(rng: &mut Rng) -> u32 {
             let list = rng.next() & 0x07FF | 1;
             let load = rng.below(2);
             (4 << 25) | 1 << 23 | load << 20 | 11 << 16 | list
+        }
+        8 => {
+            // LDRD / STRD (ARMv5TE), doubleword offset from r11 into an
+            // even register pair below r10.
+            let pair = rng.below(5) * 2;
+            let offset = rng.below(16) * 8;
+            let store = rng.below(2);
+            1 << 24
+                | 1 << 23
+                | 1 << 22
+                | 11 << 16
+                | pair << 12
+                | (offset >> 4) << 8
+                | 0xD0
+                | store << 5
+                | (offset & 15)
         }
         _ => {
             // MRS, then a flag-setting compare so flags keep moving.
