@@ -12380,6 +12380,97 @@ fn output_debug_string_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, Kerne
     Ok(DispatchOutcome::ReturnedR0(0))
 }
 
+/// One `DestroyWindow` delivering its WM_DESTROY messages: the interrupted
+/// call, the windows still to be told, and every window the call destroys.
+type DestroyCall = (GuestCallFrame, std::collections::VecDeque<u32>, Vec<u32>);
+
+thread_local! {
+    /// The `DestroyWindow` calls in flight, innermost last.
+    static GUEST_DESTROYS: std::cell::RefCell<Vec<DestroyCall>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// The windows `DestroyWindow(target)` destroys, in the order they hear
+/// WM_DESTROY on a device (Device Emulator, tools/wince-window-test): the
+/// windows it owns first, each with everything of its own, then the window
+/// itself, then its children, newest first.
+fn destroy_order(ctx: &CallCtx<'_>, target: u32, out: &mut Vec<u32>) {
+    if out.contains(&target) || out.len() > 512 {
+        return;
+    }
+    let newest_first = |pick: &dyn Fn(&pocket_kernel::GuestWindow) -> bool| {
+        let mut found: Vec<u32> = ctx
+            .kernel
+            .guest_windows
+            .iter()
+            .filter(|(_, win)| pick(win))
+            .map(|(hwnd, _)| *hwnd)
+            .collect();
+        found.sort_unstable_by(|a, b| b.cmp(a));
+        found
+    };
+    for owned in newest_first(&|win| win.owner == target) {
+        destroy_order(ctx, owned, out);
+    }
+    out.push(target);
+    for child in newest_first(&|win| win.parent == target) {
+        destroy_order(ctx, child, out);
+    }
+}
+
+/// Send the next WM_DESTROY of the innermost `DestroyWindow`, or, when all
+/// have been sent, remove its windows and return TRUE to its caller.
+fn deliver_next_destroy(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    loop {
+        let next = GUEST_DESTROYS.with(|d| d.borrow_mut().last_mut().and_then(|e| e.1.pop_front()));
+        let Some(hwnd) = next else {
+            break;
+        };
+        let proc_ = if hwnd == FAKE_HWND {
+            ctx.kernel.wnd_proc
+        } else {
+            ctx.kernel.window_procs.get(&hwnd).copied().unwrap_or(0)
+        };
+        if proc_ == 0 {
+            continue;
+        }
+        ctx.cpu.write_reg(ArmReg::R0, hwnd)?;
+        ctx.cpu.write_reg(ArmReg::R1, WM_DESTROY)?;
+        ctx.cpu.write_reg(ArmReg::R2, 0)?;
+        ctx.cpu.write_reg(ArmReg::R3, 0)?;
+        ctx.cpu.write_reg(ArmReg::Lr, ctx.thunk.thunk_va)?;
+        return Ok(DispatchOutcome::JumpTo(proc_));
+    }
+    let (frame, _, doomed) = GUEST_DESTROYS.with(|d| d.borrow_mut().pop()).unwrap();
+    for hwnd in &doomed {
+        if *hwnd == FAKE_HWND {
+            ctx.kernel.main_window_destroyed = true;
+            continue;
+        }
+        ctx.kernel.guest_windows.remove(hwnd);
+        ctx.kernel.window_procs.remove(hwnd);
+        ctx.kernel.window_classes.remove(hwnd);
+    }
+    ctx.kernel
+        .posted_messages
+        .retain(|(hwnd, ..)| *hwnd == FAKE_HWND || !doomed.contains(hwnd));
+    ctx.cpu.write_reg(ArmReg::Sp, frame.sp)?;
+    ctx.cpu.write_reg(ArmReg::R1, frame.args[1])?;
+    ctx.cpu.write_reg(ArmReg::R2, frame.args[2])?;
+    ctx.cpu.write_reg(ArmReg::R3, frame.args[3])?;
+    ctx.cpu.write_reg(ArmReg::Lr, frame.lr)?;
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+/// Whether `hwnd` is being destroyed by a `DestroyWindow` still running.
+fn being_destroyed(hwnd: u32) -> bool {
+    GUEST_DESTROYS.with(|d| {
+        d.borrow()
+            .iter()
+            .any(|(_, _, doomed)| doomed.contains(&hwnd))
+    })
+}
+
 /// `BOOL DestroyWindow(HWND hWnd)`.
 ///
 /// Destroying a control just drops it. Destroying the top-level window
@@ -12387,32 +12478,43 @@ fn output_debug_string_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, Kerne
 /// and expects the `WM_DESTROY` that follows to reach its `WndProc`,
 /// which is where its `PostQuitMessage` lives.
 fn destroy_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
-    let target = ctx.arg_u32(0)?;
-    if ctx.kernel.guest_windows.contains_key(&target) {
-        // Children go with their parent, and each hears WM_DESTROY.
-        let mut doomed = vec![target];
-        let mut i = 0;
-        while i < doomed.len() {
-            let p = doomed[i];
-            doomed.extend(
-                ctx.kernel
-                    .guest_windows
-                    .iter()
-                    .filter(|(_, w)| w.parent == p)
-                    .map(|(h, _)| *h),
-            );
-            i += 1;
-        }
-        for h in doomed {
-            ctx.kernel.guest_windows.remove(&h);
-            ctx.kernel.controls.destroy_children_of(h);
-            if ctx.kernel.posted_messages.len() < 256 {
-                ctx.kernel.posted_messages.push_back((h, WM_DESTROY, 0, 0));
-            }
-        }
-        return Ok(DispatchOutcome::ReturnedR0(1));
+    // A WM_DESTROY sent by an earlier call has returned: send the next.
+    // A DestroyWindow made from inside that WM_DESTROY runs deeper.
+    let sp = ctx.cpu.read_reg(ArmReg::Sp)?;
+    if GUEST_DESTROYS.with(|d| d.borrow().last().is_some_and(|e| sp >= e.0.sp)) {
+        return deliver_next_destroy(ctx);
     }
-    let hwnd = ctx.arg_u32(0)?;
+    let target = ctx.arg_u32(0)?;
+    // A window with a handle of its own (and, when every window has one,
+    // the main window): WM_DESTROY goes to it and to everything it owns or
+    // contains before DestroyWindow returns, as on a device.
+    if ctx.kernel.guest_windows.contains_key(&target)
+        || (target == FAKE_HWND && separate_windows(ctx))
+    {
+        if being_destroyed(target) {
+            return Ok(DispatchOutcome::ReturnedR0(1));
+        }
+        let mut doomed = Vec::new();
+        destroy_order(ctx, target, &mut doomed);
+        doomed.retain(|hwnd| !being_destroyed(*hwnd));
+        for hwnd in &doomed {
+            ctx.kernel.controls.destroy_children_of(*hwnd);
+        }
+        let frame = GuestCallFrame {
+            args: [
+                ctx.cpu.read_reg(ArmReg::R0)?,
+                ctx.cpu.read_reg(ArmReg::R1)?,
+                ctx.cpu.read_reg(ArmReg::R2)?,
+                ctx.cpu.read_reg(ArmReg::R3)?,
+            ],
+            lr: ctx.cpu.read_reg(ArmReg::Lr)?,
+            sp,
+        };
+        let queue = doomed.iter().copied().collect();
+        GUEST_DESTROYS.with(|d| d.borrow_mut().push((frame, queue, doomed)));
+        return deliver_next_destroy(ctx);
+    }
+    let hwnd = target;
     if Controls::is_child_hwnd(hwnd) {
         ctx.kernel.controls.destroy(hwnd);
         return Ok(DispatchOutcome::ReturnedR0(1));
@@ -17082,7 +17184,15 @@ fn create_dialog_indirect_param_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutco
 
 fn is_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let hwnd = ctx.arg_u32(0)?;
-    Ok(DispatchOutcome::ReturnedR0(is_live_hwnd(hwnd) as u32))
+    // A window with a handle of its own is a window until it is destroyed.
+    let alive = if is_guest_window(hwnd) {
+        ctx.kernel.guest_windows.contains_key(&hwnd)
+    } else if hwnd == FAKE_HWND {
+        !ctx.kernel.main_window_destroyed
+    } else {
+        is_live_hwnd(hwnd)
+    };
+    Ok(DispatchOutcome::ReturnedR0(alive as u32))
 }
 
 fn create_semaphore_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
@@ -18125,11 +18235,13 @@ fn get_parent(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     // handle with no CWnd, faulting in AfxCallWndProc. Walking until NULL also
     // spun forever when the desktop reported itself.
     let hwnd = ctx.arg_u32(0)?;
-    let parent = if hwnd == 0 || hwnd == FAKE_DESKTOP_HWND || hwnd == FAKE_HWND {
-        0
-    } else {
-        FAKE_DESKTOP_HWND
-    };
+    // A destroyed window has no parent.
+    let parent =
+        if hwnd == 0 || hwnd == FAKE_DESKTOP_HWND || hwnd == FAKE_HWND || is_guest_window(hwnd) {
+            0
+        } else {
+            FAKE_DESKTOP_HWND
+        };
     Ok(DispatchOutcome::ReturnedR0(parent))
 }
 
@@ -18809,6 +18921,7 @@ pub(crate) mod tests {
             hss: Default::default(),
             gz_files: Default::default(),
             posted_messages: Default::default(),
+            main_window_destroyed: false,
             msg_queues: std::collections::HashMap::new(),
             next_msg_queue_handle: 0xDEAD_E500,
             menus: std::collections::HashMap::new(),

@@ -445,6 +445,7 @@ pub(crate) mod tests {
             hss: Default::default(),
             gz_files: Default::default(),
             posted_messages: Default::default(),
+            main_window_destroyed: false,
             msg_queues: std::collections::HashMap::new(),
             next_msg_queue_handle: 0xDEAD_E500,
             menus: std::collections::HashMap::new(),

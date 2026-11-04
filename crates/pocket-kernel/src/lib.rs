@@ -1361,6 +1361,9 @@ pub struct KernelState {
     /// handed to the guest by `GetMessageW` / `PeekMessageW`.
     /// `(hwnd, msg, wparam, lparam)`.
     pub posted_messages: VecDeque<(u32, u32, u32, u32)>,
+    /// The main window was destroyed while every window had a handle of
+    /// its own, so `IsWindow` no longer answers it.
+    pub main_window_destroyed: bool,
     pub msg_queues: HashMap<u32, MsgQueue>,
     pub next_msg_queue_handle: u32,
     /// Per-menu table of `(item_id -> flags)`. We track the flags so
@@ -2580,6 +2583,7 @@ impl Process {
                 hss: Default::default(),
                 gz_files: Default::default(),
                 posted_messages: Default::default(),
+                main_window_destroyed: false,
                 msg_queues: HashMap::new(),
                 next_msg_queue_handle: 0xDEAD_E500,
                 menus: HashMap::new(),
