@@ -128,6 +128,19 @@ mod tests {
                 )),
                 "no-space",
             ),
+            (
+                LibraryError::Io(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "too large to import: GAME.DAT is larger than 512 MB",
+                )),
+                "too-large",
+            ),
+            (
+                LibraryError::Pe(
+                    "section out of bounds: the sections claim 4026531840 bytes of memory".into(),
+                ),
+                "too-large",
+            ),
         ];
         for (error, id) in cases {
             let problem = Problem::from_import(&error);

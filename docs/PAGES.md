@@ -6,7 +6,10 @@ browser. There is no server, and game files must never be committed here.
 
 ## Publish
 
-1. Build `pocket-wasm` for `wasm32-unknown-emscripten`.
+1. Build `pocket-wasm` for `wasm32-unknown-emscripten` with
+   `frontends/pocket-wasm/build.sh` (needs an activated emsdk, 3.1.74). It holds
+   the link flags and the list of functions the page calls; CI builds the same
+   way.
 2. Run `node frontends/pocket-wasm/web/prepare-pages.mjs [build dir]`, which
    copies the page and build into `docs/` and refuses a build containing local
    paths.

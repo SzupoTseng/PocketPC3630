@@ -17,10 +17,12 @@
 
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::{self, Read, Seek, SeekFrom, Write};
+use std::io::{self, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
 use thiserror::Error;
+
+pub mod limits;
 
 #[derive(Debug, Error)]
 pub enum CabError {
@@ -46,10 +48,21 @@ pub struct CabFile {
 /// Extract every file from `cab_path` into `out_dir`.
 ///
 /// Returns the list of extracted files in the order they appeared in the
-/// cabinet directory. Existing files are overwritten.
+/// cabinet directory. Existing files are overwritten. Uses the default
+/// [`limits::Budget`].
 pub fn extract_all<P: AsRef<Path>, Q: AsRef<Path>>(
     cab_path: P,
     out_dir: Q,
+) -> Result<Vec<CabFile>, CabError> {
+    extract_all_within(cab_path, out_dir, &mut limits::Budget::default())
+}
+
+/// [`extract_all`], counting what it writes against `budget`, so a cabinet
+/// nested in another download shares that download's limits.
+pub fn extract_all_within<P: AsRef<Path>, Q: AsRef<Path>>(
+    cab_path: P,
+    out_dir: Q,
+    budget: &mut limits::Budget,
 ) -> Result<Vec<CabFile>, CabError> {
     let cab_path = cab_path.as_ref();
     let out_dir = out_dir.as_ref();
@@ -68,19 +81,36 @@ pub fn extract_all<P: AsRef<Path>, Q: AsRef<Path>>(
     }
 
     let mut out = Vec::with_capacity(entries.len());
+    // Names already written, compared without case as on the device. A
+    // cabinet listing the same name twice gets one copy (`read_file`
+    // returns the first either way); two different names that become the
+    // same once made safe (`a/b` and `a_b`) both keep their contents.
+    let mut taken: HashMap<String, String> = HashMap::new();
     for (_folder_idx, name) in entries {
+        let mut safe = sanitize_name(&name);
+        match taken.get(&safe.to_ascii_lowercase()) {
+            Some(original) if *original == name => continue,
+            Some(_) => {
+                let base = safe.clone();
+                let mut n = 2;
+                while taken.contains_key(&safe.to_ascii_lowercase()) {
+                    safe = format!("{base}~{n}");
+                    n += 1;
+                }
+                log::warn!("cabinet entry {name} renamed to {safe}: the name is taken");
+            }
+            None => {}
+        }
+        taken.insert(safe.to_ascii_lowercase(), name.clone());
         let mut reader = cabinet
             .read_file(&name)
             .map_err(|e| CabError::Parse(format!("reading {name}: {e}")))?;
-        let dest = out_dir.join(sanitize_name(&name));
+        let dest = out_dir.join(&safe);
         if let Some(parent) = dest.parent() {
             fs::create_dir_all(parent)?;
         }
-        let mut buf = Vec::new();
-        reader.read_to_end(&mut buf)?;
-        let size = buf.len() as u64;
         let mut w = File::create(&dest)?;
-        w.write_all(&buf)?;
+        let size = budget.copy(&name, &mut reader, &mut w)?;
         log::debug!("extracted {name} -> {} ({} bytes)", dest.display(), size);
         out.push(CabFile {
             short_name: name,

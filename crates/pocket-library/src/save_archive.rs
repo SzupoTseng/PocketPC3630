@@ -117,8 +117,18 @@ pub fn import<R: Read + Seek>(game_dir: &Path, input: R) -> io::Result<usize> {
                 format!("too large: {name}"),
             ));
         }
+        // The size in the zip's directory is only a claim: read at most one
+        // byte past the limit whatever it says.
         let mut bytes = Vec::with_capacity(entry.size() as usize);
-        entry.read_to_end(&mut bytes)?;
+        (&mut entry)
+            .take(LARGEST_ENTRY + 1)
+            .read_to_end(&mut bytes)?;
+        if bytes.len() as u64 > LARGEST_ENTRY {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("too large: {name}"),
+            ));
+        }
         accepted.push((target, bytes));
     }
     if accepted.is_empty() {

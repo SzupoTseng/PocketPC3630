@@ -87,15 +87,19 @@ jobs:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           POCKETPC_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
-            export POCKETPC_KEYSTORE="$RUNNER_TEMP/release.jks"
-          else
-            echo "::warning::No signing key in secrets; the APK is signed with a throwaway debug key and will not update earlier installs."
+          # A release build signed with the one published key, so it installs
+          # over every earlier version. Without the key there is nothing to
+          # publish: an APK signed with any other key would refuse to update.
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::No signing key in secrets (ANDROID_KEYSTORE_B64)."
+            exit 1
           fi
-          gradle assembleDebug --no-daemon
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          export POCKETPC_KEYSTORE="$RUNNER_TEMP/release.jks"
+          gradle assembleRelease --no-daemon
+          rm -f "$RUNNER_TEMP/release.jks"
       - name: rename
-        run: cp frontends/pocket-android/app/build/outputs/apk/debug/*.apk PocketPC3630-android.apk
+        run: cp frontends/pocket-android/app/build/outputs/apk/release/app-release.apk PocketPC3630-android.apk
       - uses: actions/upload-artifact@v4
         with:
           name: android
@@ -109,6 +113,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: out
+      - name: checksums
+        run: |
+          cd out
+          sha256sum windows/PocketPC3630-windows-x64.zip android/PocketPC3630-android.apk \
+            | sed 's#  [a-z]*/#  #' > SHA256SUMS.txt
+          cat SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
@@ -117,3 +127,4 @@ jobs:
           files: |
             out/windows/PocketPC3630-windows-x64.zip
             out/android/PocketPC3630-android.apk
+            out/SHA256SUMS.txt

@@ -835,7 +835,13 @@ impl Cpu for InterpCpu {
     fn install_intrinsic(&mut self, va: u32, intrinsic: Intrinsic) {
         let page = (va >> PAGE_SHIFT) as usize;
         self.hook_pages[page / 64] |= 1 << (page % 64);
-        self.intrinsics.push((va, intrinsic));
+        // Kept sorted by address: a game-code page holding one intrinsic
+        // (a GapiDraw blitter, say) looks it up on every instruction run on
+        // that page, so the lookup is a binary search, not a scan of every
+        // intrinsic installed. The first one installed at an address wins.
+        if let Err(at) = self.intrinsics.binary_search_by_key(&va, |(va, _)| *va) {
+            self.intrinsics.insert(at, (va, intrinsic));
+        }
     }
 
     fn map_region(&mut self, va: u32, size: u32, _prot: Prot) -> Result<(), CpuError> {
@@ -1042,9 +1048,9 @@ impl Cpu for InterpCpu {
             if page_has_hooks {
                 let intrinsic = self
                     .intrinsics
-                    .iter()
-                    .find(|(va, _)| *va == pc)
-                    .map(|i| i.1);
+                    .binary_search_by_key(&pc, |(va, _)| *va)
+                    .ok()
+                    .map(|at| self.intrinsics[at].1);
                 if let Some(intrinsic) = intrinsic {
                     match self.run_intrinsic(pc, intrinsic) {
                         Ok(Some(next)) => {

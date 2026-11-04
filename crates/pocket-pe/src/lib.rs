@@ -278,6 +278,14 @@ fn parse_wince_pe(bytes: &[u8]) -> Result<PE<'_>, LoadError> {
     PE::parse_with_opts(bytes, &options).map_err(|e| LoadError::NotPe(e.to_string()))
 }
 
+/// The most memory a program's sections may ask for. A Pocket PC process
+/// lives in a 32 MB slot, so real programs stay far below this; a damaged
+/// or hostile header claiming gigabytes is refused instead of allocated.
+pub const MOST_IMAGE_BYTES: u64 = 256 * 1024 * 1024;
+
+/// The most imports one program may list. Real programs list a few hundred.
+pub const MOST_IMPORTS: usize = 65_536;
+
 /// Parse and lay out a PE32 image from raw bytes.
 pub fn load_bytes(bytes: &[u8]) -> Result<LoadedImage, LoadError> {
     let pe = parse_wince_pe(bytes)?;
@@ -312,6 +320,18 @@ pub fn load_bytes(bytes: &[u8]) -> Result<LoadedImage, LoadError> {
     // Don't reject other subsystems — the user may want to inspect a
     // desktop image (the JumpyBall zip is x86 GUI for example).
 
+    if u64::from(size_of_image) > MOST_IMAGE_BYTES {
+        return Err(LoadError::SectionOob(format!(
+            "the image claims {size_of_image} bytes of memory"
+        )));
+    }
+    let claimed: u64 = pe.sections.iter().map(|s| u64::from(s.virtual_size)).sum();
+    if claimed > MOST_IMAGE_BYTES {
+        return Err(LoadError::SectionOob(format!(
+            "the sections claim {claimed} bytes of memory"
+        )));
+    }
+
     let mut sections = Vec::with_capacity(pe.sections.len());
     for s in &pe.sections {
         let name = String::from_utf8_lossy(&s.name)
@@ -322,7 +342,11 @@ pub fn load_bytes(bytes: &[u8]) -> Result<LoadedImage, LoadError> {
         let raw_off = s.pointer_to_raw_data as usize;
         let raw_size = s.size_of_raw_data as usize;
         let mut data = Vec::with_capacity(vs as usize);
-        if raw_off + raw_size <= bytes.len() && raw_size > 0 {
+        if raw_off
+            .checked_add(raw_size)
+            .is_some_and(|end| end <= bytes.len())
+            && raw_size > 0
+        {
             data.extend_from_slice(&bytes[raw_off..raw_off + raw_size.min(vs as usize)]);
         }
         // Pad up to virtual size with zeroes (BSS).
@@ -565,15 +589,26 @@ fn collect_imports(bytes: &[u8], pe: &PE) -> Result<Vec<ImportSymbol>, LoadError
                     .to_string();
                 ImportBinding::Name(name)
             };
+            if out.len() >= MOST_IMPORTS {
+                return Err(LoadError::BadImports(format!(
+                    "more than {MOST_IMPORTS} imports"
+                )));
+            }
             out.push(ImportSymbol {
                 dll: dll_name.clone(),
                 binding,
                 iat_va: img_base.wrapping_add(iat),
             });
-            t += 4;
-            iat += 4;
+            let (Some(next), Some(next_iat)) = (t.checked_add(4), iat.checked_add(4)) else {
+                break;
+            };
+            t = next;
+            iat = next_iat;
         }
-        idx += 20;
+        let Some(next) = idx.checked_add(20) else {
+            break;
+        };
+        idx = next;
     }
     Ok(out)
 }
@@ -698,5 +733,57 @@ mod tests {
             LittleEndian::read_u32(&image.sections[0].data[4..8]),
             0x3000_1234
         );
+    }
+
+    /// A one-section ARM program: `size_of_image` and the section's
+    /// virtual size as given, 0x200 bytes of code.
+    fn tiny_pe(size_of_image: u32, virtual_size: u32) -> Vec<u8> {
+        let mut b = vec![0u8; 0x400];
+        b[..2].copy_from_slice(b"MZ");
+        LittleEndian::write_u32(&mut b[0x3c..0x40], 0x40);
+        b[0x40..0x44].copy_from_slice(b"PE\0\0");
+        LittleEndian::write_u16(&mut b[0x44..], machine::ARM);
+        LittleEndian::write_u16(&mut b[0x46..], 1);
+        LittleEndian::write_u16(&mut b[0x54..], 0xe0);
+        LittleEndian::write_u16(&mut b[0x56..], 0x0102);
+        let o = 0x58;
+        LittleEndian::write_u16(&mut b[o..], 0x10b);
+        LittleEndian::write_u32(&mut b[o + 16..], 0x1000);
+        LittleEndian::write_u32(&mut b[o + 28..], 0x10000);
+        LittleEndian::write_u32(&mut b[o + 32..], 0x1000);
+        LittleEndian::write_u32(&mut b[o + 36..], 0x200);
+        LittleEndian::write_u16(&mut b[o + 40..], 4);
+        LittleEndian::write_u16(&mut b[o + 48..], 4);
+        LittleEndian::write_u32(&mut b[o + 56..], size_of_image);
+        LittleEndian::write_u32(&mut b[o + 60..], 0x200);
+        LittleEndian::write_u16(&mut b[o + 68..], subsystem::WINDOWS_CE_GUI);
+        LittleEndian::write_u32(&mut b[o + 92..], 16);
+        let t = o + 0xe0;
+        b[t..t + 5].copy_from_slice(b".text");
+        LittleEndian::write_u32(&mut b[t + 8..], virtual_size);
+        LittleEndian::write_u32(&mut b[t + 12..], 0x1000);
+        LittleEndian::write_u32(&mut b[t + 16..], 0x200);
+        LittleEndian::write_u32(&mut b[t + 20..], 0x200);
+        LittleEndian::write_u32(&mut b[t + 36..], 0x6000_0020);
+        b
+    }
+
+    #[test]
+    fn a_small_program_loads() {
+        let image = load_bytes(&tiny_pe(0x2000, 0x300)).unwrap();
+        assert_eq!(image.sections[0].data.len(), 0x300);
+    }
+
+    /// A header claiming gigabytes is refused before anything is allocated.
+    #[test]
+    fn a_program_claiming_huge_memory_is_refused() {
+        assert!(matches!(
+            load_bytes(&tiny_pe(0x2000, 0xF000_0000)),
+            Err(LoadError::SectionOob(_))
+        ));
+        assert!(matches!(
+            load_bytes(&tiny_pe(0xF000_0000, 0x300)),
+            Err(LoadError::SectionOob(_))
+        ));
     }
 }

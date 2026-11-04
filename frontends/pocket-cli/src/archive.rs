@@ -254,6 +254,7 @@ fn prepare_installshield_sfx(path: &Path) -> Result<Launcher> {
     let mut outer = zip::ZipArchive::new(file)
         .with_context(|| format!("reading WinZip self-extractor {}", path.display()))?;
     let mut data_z_path = None;
+    let mut budget = pocket_library::limits::Budget::default();
     for index in 0..outer.len() {
         let mut entry = outer.by_index(index)?;
         let Some(name) = entry.enclosed_name().map(Path::to_path_buf) else {
@@ -267,7 +268,7 @@ fn prepare_installshield_sfx(path: &Path) -> Result<Launcher> {
             std::fs::create_dir_all(parent)?;
         }
         let mut output = File::create(&destination)?;
-        std::io::copy(&mut entry, &mut output)?;
+        budget.copy(&name.to_string_lossy(), &mut entry, &mut output)?;
         if name
             .file_name()
             .and_then(|n| n.to_str())
@@ -629,6 +630,7 @@ fn extract_payload_archives(root: &Path) -> Result<()> {
             }
         }
     }
+    let mut budget = pocket_library::limits::Budget::default();
     for archive_path in archives {
         let file = File::open(&archive_path)?;
         let mut archive = zip::ZipArchive::new(file)
@@ -643,6 +645,7 @@ fn extract_payload_archives(root: &Path) -> Result<()> {
             if relative.as_os_str().is_empty() {
                 continue;
             }
+            let relative_name = relative.to_string_lossy().into_owned();
             let destination = destination_root.join(relative);
             if destination == archive_path {
                 continue;
@@ -655,7 +658,7 @@ fn extract_payload_archives(root: &Path) -> Result<()> {
                 std::fs::create_dir_all(parent)?;
             }
             let mut output = File::create(&destination)?;
-            std::io::copy(&mut entry, &mut output)?;
+            budget.copy(&relative_name, &mut entry, &mut output)?;
             extracted += 1;
         }
         log::debug!(
@@ -1062,6 +1065,7 @@ fn prepare_zip(path: &Path) -> Result<Launcher> {
         zip::ZipArchive::new(f).with_context(|| format!("parsing zip {}", path.display()))?;
     let mut written: Vec<PathBuf> = Vec::with_capacity(archive.len());
     let mut nested_archives = Vec::new();
+    let mut budget = pocket_library::limits::Budget::default();
 
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i)?;
@@ -1080,7 +1084,7 @@ fn prepare_zip(path: &Path) -> Result<Launcher> {
             std::fs::create_dir_all(parent)?;
         }
         let mut out = File::create(&dest)?;
-        std::io::copy(&mut entry, &mut out)?;
+        budget.copy(&rel.to_string_lossy(), &mut entry, &mut out)?;
         written.push(dest);
         if written
             .last()

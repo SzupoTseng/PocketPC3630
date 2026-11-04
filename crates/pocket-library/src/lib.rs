@@ -43,6 +43,7 @@ pub mod save_data;
 pub mod wise;
 
 pub use keybindings::{GuestButton, KeyBinding, KeyBindings};
+pub use pocket_cab::limits;
 
 /// Errors returned by [`Library`] operations.
 #[derive(Debug, Error)]
@@ -1186,6 +1187,7 @@ impl Library {
         let f = fs::File::open(zip_path)?;
         let mut archive = zip::ZipArchive::new(f)?;
         let mut written: Vec<PathBuf> = Vec::with_capacity(archive.len());
+        let mut budget = limits::Budget::default();
         for i in 0..archive.len() {
             let mut entry = archive.by_index(i)?;
             let Some(rel) = entry.enclosed_name().map(Path::to_path_buf) else {
@@ -1203,7 +1205,7 @@ impl Library {
                 fs::create_dir_all(parent)?;
             }
             let mut out = fs::File::create(&dest)?;
-            std::io::copy(&mut entry, &mut out)?;
+            budget.copy(&rel.to_string_lossy(), &mut entry, &mut out)?;
             written.push(dest);
         }
         if written.is_empty() {
@@ -1345,6 +1347,7 @@ impl Library {
         fs::create_dir_all(&temp)?;
         let mut extras = Vec::new();
         let mut cab = None;
+        let mut budget = limits::Budget::default();
         for name in &names {
             let safe = Path::new(name).file_name().map(PathBuf::from);
             let Some(leaf) = safe.filter(|_| !name.ends_with('/')) else {
@@ -1354,7 +1357,7 @@ impl Library {
             let mut entry = archive
                 .by_name(name)
                 .map_err(|error| std::io::Error::other(error.to_string()))?;
-            std::io::copy(&mut entry, &mut fs::File::create(&out)?)?;
+            budget.copy(name, &mut entry, &mut fs::File::create(&out)?)?;
             if is_root_cab(name) {
                 cab = Some(out);
             } else {
@@ -1410,6 +1413,7 @@ impl Library {
         let archive = ArchiveReader::read_path(rar_path)
             .map_err(|error| LibraryError::Rar(error.to_string()))?;
         let mut written = Vec::new();
+        let budget = std::rc::Rc::new(std::cell::RefCell::new(limits::Budget::default()));
         archive
             .extract_to(None, |meta| {
                 let Some(relative) = safe_archive_path(meta.name_bytes()) else {
@@ -1418,7 +1422,7 @@ impl Library {
                 if relative.as_os_str().is_empty() {
                     return Ok(Box::new(std::io::sink()));
                 }
-                let destination = extracted_dir.join(relative);
+                let destination = extracted_dir.join(&relative);
                 if meta.is_directory {
                     fs::create_dir_all(&destination)?;
                     return Ok(Box::new(std::io::sink()));
@@ -1427,7 +1431,12 @@ impl Library {
                     fs::create_dir_all(parent)?;
                 }
                 written.push(destination.clone());
-                Ok(Box::new(fs::File::create(destination)?))
+                let name = relative.to_string_lossy().into_owned();
+                Ok(Box::new(limits::Limited::new(
+                    fs::File::create(destination)?,
+                    name,
+                    budget.clone(),
+                )?))
             })
             .map_err(|error| LibraryError::Rar(error.to_string()))?;
 
@@ -1600,6 +1609,35 @@ impl Library {
 
     /// Import `path` as what its extension says it is.
     fn import_direct(&mut self, path: &Path) -> Result<&GameEntry, LibraryError> {
+        // A failed import must not leave half a game behind: whatever game
+        // folder it created, and no game in the library owns, goes again.
+        // (In the browser the library lives in the page's storage, where
+        // leftovers would pile up unseen.)
+        let games = self.root.join("games");
+        let folders = |dir: &Path| -> std::collections::HashSet<std::ffi::OsString> {
+            fs::read_dir(dir)
+                .map(|entries| entries.flatten().map(|e| e.file_name()).collect())
+                .unwrap_or_default()
+        };
+        let before = folders(&games);
+        let outcome = self
+            .import_direct_unchecked(path)
+            .map(|entry| entry.id.clone());
+        match outcome {
+            Ok(id) => self.get(&id).ok_or(LibraryError::NotFound(id)),
+            Err(error) => {
+                for name in folders(&games).difference(&before) {
+                    let owned = self.library.games.iter().any(|g| *name == *g.id);
+                    if !owned && !name.to_string_lossy().starts_with(".explore-") {
+                        let _ = fs::remove_dir_all(games.join(name));
+                    }
+                }
+                Err(error)
+            }
+        }
+    }
+
+    fn import_direct_unchecked(&mut self, path: &Path) -> Result<&GameEntry, LibraryError> {
         // The contents decide first: a download saved without its extension,
         // or with the wrong one, still imports as what it is.
         let mut head = [0u8; 4];
@@ -2862,6 +2900,20 @@ mod tests {
         let device = dir.path().join("device.cab");
         legacy_cab(&device, MACHINE_ARM);
         assert!(library.import_cab(&device).is_ok());
+    }
+
+    /// A download that does not import leaves no game folder behind.
+    #[test]
+    fn a_failed_import_leaves_nothing_behind() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut library = Library::open(dir.path().join("library")).unwrap();
+        let desktop = dir.path().join("desktop.cab");
+        legacy_cab(&desktop, MACHINE_X86);
+        assert!(library.import_direct(&desktop).is_err());
+        let left: Vec<_> = fs::read_dir(dir.path().join("library").join("games"))
+            .map(|entries| entries.flatten().map(|e| e.file_name()).collect())
+            .unwrap_or_default();
+        assert!(left.is_empty(), "{left:?}");
     }
 
     /// Write an ARM PE32 whose import directory names `dlls`, each with

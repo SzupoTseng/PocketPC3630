@@ -215,6 +215,8 @@ target/release/pockethle play MyGame.zip
 PocketPC3630 is for research, preservation and education. It contains no Microsoft system files, firmware or game data.
 Use only game copies and archives you obtained legally. Game screenshots in this README show titles running in the emulator.
 EverQuest, Quake and the other titles are trademarks of their respective owners.
+Where the library's covers, screenshots and icons come from, and how to ask for one to be removed: [docs/IMAGES.md](docs/IMAGES.md).
+How downloads are unpacked safely, and how to report a security problem: [SECURITY.md](SECURITY.md).
 
 ## 🙏 Credits
 

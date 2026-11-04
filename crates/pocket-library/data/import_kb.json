@@ -143,6 +143,22 @@
   },
   "problems": [
     {
+      "id": "too-large",
+      "match": [
+        "too large to import",
+        "the image claims",
+        "the sections claim"
+      ],
+      "title": {
+        "en": "This download unpacks to far more than any Pocket PC program, so the import stopped.",
+        "zh-Hant": "這個下載檔解開後遠大於任何 Pocket PC 程式，所以停止匯入。"
+      },
+      "hint": {
+        "en": "The file is probably damaged, or not a Pocket PC program. Try another copy of it.",
+        "zh-Hant": "檔案可能已損壞，或不是 Pocket PC 程式。請換一份來源試試。"
+      }
+    },
+    {
       "id": "dotnet",
       "match": [
         ".net compact framework",

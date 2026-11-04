@@ -184,6 +184,8 @@ target/release/pockethle play MyGame.zip
 
 PocketPC3630 用於研究、保存與教育。它不包含任何微軟系統檔案、韌體或遊戲資料。請只使用你合法取得的遊戲與封存檔。
 本頁的遊戲截圖是這些遊戲在模擬器中執行的畫面。EverQuest、Quake 等名稱為各自擁有者的商標。
+圖書館的封面、截圖與圖示來源，以及如何要求移除：[docs/IMAGES.md](docs/IMAGES.md)。
+下載檔如何被安全地拆開、如何回報安全問題：[SECURITY.md](SECURITY.md)。
 
 ## 🙏 致謝
 
