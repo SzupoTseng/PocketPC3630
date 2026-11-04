@@ -30,6 +30,10 @@ pub struct ResourceEntry {
     pub codepage: u32,
 }
 
+/// The most resources one image may list. Programs carry a few hundred; the
+/// directory's own counts could otherwise ask for billions of entries.
+pub const MOST_RESOURCES: usize = 65_536;
+
 /// Walk the resource directory and return one [`ResourceEntry`] per
 /// leaf. Returns an empty vector if the image has no `.rsrc` section.
 pub fn collect_resources(bytes: &[u8], pe: &PE) -> Result<Vec<ResourceEntry>, LoadError> {
@@ -59,13 +63,16 @@ pub fn collect_resources(bytes: &[u8], pe: &PE) -> Result<Vec<ResourceEntry>, Lo
     let section_off = rsrc_section.pointer_to_raw_data as usize;
     let section_size = rsrc_section.size_of_raw_data.max(rsrc_section.virtual_size) as usize;
 
+    // Every offset and count below comes from the file, so all arithmetic is
+    // checked: on a 32-bit host (the browser) an overflow would otherwise
+    // wrap around to a bogus, in-range slice or panic.
     let read = |off: usize, n: usize| -> Option<&[u8]> {
-        let abs = section_off + off;
-        if abs + n > bytes.len() || off + n > section_size {
-            None
-        } else {
-            Some(&bytes[abs..abs + n])
+        let end = off.checked_add(n)?;
+        if end > section_size {
+            return None;
         }
+        let abs = section_off.checked_add(off)?;
+        bytes.get(abs..abs.checked_add(n)?)
     };
 
     let read_string = |string_off: u32| -> Option<String> {
@@ -73,7 +80,7 @@ pub fn collect_resources(bytes: &[u8], pe: &PE) -> Result<Vec<ResourceEntry>, Lo
         let off = string_off as usize;
         let lh = read(off, 2)?;
         let len = LittleEndian::read_u16(lh) as usize;
-        let raw = read(off + 2, len * 2)?;
+        let raw = read(off.checked_add(2)?, len.checked_mul(2)?)?;
         let mut us = Vec::with_capacity(len);
         for c in raw.as_chunks::<2>().0 {
             us.push(LittleEndian::read_u16(c));
@@ -86,23 +93,25 @@ pub fn collect_resources(bytes: &[u8], pe: &PE) -> Result<Vec<ResourceEntry>, Lo
         section_size: usize,
         bytes: &[u8],
         dir_off: u32,
+        limit: usize,
         cb: &mut F,
     ) -> Option<()> {
-        let dir_abs = section_off + dir_off as usize;
-        if dir_abs + 16 > bytes.len() || dir_off as usize + 16 > section_size {
+        if (dir_off as usize).checked_add(16)? > section_size {
             return None;
         }
-        let header = &bytes[dir_abs..dir_abs + 16];
+        let dir_abs = section_off.checked_add(dir_off as usize)?;
+        let header = bytes.get(dir_abs..dir_abs.checked_add(16)?)?;
         let named = LittleEndian::read_u16(&header[12..14]) as usize;
         let id = LittleEndian::read_u16(&header[14..16]) as usize;
         let total = named + id;
         let entries_abs = dir_abs + 16;
-        for i in 0..total {
-            let entry_abs = entries_abs + i * 8;
-            if entry_abs + 8 > bytes.len() {
+        for i in 0..total.min(limit) {
+            let Some(entry) = entries_abs
+                .checked_add(i * 8)
+                .and_then(|at| bytes.get(at..at.checked_add(8)?))
+            else {
                 break;
-            }
-            let entry = &bytes[entry_abs..entry_abs + 8];
+            };
             let name = LittleEndian::read_u32(&entry[0..4]);
             let off = LittleEndian::read_u32(&entry[4..8]);
             let is_dir = off & 0x8000_0000 != 0;
@@ -123,19 +132,25 @@ pub fn collect_resources(bytes: &[u8], pe: &PE) -> Result<Vec<ResourceEntry>, Lo
 
     // Three-level walk: type -> name -> language -> data.
     let root = dir.virtual_address - section_va;
+    // Bounds the work, not just the result: each level's counts multiply.
+    let mut budget = MOST_RESOURCES;
     let mut type_entries: Vec<(u32, u32)> = Vec::new();
     parse_directory(
         section_off,
         section_size,
         bytes,
         root,
+        MOST_RESOURCES,
         &mut |name, is_dir, off| {
-            if is_dir {
+            if is_dir && type_entries.len() < MOST_RESOURCES {
                 type_entries.push((name, off));
             }
         },
     );
     for (type_raw, type_dir_off) in type_entries {
+        if budget == 0 {
+            break;
+        }
         let ty = match key_from(type_raw) {
             Some(k) => k,
             None => continue,
@@ -146,13 +161,18 @@ pub fn collect_resources(bytes: &[u8], pe: &PE) -> Result<Vec<ResourceEntry>, Lo
             section_size,
             bytes,
             type_dir_off,
+            budget,
             &mut |name, is_dir, off| {
-                if is_dir {
+                if is_dir && name_entries.len() < budget {
                     name_entries.push((name, off));
                 }
             },
         );
         for (name_raw, name_dir_off) in name_entries {
+            if budget == 0 {
+                break;
+            }
+            budget -= 1;
             let name = match key_from(name_raw) {
                 Some(k) => k,
                 None => continue,
@@ -165,20 +185,23 @@ pub fn collect_resources(bytes: &[u8], pe: &PE) -> Result<Vec<ResourceEntry>, Lo
                 section_size,
                 bytes,
                 name_dir_off,
+                16,
                 &mut |_name, is_dir, off| {
-                    if !is_dir {
+                    if !is_dir && lang_entries.is_empty() {
                         lang_entries.push(off);
                     }
                 },
             );
             if let Some(data_entry_off) = lang_entries.first() {
-                let abs = section_off + (*data_entry_off as usize);
-                if abs + 16 > bytes.len() {
+                let Some(entry) = section_off
+                    .checked_add(*data_entry_off as usize)
+                    .and_then(|abs| bytes.get(abs..abs.checked_add(16)?))
+                else {
                     continue;
-                }
-                let data_rva = LittleEndian::read_u32(&bytes[abs..abs + 4]);
-                let size = LittleEndian::read_u32(&bytes[abs + 4..abs + 8]);
-                let codepage = LittleEndian::read_u32(&bytes[abs + 8..abs + 12]);
+                };
+                let data_rva = LittleEndian::read_u32(&entry[0..4]);
+                let size = LittleEndian::read_u32(&entry[4..8]);
+                let codepage = LittleEndian::read_u32(&entry[8..12]);
                 out.push(ResourceEntry {
                     ty: ty.clone(),
                     name,

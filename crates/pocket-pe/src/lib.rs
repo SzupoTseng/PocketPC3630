@@ -286,6 +286,12 @@ pub const MOST_IMAGE_BYTES: u64 = 256 * 1024 * 1024;
 /// The most imports one program may list. Real programs list a few hundred.
 pub const MOST_IMPORTS: usize = 65_536;
 
+/// The most DLLs one program's import directory may name.
+pub const MOST_IMPORT_DLLS: usize = 1_024;
+
+/// The most exports kept from one library. `coredll` has about 2,000.
+pub const MOST_EXPORTS: usize = 65_536;
+
 /// Parse and lay out a PE32 image from raw bytes.
 pub fn load_bytes(bytes: &[u8]) -> Result<LoadedImage, LoadError> {
     let pe = parse_wince_pe(bytes)?;
@@ -465,10 +471,16 @@ fn collect_exports(pe: &PE) -> IndexMap<String, u32> {
                     goblin::pe::export::ExportAddressTableEntry::ExportRVA(rva) => *rva,
                     goblin::pe::export::ExportAddressTableEntry::ForwarderRVA(_) => continue,
                 };
-                out.insert(format!("#{}", ordinal_base + index as u32), rva);
+                if out.len() >= MOST_EXPORTS {
+                    break;
+                }
+                out.insert(format!("#{}", ordinal_base.wrapping_add(index as u32)), rva);
             }
         }
         for e in &pe.exports {
+            if out.len() >= MOST_EXPORTS {
+                break;
+            }
             if let Some(name) = e.name {
                 out.insert(name.to_string(), e.rva as u32);
             }
@@ -536,7 +548,16 @@ fn collect_imports(bytes: &[u8], pe: &PE) -> Result<Vec<ImportSymbol>, LoadError
     // The import directory RVA is relative to the image base.
     let dir_rva = dir.virtual_address;
     let mut idx = dir_rva;
+    let mut descriptors = 0usize;
     loop {
+        // A directory that never ends (no all-zero descriptor) would walk
+        // the whole image, one empty DLL after another.
+        descriptors += 1;
+        if descriptors > MOST_IMPORT_DLLS {
+            return Err(LoadError::BadImports(format!(
+                "more than {MOST_IMPORT_DLLS} imported DLLs"
+            )));
+        }
         let descriptor =
             read_va(idx).ok_or_else(|| LoadError::BadImports("descriptor oob".into()))?;
         if descriptor.len() < 20 {
@@ -772,6 +793,24 @@ mod tests {
     fn a_small_program_loads() {
         let image = load_bytes(&tiny_pe(0x2000, 0x300)).unwrap();
         assert_eq!(image.sections[0].data.len(), 0x300);
+    }
+
+    /// A resource directory whose entries all point back at itself, with
+    /// counts far past the data, ends quickly with nothing found.
+    #[test]
+    fn a_resource_directory_that_loops_ends() {
+        let mut b = tiny_pe(0x2000, 0x200);
+        // The resource table is the whole .text section.
+        LittleEndian::write_u32(&mut b[0x58 + 112..], 0x1000);
+        LittleEndian::write_u32(&mut b[0x58 + 116..], 0x200);
+        LittleEndian::write_u16(&mut b[0x200 + 12..], 0xffff);
+        LittleEndian::write_u16(&mut b[0x200 + 14..], 0xffff);
+        for at in (0x210..0x400).step_by(8) {
+            LittleEndian::write_u32(&mut b[at..], 1);
+            LittleEndian::write_u32(&mut b[at + 4..], 0x8000_0000);
+        }
+        let image = load_bytes(&b).unwrap();
+        assert!(image.resources.is_empty());
     }
 
     /// A header claiming gigabytes is refused before anything is allocated.

@@ -58,13 +58,17 @@ pub fn carve(bytes: &[u8]) -> Vec<&[u8]> {
 /// Factory installers keep their files. Tries each place an imploded stream
 /// can start (a literal-mode byte, then a dictionary size of 4 to 6), keeps
 /// what decodes to a cabinet whose header gives the size that came out.
+///
+/// `limit` caps each cabinet and all of them together.
 pub fn imploded_cabs(bytes: &[u8], limit: usize) -> Vec<Vec<u8>> {
     let mut found = Vec::new();
     let mut at = 0;
-    while at + 2 < bytes.len() {
+    let mut total = 0usize;
+    while at + 2 < bytes.len() && total < limit {
         if bytes[at] <= 1 && (4..=6).contains(&bytes[at + 1]) {
-            if let Some(out) = blast_expecting(&bytes[at..], limit, b"MSCF\0\0\0\0") {
+            if let Some(out) = blast_expecting(&bytes[at..], limit - total, b"MSCF\0\0\0\0") {
                 if u32_at(&out, 8) == Some(out.len() as u32) {
+                    total += out.len();
                     found.push(out);
                 }
             }

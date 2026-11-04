@@ -10,11 +10,15 @@
 //! is written to the library's own `import_kb.json`, so the next download of the
 //! same kind goes straight to it. Nothing in a download is ever executed.
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::sync::OnceLock;
+
+use pocket_cab::limits::{Budget, Limited};
 
 use serde::{Deserialize, Serialize};
 
@@ -673,9 +677,12 @@ const SZDD_MAGIC: &[u8] = b"SZDD\x88\xf0\x27\x33";
 /// Every `SZDD` stream in `bytes`, expanded. The format is a 14-byte header
 /// (magic, method `A`, a character of the name, the expanded size) followed by
 /// LZSS with a 4096-byte window that starts filled with spaces.
-fn expand_szdd_all(bytes: &[u8]) -> Vec<Vec<u8>> {
+///
+/// `limit` caps the expanded bytes in all.
+fn expand_szdd_all(bytes: &[u8], limit: u64) -> Vec<Vec<u8>> {
     let mut out = Vec::new();
     let mut at = 0;
+    let mut left = limit;
     while let Some(start) = find(bytes, SZDD_MAGIC, at) {
         at = start + SZDD_MAGIC.len();
         if bytes.get(start + 8) != Some(&b'A') {
@@ -687,10 +694,11 @@ fn expand_szdd_all(bytes: &[u8]) -> Vec<Vec<u8>> {
         else {
             continue;
         };
-        if size == 0 || size as u64 > LARGEST_FILE {
+        if size == 0 || size as u64 > LARGEST_FILE || size as u64 > left {
             continue;
         }
         if let Some(expanded) = expand_szdd(&bytes[start + 14..], size) {
+            left -= expanded.len() as u64;
             out.push(expanded);
         }
     }
@@ -733,9 +741,40 @@ fn expand_szdd(data: &[u8], size: usize) -> Option<Vec<u8>> {
 }
 
 /// Run `action` on `path`, writing what it finds under `out`.
-fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> {
+/// What exploring may still write: shared by every step of one exploration.
+type Shared = Rc<RefCell<Budget>>;
+
+/// A budget for exploring one download.
+fn exploring_budget() -> Shared {
+    Rc::new(RefCell::new(Budget::new(
+        LARGEST_FILE,
+        MOST_BYTES,
+        MOST_FILES,
+    )))
+}
+
+/// Write `data` to `target` and list it, if the budget has room. `false` when
+/// it has none, so the caller stops producing.
+fn keep(budget: &Shared, produced: &mut Vec<PathBuf>, target: PathBuf, data: &[u8]) -> bool {
+    let name = target.to_string_lossy().into_owned();
+    if budget
+        .borrow_mut()
+        .charge(&name, data.len() as u64)
+        .is_err()
+    {
+        return false;
+    }
+    if fs::write(&target, data).is_ok() {
+        produced.push(target);
+    }
+    true
+}
+
+fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path, budget: &Shared) -> Vec<PathBuf> {
     let mut produced = Vec::new();
     let _ = fs::create_dir_all(out);
+    // What one step may still produce in memory before it is counted.
+    let room = budget.borrow().room();
     match action {
         Action::OpenZip => {
             let Ok(file) = fs::File::open(path) else {
@@ -758,11 +797,17 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
                 if let Some(parent) = target.parent() {
                     let _ = fs::create_dir_all(parent);
                 }
-                // The size a zip declares can lie; count what actually comes out.
-                if let Ok(mut file) = fs::File::create(&target) {
-                    let mut limited = io::Read::take(&mut entry, LARGEST_FILE);
-                    if io::copy(&mut limited, &mut file).is_ok() {
+                // The size a zip declares can lie; count what actually comes
+                // out, and drop a file that goes past a limit rather than keep
+                // it cut short.
+                if let Ok(file) = fs::File::create(&target) {
+                    let name = target.to_string_lossy().into_owned();
+                    let copied = Limited::new(file, name, budget.clone())
+                        .and_then(|mut file| io::copy(&mut entry, &mut file));
+                    if copied.is_ok() {
                         produced.push(target);
+                    } else {
+                        let _ = fs::remove_file(&target);
                     }
                 }
             }
@@ -773,9 +818,13 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
                 .map(|s| s.to_string_lossy().into_owned())
                 .unwrap_or_default();
             for (index, cab) in carve_cabs(bytes).into_iter().enumerate() {
-                let target = out.join(format!("{stem}.{index}.cab"));
-                if fs::write(&target, cab).is_ok() {
-                    produced.push(target);
+                if !keep(
+                    budget,
+                    &mut produced,
+                    out.join(format!("{stem}.{index}.cab")),
+                    cab,
+                ) {
+                    break;
                 }
             }
         }
@@ -785,10 +834,12 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
                     .file_stem()
                     .map(|s| s.to_string_lossy().into_owned())
                     .unwrap_or_default();
-                let target = out.join(format!("{stem}.cab"));
-                if fs::write(&target, cleared).is_ok() {
-                    produced.push(target);
-                }
+                keep(
+                    budget,
+                    &mut produced,
+                    out.join(format!("{stem}.cab")),
+                    &cleared,
+                );
             }
         }
         Action::ExpandSzdd => {
@@ -796,18 +847,18 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
                 .file_stem()
                 .map(|s| s.to_string_lossy().into_owned())
                 .unwrap_or_default();
-            for (index, expanded) in expand_szdd_all(bytes).into_iter().enumerate() {
+            for (index, expanded) in expand_szdd_all(bytes, room).into_iter().enumerate() {
                 let target = out.join(format!("{stem}.{index}.bin"));
-                if fs::write(&target, expanded).is_ok() {
-                    produced.push(target);
+                if !keep(budget, &mut produced, target, &expanded) {
+                    break;
                 }
             }
         }
         Action::ExtractResources => {
             for (index, data) in pe_resources(bytes).into_iter().enumerate() {
                 let target = out.join(format!("resource-{index}.bin"));
-                if fs::write(&target, data).is_ok() {
-                    produced.push(target);
+                if !keep(budget, &mut produced, target, data) {
+                    break;
                 }
             }
         }
@@ -815,25 +866,31 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
             if is_zlib(bytes) {
                 let mut inflated = Vec::new();
                 let decoder = flate2::read::ZlibDecoder::new(bytes);
-                // Bounded: a stream can claim to expand without end.
-                if io::Read::read_to_end(&mut io::Read::take(decoder, LARGEST_FILE), &mut inflated)
+                // Bounded: a stream can claim to expand without end. One byte
+                // past the room tells a stream that is too large from one
+                // that fits exactly.
+                if io::Read::read_to_end(&mut io::Read::take(decoder, room + 1), &mut inflated)
                     .is_ok()
                     && !inflated.is_empty()
+                    && inflated.len() as u64 <= room
                 {
                     let stem = path
                         .file_stem()
                         .map(|s| s.to_string_lossy().into_owned())
                         .unwrap_or_default();
-                    let target = out.join(format!("{stem}.inflated"));
-                    if fs::write(&target, inflated).is_ok() {
-                        produced.push(target);
-                    }
+                    keep(
+                        budget,
+                        &mut produced,
+                        out.join(format!("{stem}.inflated")),
+                        &inflated,
+                    );
                 }
             }
         }
         Action::ExpandCab => {
             if bytes.starts_with(b"MSCF") && !is_device_cab(bytes) {
-                if let Ok(files) = pocket_cab::extract_all(path, out) {
+                let mut shared = budget.borrow_mut();
+                if let Ok(files) = pocket_cab::extract_all_within(path, out, &mut shared) {
                     for file in files {
                         if file.extracted_path.starts_with(out) && file.extracted_path.is_file() {
                             produced.push(file.extracted_path);
@@ -846,19 +903,20 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
             if crate::installshield::is_installshield(bytes)
                 && crate::installshield::is_header_file(path)
             {
-                produced.extend(crate::installshield::extract(path, out, LARGEST_FILE));
+                let found = crate::installshield::extract(path, out, room);
+                count_written(budget, &mut produced, found);
             }
         }
         Action::OpenRar => {
             if bytes.starts_with(b"Rar!") {
-                produced.extend(open_rar(path, out));
+                produced.extend(open_rar(path, out, budget));
             }
         }
         Action::OpenWise => {
             if crate::wise::is_wise(bytes) {
                 // A few thousand tries find the first file in every Wise
                 // installer seen so far; the rest follow in a chain.
-                for (index, data) in crate::wise::files(bytes, 20_000, LARGEST_FILE as usize)
+                for (index, data) in crate::wise::files(bytes, 20_000, room as usize)
                     .into_iter()
                     .enumerate()
                 {
@@ -868,15 +926,16 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
                         "bin"
                     };
                     let target = out.join(format!("wise-{index}.{extension}"));
-                    if fs::write(&target, data).is_ok() {
-                        produced.push(target);
+                    if !keep(budget, &mut produced, target, &data) {
+                        break;
                     }
                 }
             }
         }
         Action::OpenInstallShield3 => {
             if crate::is3::is_is3(bytes) {
-                produced.extend(crate::is3::extract(path, out, LARGEST_FILE));
+                let found = crate::is3::extract(path, out, room);
+                count_written(budget, &mut produced, found);
             }
         }
         Action::CarveInstallShield3 => {
@@ -886,14 +945,14 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
                 .unwrap_or_default();
             for (index, archive) in crate::is3::carve(bytes).into_iter().enumerate() {
                 let target = out.join(format!("{stem}.{index}.z"));
-                if fs::write(&target, archive).is_ok() {
-                    produced.push(target);
+                if !keep(budget, &mut produced, target, archive) {
+                    break;
                 }
             }
         }
         Action::OpenNsis => {
             if newtua_nsis::NsisArchive::recognize(bytes) {
-                produced.extend(open_nsis(bytes, out));
+                produced.extend(open_nsis(bytes, out, budget));
             }
         }
         Action::InflateInnoChunks => {
@@ -902,10 +961,10 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
                     .file_stem()
                     .map(|s| s.to_string_lossy().into_owned())
                     .unwrap_or_default();
-                for (index, chunk) in inno_chunks(bytes).into_iter().enumerate() {
+                for (index, chunk) in inno_chunks(bytes, room).into_iter().enumerate() {
                     let target = out.join(format!("{stem}.chunk{index}.bin"));
-                    if fs::write(&target, chunk).is_ok() {
-                        produced.push(target);
+                    if !keep(budget, &mut produced, target, &chunk) {
+                        break;
                     }
                 }
             }
@@ -915,13 +974,13 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
                 && (find(bytes, b"Setup Factory", 0).is_some()
                     || find(bytes, b"IRSetup", 0).is_some())
             {
-                for (index, cab) in crate::is3::imploded_cabs(bytes, LARGEST_FILE as usize)
+                for (index, cab) in crate::is3::imploded_cabs(bytes, room as usize)
                     .into_iter()
                     .enumerate()
                 {
                     let target = out.join(format!("imploded-{index}.cab"));
-                    if fs::write(&target, cab).is_ok() {
-                        produced.push(target);
+                    if !keep(budget, &mut produced, target, &cab) {
+                        break;
                     }
                 }
             }
@@ -934,15 +993,31 @@ fn apply(action: Action, path: &Path, bytes: &[u8], out: &Path) -> Vec<PathBuf> 
                         .file_stem()
                         .map(|s| s.to_string_lossy().into_owned())
                         .unwrap_or_default();
-                    let target = out.join(format!("{stem}.inner.zip"));
-                    if fs::write(&target, zip).is_ok() {
-                        produced.push(target);
-                    }
+                    keep(
+                        budget,
+                        &mut produced,
+                        out.join(format!("{stem}.inner.zip")),
+                        zip,
+                    );
                 }
             }
         }
     }
     produced
+}
+
+/// Count files an extractor already wrote (each within the room it was
+/// given), dropping any past the budget's limits.
+fn count_written(budget: &Shared, produced: &mut Vec<PathBuf>, found: Vec<PathBuf>) {
+    for path in found {
+        let len = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+        let name = path.to_string_lossy().into_owned();
+        if budget.borrow_mut().charge(&name, len).is_ok() {
+            produced.push(path);
+        } else {
+            let _ = fs::remove_file(&path);
+        }
+    }
 }
 
 /// What an Inno Setup installer says about itself.
@@ -953,12 +1028,13 @@ const INNO_CHUNK: &[u8] = b"zlb\x1a";
 /// Chunks looked at in one installer.
 const MOST_INNO_CHUNKS: usize = 512;
 
-/// Inflate every zlib chunk of an Inno Setup installer, each capped at
-/// [`LARGEST_FILE`]. A chunk holds one or more files back to back.
-fn inno_chunks(bytes: &[u8]) -> Vec<Vec<u8>> {
+/// Inflate every zlib chunk of an Inno Setup installer, `limit` bytes at
+/// most in all. A chunk holds one or more files back to back.
+fn inno_chunks(bytes: &[u8], limit: u64) -> Vec<Vec<u8>> {
     let mut chunks = Vec::new();
     let mut at = 0;
-    while chunks.len() < MOST_INNO_CHUNKS {
+    let mut total = 0u64;
+    while chunks.len() < MOST_INNO_CHUNKS && total < limit {
         let Some(start) = find(bytes, INNO_CHUNK, at) else {
             break;
         };
@@ -970,8 +1046,9 @@ fn inno_chunks(bytes: &[u8]) -> Vec<Vec<u8>> {
         let mut inflated = Vec::new();
         let decoder = flate2::read::ZlibDecoder::new(rest);
         // A damaged or cut chunk still gives what came out before the damage.
-        let _ = io::Read::read_to_end(&mut io::Read::take(decoder, LARGEST_FILE), &mut inflated);
+        let _ = io::Read::read_to_end(&mut io::Read::take(decoder, limit - total), &mut inflated);
         if !inflated.is_empty() {
+            total += inflated.len() as u64;
             chunks.push(inflated);
         }
     }
@@ -980,7 +1057,7 @@ fn inno_chunks(bytes: &[u8]) -> Vec<Vec<u8>> {
 
 /// Write out every file of a Nullsoft installer under `out`, flat (by file
 /// name only), each one capped at [`LARGEST_FILE`].
-fn open_nsis(bytes: &[u8], out: &Path) -> Vec<PathBuf> {
+fn open_nsis(bytes: &[u8], out: &Path, budget: &Shared) -> Vec<PathBuf> {
     let mut written = Vec::new();
     let Ok(archive) = newtua_nsis::NsisArchive::open(io::Cursor::new(bytes)) else {
         return written;
@@ -1009,12 +1086,13 @@ fn open_nsis(bytes: &[u8], out: &Path) -> Vec<PathBuf> {
             continue;
         }
         let target = out.join(format!("{index}-{name}"));
-        let Ok(mut buffer) = fs::File::create(&target) else {
+        let Ok(file) = fs::File::create(&target) else {
             continue;
         };
-        let mut limited = LimitedWriter {
-            inner: &mut buffer,
-            left: LARGEST_FILE,
+        let name = target.to_string_lossy().into_owned();
+        let Ok(mut limited) = Limited::new(file, name, budget.clone()) else {
+            let _ = fs::remove_file(&target);
+            break;
         };
         if archive.read_entry(index, &mut limited).is_ok() {
             written.push(target);
@@ -1025,46 +1103,14 @@ fn open_nsis(bytes: &[u8], out: &Path) -> Vec<PathBuf> {
     written
 }
 
-/// A writer that fails once more than `left` bytes went through it.
-struct LimitedWriter<'a, W: io::Write> {
-    inner: &'a mut W,
-    left: u64,
-}
-
-impl<W: io::Write> io::Write for LimitedWriter<'_, W> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if buf.len() as u64 > self.left {
-            return Err(io::Error::other("file larger than the import limit"));
-        }
-        self.left -= buf.len() as u64;
-        self.inner.write(buf)
-    }
-    fn flush(&mut self) -> io::Result<()> {
-        self.inner.flush()
-    }
-}
-
 /// Write out every file of the RAR archive at `path` under `out`, each one
 /// capped at [`LARGEST_FILE`].
-fn open_rar(path: &Path, out: &Path) -> Vec<PathBuf> {
-    struct Capped(fs::File, u64);
-    impl io::Write for Capped {
-        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-            self.1 += buf.len() as u64;
-            if self.1 > LARGEST_FILE {
-                return Err(io::Error::other("file larger than the import limit"));
-            }
-            self.0.write(buf)
-        }
-        fn flush(&mut self) -> io::Result<()> {
-            self.0.flush()
-        }
-    }
+fn open_rar(path: &Path, out: &Path, budget: &Shared) -> Vec<PathBuf> {
     let mut written = Vec::new();
     let Ok(archive) = rars::ArchiveReader::read_path(path) else {
         return written;
     };
-    let _ = archive.extract_to(None, |meta| {
+    let result = archive.extract_to(None, |meta| {
         let Some(relative) = crate::safe_archive_path(meta.name_bytes()) else {
             return Ok(Box::new(io::sink()) as Box<dyn io::Write>);
         };
@@ -1076,8 +1122,20 @@ fn open_rar(path: &Path, out: &Path) -> Vec<PathBuf> {
             fs::create_dir_all(parent)?;
         }
         written.push(target.clone());
-        Ok(Box::new(Capped(fs::File::create(target)?, 0)) as Box<dyn io::Write>)
+        let name = target.to_string_lossy().into_owned();
+        Ok(Box::new(Limited::new(
+            fs::File::create(target)?,
+            name,
+            budget.clone(),
+        )?) as Box<dyn io::Write>)
     });
+    // Extraction stops at the first file past a limit; that one is cut
+    // short, so it goes.
+    if result.is_err() {
+        if let Some(last) = written.pop() {
+            let _ = fs::remove_file(last);
+        }
+    }
     written.retain(|p| p.is_file());
     written
 }
@@ -1108,11 +1166,12 @@ pub fn explore(kb: &KnowledgeBase, download: &Path, work: &Path) -> Exploration 
     let mut queue: Vec<(PathBuf, Vec<Step>)> = vec![(download.to_path_buf(), Vec::new())];
     let mut seen = 0usize;
     let mut step = 0usize;
-    let mut written = 0u64;
+    let budget = exploring_budget();
     let started = std::time::Instant::now();
     while let Some((path, chain)) = queue.pop() {
         seen += 1;
-        if seen > MOST_FILES || written > MOST_BYTES || started.elapsed() > LONGEST {
+        if seen > MOST_FILES || budget.borrow().bytes() >= MOST_BYTES || started.elapsed() > LONGEST
+        {
             log::warn!("stopped exploring {} at its limits", download.display());
             break;
         }
@@ -1203,8 +1262,7 @@ pub fn explore(kb: &KnowledgeBase, download: &Path, work: &Path) -> Exploration 
         for action in actions {
             step += 1;
             let out = work.join(format!("{step}"));
-            for produced in apply(action, &path, &bytes, &out) {
-                written += fs::metadata(&produced).map(|m| m.len()).unwrap_or(0);
+            for produced in apply(action, &path, &bytes, &out, &budget) {
                 let mut next = chain.clone();
                 next.push(Step {
                     action,
@@ -1322,10 +1380,11 @@ pub fn replay(kb: &KnowledgeBase, download: &Path, work: &Path) -> Option<(PathB
     let known = kb.known.iter().find(|known| known.fingerprint == print)?;
     let mut current = download.to_path_buf();
     let mut libraries = Vec::new();
+    let budget = exploring_budget();
     for (index, step) in known.steps.iter().enumerate() {
         let data = fs::read(&current).ok()?;
         let out = work.join(format!("replay-{index}"));
-        let produced = apply(step.action, &current, &data, &out);
+        let produced = apply(step.action, &current, &data, &out, &budget);
         libraries = produced
             .iter()
             .filter(|p| fs::read(p).is_ok_and(|b| pe_machine(&b) == Some("arm") && is_dll(&b)))
@@ -1633,7 +1692,11 @@ mod tests {
         ]);
         let mut installer = x86_program(b"junk");
         installer.extend(&stream);
-        assert_eq!(expand_szdd_all(&installer), [b"abcabcabc".to_vec()]);
+        assert_eq!(
+            expand_szdd_all(&installer, LARGEST_FILE),
+            [b"abcabcabc".to_vec()]
+        );
+        assert!(expand_szdd_all(&installer, 8).is_empty());
         assert_eq!(
             basic_actions(&installer, Some("x86")),
             [Action::ExpandSzdd, Action::ExtractResources]
@@ -1682,19 +1745,55 @@ mod tests {
     }
 
     #[test]
-    fn a_zip_bomb_entry_is_cut_at_the_limit() {
-        // A declared size cannot be trusted, so extraction counts real bytes.
+    fn a_zip_bomb_entry_is_dropped_at_the_limit() {
+        // A declared size cannot be trusted, so extraction counts real bytes;
+        // a file past the limit is dropped, never kept cut short.
         let dir = tempfile::tempdir().unwrap();
         let big = vec![0u8; 1024];
         let download = dir.path().join("x.zip");
-        fs::write(&download, zip_of(&[("a.bin", &big)])).unwrap();
+        fs::write(&download, zip_of(&[("a.bin", &big), ("b.bin", b"small")])).unwrap();
+        let bytes = fs::read(&download).unwrap();
         let out = apply(
             Action::OpenZip,
             &download,
-            &fs::read(&download).unwrap(),
+            &bytes,
             &dir.path().join("o"),
+            &exploring_budget(),
         );
+        assert_eq!(out.len(), 2);
         assert_eq!(fs::metadata(&out[0]).unwrap().len(), 1024);
+
+        let tight = Rc::new(RefCell::new(Budget::new(1023, 1 << 20, 10)));
+        let out = apply(
+            Action::OpenZip,
+            &download,
+            &bytes,
+            &dir.path().join("p"),
+            &tight,
+        );
+        assert_eq!(out.len(), 1);
+        assert!(out[0].ends_with("b.bin"));
+        assert!(!dir.path().join("p").join("a.bin").exists());
+    }
+
+    /// Every step of one exploration draws on one budget.
+    #[test]
+    fn exploring_stops_at_the_total_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        let download = dir.path().join("x.zip");
+        let part = vec![7u8; 600];
+        fs::write(&download, zip_of(&[("a.bin", &part), ("b.bin", &part)])).unwrap();
+        let bytes = fs::read(&download).unwrap();
+        let budget = Rc::new(RefCell::new(Budget::new(1 << 20, 1000, 10)));
+        let out = apply(
+            Action::OpenZip,
+            &download,
+            &bytes,
+            &dir.path().join("o"),
+            &budget,
+        );
+        assert_eq!(out.len(), 1);
+        assert_eq!(budget.borrow().bytes(), 600);
     }
 
     #[test]

@@ -203,6 +203,12 @@ fn extract_installshield_sfx_cab(source: &Path, destination: &Path) -> Result<()
         if flags & 0x0008 != 0 || expanded_size == 0 || compressed_size == 0 || data_offset == 0 {
             continue;
         }
+        // The size is the file's own claim: check it before allocating.
+        if expanded_size as u64 > pocket_library::limits::LARGEST_FILE {
+            return Err(anyhow!(
+                "InstallShield file claims {expanded_size} bytes, too large to import"
+            ));
+        }
         let data_end = data_offset
             .checked_add(compressed_size)
             .ok_or_else(|| anyhow!("InstallShield payload overflow"))?;
@@ -291,9 +297,24 @@ fn prepare_installshield_sfx(path: &Path) -> Result<Launcher> {
                     .find(|name| name.to_ascii_lowercase().ends_with(".cab"))
             })
             .ok_or_else(|| anyhow!("{} contains no Windows Mobile CAB", data_z_path.display()))?;
-        let cab_bytes = archive
-            .load(&cab_name)
+        // The stored size is the file's own claim: it must fit in data.z
+        // before anything is read, and the expanded cabinet must fit in what
+        // the import may still write.
+        let stored = archive
+            .list()
+            .find(|entry| entry.path == cab_name)
+            .map_or(0, |entry| entry.size as u64);
+        if stored > std::fs::metadata(&data_z_path)?.len() {
+            return Err(anyhow!(
+                "{cab_name} in data.z claims more than the file holds"
+            ));
+        }
+        let compressed = archive
+            .load_compressed(&cab_name)
             .with_context(|| format!("extracting {cab_name} from data.z"))?;
+        let cab_bytes = pocket_library::is3::blast(&compressed, budget.room() as usize)
+            .ok_or_else(|| anyhow!("{cab_name} in data.z is damaged or too large to import"))?;
+        budget.charge(&cab_name, cab_bytes.len() as u64)?;
         let cab_path = tmp.path().join("pocket-bass-pro.CAB");
         std::fs::write(&cab_path, cab_bytes)?;
         cab_path

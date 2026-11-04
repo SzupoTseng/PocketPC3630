@@ -594,6 +594,9 @@ pub struct Library {
     /// such as which cabinet was taken out of an installer. Frontends show it so
     /// a player knows what was installed.
     last_import_note: Option<String>,
+    /// While an import runs: the games it set aside to replace, as (id,
+    /// where the old folder waits). `None` outside an import.
+    replaced: Option<Vec<(String, PathBuf)>>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -644,6 +647,7 @@ impl Library {
             library,
             config,
             last_import_note: None,
+            replaced: None,
         };
         this.migrate_legacy_entries();
         Ok(this)
@@ -796,10 +800,7 @@ impl Library {
         if id.is_empty() {
             return Err(LibraryError::InvalidId(source_cab));
         }
-        let game_dir = self.root.join("games").join(&id);
-        if game_dir.exists() {
-            fs::remove_dir_all(&game_dir)?;
-        }
+        let game_dir = self.fresh_game_dir(&id)?;
         let extracted_dir = game_dir.join("extracted");
         fs::create_dir_all(&extracted_dir)?;
 
@@ -1039,10 +1040,7 @@ impl Library {
             return Err(LibraryError::IsLibrary(source_name));
         }
 
-        let game_dir = self.root.join("games").join(&id);
-        if game_dir.exists() {
-            fs::remove_dir_all(&game_dir)?;
-        }
+        let game_dir = self.fresh_game_dir(&id)?;
         let extracted_dir = game_dir.join("extracted");
         fs::create_dir_all(&extracted_dir)?;
         let dest_exe = extracted_dir.join(&source_name);
@@ -1176,10 +1174,7 @@ impl Library {
             return Err(LibraryError::InvalidId(source_name));
         }
 
-        let game_dir = self.root.join("games").join(&id);
-        if game_dir.exists() {
-            fs::remove_dir_all(&game_dir)?;
-        }
+        let game_dir = self.fresh_game_dir(&id)?;
         let extracted_dir = game_dir.join("extracted");
         fs::create_dir_all(&extracted_dir)?;
 
@@ -1403,10 +1398,7 @@ impl Library {
             return Err(LibraryError::InvalidId(source_name));
         }
 
-        let game_dir = self.root.join("games").join(&id);
-        if game_dir.exists() {
-            fs::remove_dir_all(&game_dir)?;
-        }
+        let game_dir = self.fresh_game_dir(&id)?;
         let extracted_dir = game_dir.join("extracted");
         fs::create_dir_all(&extracted_dir)?;
 
@@ -1619,22 +1611,68 @@ impl Library {
                 .map(|entries| entries.flatten().map(|e| e.file_name()).collect())
                 .unwrap_or_default()
         };
+        if self.replaced.is_some() {
+            // An import inside another: the outer one settles everything.
+            return self.import_direct_unchecked(path);
+        }
+        recover_replaced(&games);
         let before = folders(&games);
+        let listed = self.library.games.clone();
+        self.replaced = Some(Vec::new());
         let outcome = self
             .import_direct_unchecked(path)
             .map(|entry| entry.id.clone());
+        let replaced = self.replaced.take().unwrap_or_default();
         match outcome {
-            Ok(id) => self.get(&id).ok_or(LibraryError::NotFound(id)),
+            Ok(id) => {
+                // The new game is in place: the old copies can go.
+                for (_, old) in &replaced {
+                    let _ = fs::remove_dir_all(old);
+                }
+                self.get(&id).ok_or(LibraryError::NotFound(id))
+            }
             Err(error) => {
+                // Undo: drop what this import wrote, put back the games it
+                // was replacing, and the library list as it was.
                 for name in folders(&games).difference(&before) {
-                    let owned = self.library.games.iter().any(|g| *name == *g.id);
-                    if !owned && !name.to_string_lossy().starts_with(".explore-") {
+                    let name_text = name.to_string_lossy();
+                    if !name_text.starts_with(".explore-") && !name_text.starts_with(".replaced-") {
                         let _ = fs::remove_dir_all(games.join(name));
                     }
                 }
+                for (id, old) in replaced.iter().rev() {
+                    let dir = games.join(id);
+                    let _ = fs::remove_dir_all(&dir);
+                    if let Err(e) = fs::rename(old, &dir) {
+                        log::warn!("could not restore {}: {e}", dir.display());
+                    }
+                }
+                self.library.games = listed;
+                let _ = self.save();
                 Err(error)
             }
         }
+    }
+
+    /// The folder for game `id`, empty. During an import an existing folder
+    /// is set aside rather than deleted, so a failed import can put it back.
+    fn fresh_game_dir(&mut self, id: &str) -> Result<PathBuf, LibraryError> {
+        let games = self.root.join("games");
+        let game_dir = games.join(id);
+        if game_dir.exists() {
+            match self.replaced.as_mut() {
+                Some(replaced) if !replaced.iter().any(|(old, _)| old == id) => {
+                    let aside = games.join(format!(".replaced-{id}"));
+                    if aside.exists() {
+                        fs::remove_dir_all(&aside)?;
+                    }
+                    fs::rename(&game_dir, &aside)?;
+                    replaced.push((id.to_string(), aside));
+                }
+                _ => fs::remove_dir_all(&game_dir)?,
+            }
+        }
+        Ok(game_dir)
     }
 
     fn import_direct_unchecked(&mut self, path: &Path) -> Result<&GameEntry, LibraryError> {
@@ -1874,6 +1912,28 @@ fn find_resource_companion_cabs(source: &Path) -> Vec<PathBuf> {
         .collect();
     matches.sort();
     matches
+}
+
+/// Settle what an import cut short (a crash, a closed tab) left set aside:
+/// a game whose new folder is complete keeps it, any other gets its old
+/// folder back.
+fn recover_replaced(games: &Path) {
+    let Ok(entries) = fs::read_dir(games) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let Some(id) = name.strip_prefix(".replaced-") else {
+            continue;
+        };
+        let dir = games.join(id);
+        if dir.join("game.json").is_file() {
+            let _ = fs::remove_dir_all(entry.path());
+        } else {
+            let _ = fs::remove_dir_all(&dir);
+            let _ = fs::rename(entry.path(), &dir);
+        }
+    }
 }
 
 fn materialise_legacy_assets(root: &Path, files: &[pocket_cab::CabFile], app_name: Option<&str>) {
@@ -2900,6 +2960,43 @@ mod tests {
         let device = dir.path().join("device.cab");
         legacy_cab(&device, MACHINE_ARM);
         assert!(library.import_cab(&device).is_ok());
+    }
+
+    /// Importing a broken download with an installed game's name leaves the
+    /// installed game as it was.
+    #[test]
+    fn a_failed_reimport_keeps_the_installed_game() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut library = Library::open(dir.path().join("library")).unwrap();
+        let good = dir.path().join("device.cab");
+        legacy_cab(&good, MACHINE_ARM);
+        let exe = library.import_direct(&good).unwrap().executable.clone();
+        let game_dir = dir.path().join("library").join("games").join("device");
+        assert!(game_dir.join(&exe).is_file());
+
+        fs::create_dir_all(dir.path().join("bad")).unwrap();
+        let bad = dir.path().join("bad").join("device.cab");
+        legacy_cab(&bad, MACHINE_X86);
+        assert!(library.import_direct(&bad).is_err());
+        assert!(game_dir.join(&exe).is_file());
+        assert!(library.get("device").is_some());
+        let reopened = Library::open(dir.path().join("library")).unwrap();
+        assert!(reopened.get("device").is_some());
+        let names: Vec<_> = fs::read_dir(dir.path().join("library").join("games"))
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, ["device"]);
+
+        // A good re-import replaces it and leaves no copy behind.
+        assert!(library.import_direct(&good).is_ok());
+        let names: Vec<_> = fs::read_dir(dir.path().join("library").join("games"))
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, ["device"]);
     }
 
     /// A download that does not import leaves no game folder behind.

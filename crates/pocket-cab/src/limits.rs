@@ -59,6 +59,30 @@ impl Budget {
         self.files
     }
 
+    /// Room left for the next file: the per-file limit, or what is left of
+    /// the whole import if that is less.
+    pub fn room(&self) -> u64 {
+        self.largest_file.min(self.most_bytes - self.bytes)
+    }
+
+    /// Count a file of `len` bytes already in memory, failing (and counting
+    /// nothing) when it would go past a limit.
+    pub fn charge(&mut self, name: &str, len: u64) -> io::Result<()> {
+        if len > self.room() {
+            return Err(too_large(if len > self.largest_file {
+                format!("{name} is larger than {} MB", self.largest_file >> 20)
+            } else {
+                format!(
+                    "the download unpacks to more than {} MB",
+                    self.most_bytes >> 20
+                )
+            }));
+        }
+        self.add_file(name)?;
+        self.bytes += len;
+        Ok(())
+    }
+
     /// Count one more file, failing once there are too many.
     pub fn add_file(&mut self, name: &str) -> io::Result<()> {
         if self.files >= self.most_files {
@@ -81,7 +105,7 @@ impl Budget {
         to: &mut impl Write,
     ) -> io::Result<u64> {
         self.add_file(name)?;
-        let room = self.largest_file.min(self.most_bytes - self.bytes);
+        let room = self.room();
         let copied = io::copy(&mut from.take(room + 1), to)?;
         if copied > room {
             return Err(too_large(if room == self.largest_file {

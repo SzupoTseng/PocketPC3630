@@ -85,19 +85,25 @@ fn stream_at(bytes: &[u8], at: usize, limit: usize) -> Option<(Vec<u8>, usize)> 
 }
 
 /// The files stored in a Wise installer, in order. `tries` caps how many
-/// positions are tried while looking for a stream; `limit` caps each file.
+/// positions are tried while looking for a stream; `limit` caps each file
+/// and all of them together.
 pub fn files(bytes: &[u8], tries: usize, limit: usize) -> Vec<Vec<u8>> {
     let mut found = Vec::new();
     let Some(mut at) = overlay_start(bytes) else {
         return found;
     };
     let mut left = tries;
+    let mut total = 0usize;
     while at + 4 < bytes.len() && left > 0 {
-        if let Some((data, end)) = stream_at(bytes, at, limit) {
+        if let Some((data, end)) = stream_at(bytes, at, limit - total) {
             let mut crc = Crc::new();
             crc.update(&data);
             if !data.is_empty() && u32_at(bytes, end) == Some(crc.sum()) {
+                total += data.len();
                 found.push(data);
+                if total >= limit {
+                    break;
+                }
                 at = end + 4;
                 continue;
             }

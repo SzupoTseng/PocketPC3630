@@ -17,17 +17,31 @@ as untrusted.
   out.
 - **Files stay inside the library.** Names from an archive are made safe
   before anything is written: `..`, drive letters and absolute paths are
-  refused or flattened, and two names that become the same keep both files.
-- **Limits on size.** One import may write at most 20,000 files, 512 MB per
-  file and 2 GB in all (`crates/pocket-cab/src/limits.rs`). A program's
-  header may not claim more than 256 MB of memory or list more than 65,536
-  imports (`crates/pocket-pe/src/lib.rs`). A download that goes past a limit
-  stops with a plain explanation instead of filling the disk or the browser's
-  memory.
-- **A failed import leaves nothing behind.** The game folder it started is
-  removed.
+  refused or flattened. In a cabinet, two names that become the same keep
+  both files; in a zip or rar a later entry with the same path replaces the
+  earlier one, as unzipping it would.
+- **Limits on size.** The library's importer (Windows, Android and the
+  browser) counts everything one import writes against one budget: at most
+  20,000 files, 512 MB per file and 2 GB in all for a cabinet, zip or rar
+  (`crates/pocket-cab/src/limits.rs`). When a download is not a package and
+  is looked inside, every step of that search shares one smaller budget:
+  4,000 files, 128 MB per file, 1 GB in all, 60 seconds
+  (`crates/pocket-library/src/import_kb.rs`). A file past a limit is dropped,
+  never kept cut short. The setup-program readers check the sizes a file
+  declares about itself before setting memory aside for them.
+- **Limits on programs.** A program's header may not claim more than 256 MB
+  of memory, name more than 1,024 DLLs or list more than 65,536 imports,
+  exports or resources. Offsets in its import and resource directories are
+  checked before they are used (`crates/pocket-pe`).
+- **A failed import changes nothing.** Folders it created are removed, and a
+  game it was replacing is put back as it was, with its place in the
+  library. An import cut short by a crash is settled the next time.
 - **Saves are checked.** A save zip may only hold the game's save folder and
   its registry, each file at most 64 MB.
+
+The command-line tool (`pockethle play`) unpacks with the same per-file and
+total limits, counted separately for each layer it opens (a setup program,
+then the cabinet inside it).
 
 The guest program can read and write only its own game folder and the
 emulated device's folders under the library. It has no network access:
