@@ -20,6 +20,7 @@
 //! naming the start of the file name, and every call into them is
 //! answered generically.
 
+mod activation;
 pub mod aygshell;
 pub mod cedb;
 pub mod commctrl;

@@ -487,12 +487,12 @@ pub fn register(d: &mut WinCeDispatcher) {
     d.register_handler(dll, "ShowWindow", show_window);
     d.register_handler(dll, "UpdateWindow", update_window);
     d.register_handler(dll, "MoveWindow", move_window);
-    d.register_constant(dll, "SetForegroundWindow", 1, one_returning);
+    d.register_handler(dll, "SetForegroundWindow", set_foreground_window);
     // PPC2002 apps disable the IME on the very first line of WinMain.
     // There is no IME here, so "already disabled" is the honest answer.
     d.register_constant(dll, "ImmDisableIME", 1, one_returning);
     d.register_constant(dll, "BringWindowToTop", 1, one_returning);
-    d.register_constant(dll, "SetActiveWindow", FAKE_HWND, one_returning);
+    d.register_handler(dll, "SetActiveWindow", set_active_window);
     d.register_handler(dll, "GetKeyState", get_key_state);
     d.register_handler(dll, "GetAsyncKeyState", get_async_key_state);
     d.register_handler(dll, "MapVirtualKeyW", map_virtual_key_w);
@@ -549,7 +549,7 @@ pub fn register(d: &mut WinCeDispatcher) {
         "MsgWaitForMultipleObjects",
         msg_wait_for_multiple_objects,
     );
-    d.register_constant(dll, "EnableWindow", 1, one_returning);
+    d.register_handler(dll, "EnableWindow", enable_window);
     d.register_constant(dll, "MessageBeep", 1, one_returning);
     d.register_handler(dll, "PlaySoundW", play_sound_w);
     d.register_handler(dll, "PlaySoundA", play_sound_w);
@@ -7416,6 +7416,10 @@ fn is_uno_executable(module_path: &str) -> bool {
 }
 
 fn create_window_ex_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    // The activation of a window created visible, part-way through.
+    if let Some(outcome) = crate::activation::resume(ctx)? {
+        return Ok(outcome);
+    }
     // A window with a handle of its own coming back from its WM_CREATE.
     if let Some(outcome) = finish_guest_window_create(ctx)? {
         return Ok(outcome);
@@ -7854,6 +7858,13 @@ fn finish_guest_window_create(
                 .push_back((hwnd, WM_SIZE, 0, size));
         }
     }
+    // A top-level window created visible is activated before the handle
+    // comes back.
+    if separate_windows(ctx) {
+        if let Some(outcome) = crate::activation::created(ctx, hwnd)? {
+            return Ok(Some(outcome));
+        }
+    }
     Ok(Some(DispatchOutcome::ReturnedR0(hwnd)))
 }
 
@@ -7941,8 +7952,8 @@ fn resize_guest_window(
     }
 }
 
-const WS_CHILD_STYLE: u32 = 0x4000_0000;
-const WS_VISIBLE_STYLE: u32 = 0x1000_0000;
+pub(crate) const WS_CHILD_STYLE: u32 = 0x4000_0000;
+pub(crate) const WS_VISIBLE_STYLE: u32 = 0x1000_0000;
 
 /// `BOOL ShowWindow(HWND hWnd, int nCmdShow)`.
 ///
@@ -7957,6 +7968,9 @@ const WS_VISIBLE_STYLE: u32 = 0x1000_0000;
 /// which runs before the game has allocated its state struct — matches
 /// the real ordering and gives the guest a laid-out board.
 fn show_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    if let Some(outcome) = crate::activation::resume(ctx)? {
+        return Ok(outcome);
+    }
     // Must come first: the thunk re-fires this whole handler when the
     // hijacked `WndProc` returns.
     if ctx.kernel.create_stage == CreateStage::Size {
@@ -7980,8 +7994,15 @@ fn show_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     if let Some(win) = ctx.kernel.guest_windows.get_mut(&hwnd) {
         let was = win.visible;
         win.visible = show_cmd != SW_HIDE;
-        if win.visible && ctx.kernel.posted_messages.len() < 256 {
+        let now = win.visible;
+        if now && ctx.kernel.posted_messages.len() < 256 {
             ctx.kernel.posted_messages.push_back((hwnd, WM_PAINT, 0, 0));
+        }
+        // Showing a top-level window activates it.
+        if now && !was && separate_windows(ctx) {
+            if let Some(outcome) = crate::activation::shown(ctx, hwnd, was)? {
+                return Ok(outcome);
+            }
         }
         return Ok(DispatchOutcome::ReturnedR0(u32::from(was)));
     }
@@ -9251,6 +9272,9 @@ fn keybd_event(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 /// otherwise the top-level window.
 fn get_focus(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let focus = ctx.kernel.controls.focus;
+    if focus == 0 && separate_windows(ctx) {
+        return Ok(DispatchOutcome::ReturnedR0(crate::activation::focus(ctx)));
+    }
     Ok(DispatchOutcome::ReturnedR0(if focus != 0 {
         focus
     } else {
@@ -9264,7 +9288,15 @@ fn get_focus(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 /// field on `WM_INITDIALOG` depends on it landing somewhere real, or the
 /// caret sits on nothing and typed keys go to the application instead.
 fn set_focus(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    if let Some(outcome) = crate::activation::resume(ctx)? {
+        return Ok(outcome);
+    }
     let hwnd = ctx.arg_u32(0)?;
+    // Windows with handles of their own hear WM_KILLFOCUS and WM_SETFOCUS
+    // (and the activation before them) as on a device.
+    if ctx.kernel.controls.focus == 0 && crate::activation::applies(ctx, hwnd) {
+        return crate::activation::set_focus(ctx, hwnd);
+    }
     let previous = ctx.kernel.controls.focus;
     if ctx
         .kernel
@@ -12380,97 +12412,6 @@ fn output_debug_string_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, Kerne
     Ok(DispatchOutcome::ReturnedR0(0))
 }
 
-/// One `DestroyWindow` delivering its WM_DESTROY messages: the interrupted
-/// call, the windows still to be told, and every window the call destroys.
-type DestroyCall = (GuestCallFrame, std::collections::VecDeque<u32>, Vec<u32>);
-
-thread_local! {
-    /// The `DestroyWindow` calls in flight, innermost last.
-    static GUEST_DESTROYS: std::cell::RefCell<Vec<DestroyCall>> =
-        const { std::cell::RefCell::new(Vec::new()) };
-}
-
-/// The windows `DestroyWindow(target)` destroys, in the order they hear
-/// WM_DESTROY on a device (Device Emulator, tools/wince-window-test): the
-/// windows it owns first, each with everything of its own, then the window
-/// itself, then its children, newest first.
-fn destroy_order(ctx: &CallCtx<'_>, target: u32, out: &mut Vec<u32>) {
-    if out.contains(&target) || out.len() > 512 {
-        return;
-    }
-    let newest_first = |pick: &dyn Fn(&pocket_kernel::GuestWindow) -> bool| {
-        let mut found: Vec<u32> = ctx
-            .kernel
-            .guest_windows
-            .iter()
-            .filter(|(_, win)| pick(win))
-            .map(|(hwnd, _)| *hwnd)
-            .collect();
-        found.sort_unstable_by(|a, b| b.cmp(a));
-        found
-    };
-    for owned in newest_first(&|win| win.owner == target) {
-        destroy_order(ctx, owned, out);
-    }
-    out.push(target);
-    for child in newest_first(&|win| win.parent == target) {
-        destroy_order(ctx, child, out);
-    }
-}
-
-/// Send the next WM_DESTROY of the innermost `DestroyWindow`, or, when all
-/// have been sent, remove its windows and return TRUE to its caller.
-fn deliver_next_destroy(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
-    loop {
-        let next = GUEST_DESTROYS.with(|d| d.borrow_mut().last_mut().and_then(|e| e.1.pop_front()));
-        let Some(hwnd) = next else {
-            break;
-        };
-        let proc_ = if hwnd == FAKE_HWND {
-            ctx.kernel.wnd_proc
-        } else {
-            ctx.kernel.window_procs.get(&hwnd).copied().unwrap_or(0)
-        };
-        if proc_ == 0 {
-            continue;
-        }
-        ctx.cpu.write_reg(ArmReg::R0, hwnd)?;
-        ctx.cpu.write_reg(ArmReg::R1, WM_DESTROY)?;
-        ctx.cpu.write_reg(ArmReg::R2, 0)?;
-        ctx.cpu.write_reg(ArmReg::R3, 0)?;
-        ctx.cpu.write_reg(ArmReg::Lr, ctx.thunk.thunk_va)?;
-        return Ok(DispatchOutcome::JumpTo(proc_));
-    }
-    let (frame, _, doomed) = GUEST_DESTROYS.with(|d| d.borrow_mut().pop()).unwrap();
-    for hwnd in &doomed {
-        if *hwnd == FAKE_HWND {
-            ctx.kernel.main_window_destroyed = true;
-            continue;
-        }
-        ctx.kernel.guest_windows.remove(hwnd);
-        ctx.kernel.window_procs.remove(hwnd);
-        ctx.kernel.window_classes.remove(hwnd);
-    }
-    ctx.kernel
-        .posted_messages
-        .retain(|(hwnd, ..)| *hwnd == FAKE_HWND || !doomed.contains(hwnd));
-    ctx.cpu.write_reg(ArmReg::Sp, frame.sp)?;
-    ctx.cpu.write_reg(ArmReg::R1, frame.args[1])?;
-    ctx.cpu.write_reg(ArmReg::R2, frame.args[2])?;
-    ctx.cpu.write_reg(ArmReg::R3, frame.args[3])?;
-    ctx.cpu.write_reg(ArmReg::Lr, frame.lr)?;
-    Ok(DispatchOutcome::ReturnedR0(1))
-}
-
-/// Whether `hwnd` is being destroyed by a `DestroyWindow` still running.
-fn being_destroyed(hwnd: u32) -> bool {
-    GUEST_DESTROYS.with(|d| {
-        d.borrow()
-            .iter()
-            .any(|(_, _, doomed)| doomed.contains(&hwnd))
-    })
-}
-
 /// `BOOL DestroyWindow(HWND hWnd)`.
 ///
 /// Destroying a control just drops it. Destroying the top-level window
@@ -12478,11 +12419,10 @@ fn being_destroyed(hwnd: u32) -> bool {
 /// and expects the `WM_DESTROY` that follows to reach its `WndProc`,
 /// which is where its `PostQuitMessage` lives.
 fn destroy_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
-    // A WM_DESTROY sent by an earlier call has returned: send the next.
-    // A DestroyWindow made from inside that WM_DESTROY runs deeper.
-    let sp = ctx.cpu.read_reg(ArmReg::Sp)?;
-    if GUEST_DESTROYS.with(|d| d.borrow().last().is_some_and(|e| sp >= e.0.sp)) {
-        return deliver_next_destroy(ctx);
+    // A WM_DESTROY (or the deactivation before it) sent by an earlier call
+    // has returned: send the next.
+    if let Some(outcome) = crate::activation::resume(ctx)? {
+        return Ok(outcome);
     }
     let target = ctx.arg_u32(0)?;
     // A window with a handle of its own (and, when every window has one,
@@ -12491,28 +12431,7 @@ fn destroy_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError>
     if ctx.kernel.guest_windows.contains_key(&target)
         || (target == FAKE_HWND && separate_windows(ctx))
     {
-        if being_destroyed(target) {
-            return Ok(DispatchOutcome::ReturnedR0(1));
-        }
-        let mut doomed = Vec::new();
-        destroy_order(ctx, target, &mut doomed);
-        doomed.retain(|hwnd| !being_destroyed(*hwnd));
-        for hwnd in &doomed {
-            ctx.kernel.controls.destroy_children_of(*hwnd);
-        }
-        let frame = GuestCallFrame {
-            args: [
-                ctx.cpu.read_reg(ArmReg::R0)?,
-                ctx.cpu.read_reg(ArmReg::R1)?,
-                ctx.cpu.read_reg(ArmReg::R2)?,
-                ctx.cpu.read_reg(ArmReg::R3)?,
-            ],
-            lr: ctx.cpu.read_reg(ArmReg::Lr)?,
-            sp,
-        };
-        let queue = doomed.iter().copied().collect();
-        GUEST_DESTROYS.with(|d| d.borrow_mut().push((frame, queue, doomed)));
-        return deliver_next_destroy(ctx);
+        return crate::activation::destroy_window(ctx, target);
     }
     let hwnd = target;
     if Controls::is_child_hwnd(hwnd) {
@@ -18208,12 +18127,55 @@ fn get_desktop_window(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelE
     Ok(DispatchOutcome::ReturnedR0(FAKE_DESKTOP_HWND))
 }
 
-fn get_active_window(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+fn get_active_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    if separate_windows(ctx) {
+        return Ok(DispatchOutcome::ReturnedR0(crate::activation::active(ctx)));
+    }
     Ok(DispatchOutcome::ReturnedR0(FAKE_HWND))
 }
 
-fn get_foreground_window(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+fn get_foreground_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    get_active_window(ctx)
+}
+
+/// `HWND SetActiveWindow(HWND)`. With a handle per window it activates
+/// the window as a device does; otherwise there is only the main window.
+fn set_active_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    if let Some(outcome) = crate::activation::resume(ctx)? {
+        return Ok(outcome);
+    }
+    let hwnd = ctx.arg_u32(0)?;
+    if crate::activation::applies(ctx, hwnd) {
+        return crate::activation::set_active_window(ctx, hwnd);
+    }
     Ok(DispatchOutcome::ReturnedR0(FAKE_HWND))
+}
+
+/// `BOOL SetForegroundWindow(HWND)`, like [`set_active_window`].
+fn set_foreground_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    if let Some(outcome) = crate::activation::resume(ctx)? {
+        return Ok(outcome);
+    }
+    let hwnd = ctx.arg_u32(0)?;
+    if crate::activation::applies(ctx, hwnd) {
+        return crate::activation::set_foreground_window(ctx, hwnd);
+    }
+    Ok(DispatchOutcome::ReturnedR0(1))
+}
+
+/// `BOOL EnableWindow(HWND, BOOL)`. With a handle per window the window
+/// hears WM_ENABLE when its state changes; otherwise it answers 1 as it
+/// always has.
+fn enable_window(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    if let Some(outcome) = crate::activation::resume(ctx)? {
+        return Ok(outcome);
+    }
+    let hwnd = ctx.arg_u32(0)?;
+    let enable = ctx.arg_u32(1)? != 0;
+    if crate::activation::applies(ctx, hwnd) {
+        return crate::activation::enable_window(ctx, hwnd, enable);
+    }
+    Ok(DispatchOutcome::ReturnedR0(1))
 }
 
 fn get_parent(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
@@ -18922,6 +18884,9 @@ pub(crate) mod tests {
             gz_files: Default::default(),
             posted_messages: Default::default(),
             main_window_destroyed: false,
+            active_window: 0,
+            focus_window: 0,
+            disabled_windows: Default::default(),
             msg_queues: std::collections::HashMap::new(),
             next_msg_queue_handle: 0xDEAD_E500,
             menus: std::collections::HashMap::new(),

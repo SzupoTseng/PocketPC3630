@@ -1364,6 +1364,15 @@ pub struct KernelState {
     /// The main window was destroyed while every window had a handle of
     /// its own, so `IsWindow` no longer answers it.
     pub main_window_destroyed: bool,
+    /// The active top-level window among windows with handles of their
+    /// own; 0 until one is activated (the main window counts as active).
+    pub active_window: u32,
+    /// The window with the keyboard focus among windows with handles of
+    /// their own; 0 until one takes it. Built-in controls keep theirs in
+    /// `controls.focus`.
+    pub focus_window: u32,
+    /// Windows disabled with `EnableWindow`.
+    pub disabled_windows: std::collections::HashSet<u32>,
     pub msg_queues: HashMap<u32, MsgQueue>,
     pub next_msg_queue_handle: u32,
     /// Per-menu table of `(item_id -> flags)`. We track the flags so
@@ -2584,6 +2593,9 @@ impl Process {
                 gz_files: Default::default(),
                 posted_messages: Default::default(),
                 main_window_destroyed: false,
+                active_window: 0,
+                focus_window: 0,
+                disabled_windows: Default::default(),
                 msg_queues: HashMap::new(),
                 next_msg_queue_handle: 0xDEAD_E500,
                 menus: HashMap::new(),
