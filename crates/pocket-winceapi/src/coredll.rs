@@ -469,6 +469,7 @@ pub fn register(d: &mut WinCeDispatcher) {
     d.register_handler(dll, "GetWindowLongA", get_window_long_w);
     d.register_handler(dll, "GetClassNameW", get_class_name_w);
     d.register_handler(dll, "GetDlgItem", get_dlg_item);
+    d.register_handler(dll, "GetDlgCtrlID", get_dlg_ctrl_id);
     d.register_handler(dll, "CheckRadioButton", check_radio_button);
     d.register_handler(dll, "EnumWindows", enum_windows);
     d.register_handler(dll, "IsWindowVisible", is_window_visible);
@@ -7760,6 +7761,11 @@ fn create_guest_window(
             } else {
                 parent
             },
+            id: if style & WS_CHILD_STYLE != 0 {
+                h_menu
+            } else {
+                0
+            },
             class: class_name.to_string(),
             style,
             x,
@@ -12297,11 +12303,40 @@ fn get_object_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     Ok(DispatchOutcome::ReturnedR0(24))
 }
 
+/// `int GetDlgCtrlID(HWND)`: a child window's or control's id.
+fn get_dlg_ctrl_id(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
+    let hwnd = ctx.arg_u32(0)?;
+    let id = if let Some(win) = ctx.kernel.guest_windows.get(&hwnd) {
+        win.id
+    } else {
+        ctx.kernel.controls.get(hwnd).map_or(0, |c| c.id)
+    };
+    Ok(DispatchOutcome::ReturnedR0(id))
+}
+
 fn get_dlg_item(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let hwnd = ctx.arg_u32(0)?;
     let id = ctx.arg_u32(1)?;
     if let Some(child) = ctx.kernel.controls.by_id(hwnd, id) {
         let found = child.hwnd;
+        log::trace!("GetDlgItem(0x{hwnd:08x}, {id}) -> 0x{found:08x}");
+        return Ok(DispatchOutcome::ReturnedR0(found));
+    }
+    // Among windows with handles of their own, a child window by its id,
+    // and NULL when there is none, as on a device. Answering the parent
+    // itself sent MFC's GetDescendantWindow round in a circle once
+    // GetWindow(GW_CHILD) gave it the parent's children (Haali Reader).
+    if separate_windows(ctx) && (hwnd == FAKE_HWND || is_guest_window(hwnd)) {
+        let found = ctx
+            .kernel
+            .guest_windows
+            .iter()
+            .filter(|(_, win)| {
+                win.parent == hwnd && win.style & WS_CHILD_STYLE != 0 && win.id == id
+            })
+            .map(|(child, _)| *child)
+            .min()
+            .unwrap_or(0);
         log::trace!("GetDlgItem(0x{hwnd:08x}, {id}) -> 0x{found:08x}");
         return Ok(DispatchOutcome::ReturnedR0(found));
     }
@@ -16775,6 +16810,7 @@ fn start_next_dialog_custom(
             pocket_kernel::GuestWindow {
                 parent: FAKE_DIALOG_HWND,
                 owner: 0,
+                id: item.id,
                 class: item.class.clone(),
                 style: item.style,
                 x,

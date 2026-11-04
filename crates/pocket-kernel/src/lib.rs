@@ -869,6 +869,9 @@ pub struct GuestWindow {
     /// pop-up or dialog belongs to it, is destroyed with it and reports
     /// it from `GetParent` and `GetWindow(GW_OWNER)`.
     pub owner: u32,
+    /// A child window's control id (the `hMenu` argument it was created
+    /// with, or its dialog template id).
+    pub id: u32,
     pub class: String,
     pub style: u32,
     /// Rectangle in the parent's client coordinates.
