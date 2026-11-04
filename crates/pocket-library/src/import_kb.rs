@@ -1045,8 +1045,14 @@ fn inno_chunks(bytes: &[u8], limit: u64) -> Vec<Vec<u8>> {
         }
         let mut inflated = Vec::new();
         let decoder = flate2::read::ZlibDecoder::new(rest);
-        // A damaged or cut chunk still gives what came out before the damage.
-        let _ = io::Read::read_to_end(&mut io::Read::take(decoder, limit - total), &mut inflated);
+        // A damaged chunk still gives what came out before the damage, but a
+        // chunk larger than what is left is dropped, not kept cut short: one
+        // byte past the room tells the two apart.
+        let room = limit - total;
+        let _ = io::Read::read_to_end(&mut io::Read::take(decoder, room + 1), &mut inflated);
+        if inflated.len() as u64 > room {
+            break;
+        }
         if !inflated.is_empty() {
             total += inflated.len() as u64;
             chunks.push(inflated);

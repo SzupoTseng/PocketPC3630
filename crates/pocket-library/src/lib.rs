@@ -1625,9 +1625,23 @@ impl Library {
         let replaced = self.replaced.take().unwrap_or_default();
         match outcome {
             Ok(id) => {
-                // The new game is in place: the old copies can go.
-                for (_, old) in &replaced {
-                    let _ = fs::remove_dir_all(old);
+                // Only a game this import actually put in place loses its old
+                // copy. A zip named after game A whose cabinet turns out to be
+                // game B set A aside on the way; A goes back.
+                for (old_id, old) in &replaced {
+                    let dir = games.join(old_id);
+                    let committed = self.library.games.iter().any(|g| g.id == *old_id)
+                        && dir.join("game.json").is_file();
+                    if committed {
+                        if let Err(e) = fs::remove_dir_all(old) {
+                            log::warn!("could not remove {}: {e}", old.display());
+                        }
+                    } else {
+                        let _ = fs::remove_dir_all(&dir);
+                        if let Err(e) = fs::rename(old, &dir) {
+                            log::warn!("could not restore {}: {e}", dir.display());
+                        }
+                    }
                 }
                 self.get(&id).ok_or(LibraryError::NotFound(id))
             }
@@ -1923,7 +1937,10 @@ fn recover_replaced(games: &Path) {
     };
     for entry in entries.flatten() {
         let name = entry.file_name().to_string_lossy().into_owned();
-        let Some(id) = name.strip_prefix(".replaced-") else {
+        let Some(id) = name
+            .strip_prefix(".replaced-")
+            .filter(|id| !id.is_empty() && *id == sanitize_id(Some(id)))
+        else {
             continue;
         };
         let dir = games.join(id);
@@ -2997,6 +3014,40 @@ mod tests {
             .map(|e| e.file_name().to_string_lossy().into_owned())
             .collect();
         assert_eq!(names, ["device"]);
+    }
+
+    /// A zip named after an installed game whose cabinet is another game
+    /// installs the other game and leaves the first one alone.
+    #[test]
+    fn a_zip_named_after_a_game_keeps_that_game() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let mut library = Library::open(dir.path().join("library")).unwrap();
+        let first = dir.path().join("device.cab");
+        legacy_cab(&first, MACHINE_ARM);
+        let exe = library.import_direct(&first).unwrap().executable.clone();
+
+        let other = dir.path().join("other.cab");
+        legacy_cab(&other, MACHINE_ARM);
+        let path = dir.path().join("device.zip");
+        let mut zip = zip::ZipWriter::new(fs::File::create(&path).unwrap());
+        zip.start_file("sub/other.cab", zip::write::FileOptions::default())
+            .unwrap();
+        zip.write_all(&fs::read(&other).unwrap()).unwrap();
+        zip.finish().unwrap();
+
+        let id = library.import_direct(&path).unwrap().id.clone();
+        assert_eq!(id, "other");
+        let games = dir.path().join("library").join("games");
+        assert!(games.join("device").join(&exe).is_file());
+        assert!(library.get("device").is_some());
+        let mut names: Vec<_> = fs::read_dir(&games)
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        assert_eq!(names, ["device", "other"]);
     }
 
     /// A download that does not import leaves no game folder behind.

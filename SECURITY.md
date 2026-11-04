@@ -27,7 +27,8 @@ as untrusted.
   is looked inside, every step of that search shares one smaller budget:
   4,000 files, 128 MB per file, 1 GB in all, 60 seconds
   (`crates/pocket-library/src/import_kb.rs`). A file past a limit is dropped,
-  never kept cut short. The setup-program readers check the sizes a file
+  never kept cut short. (A damaged stream inside a setup program can still
+  give the part that came out before the damage.) The setup-program readers check the sizes a file
   declares about itself before setting memory aside for them.
 - **Limits on programs.** A program's header may not claim more than 256 MB
   of memory, name more than 1,024 DLLs or list more than 65,536 imports,
