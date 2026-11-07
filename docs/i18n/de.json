@@ -231,5 +231,8 @@
  "lib.reason.plugin": "Ein Plug-in für ein anderes Programm (etwa ein Codec für einen Player), kein eigenständiges Programm",
  "lib.m01": "Mobile01-Thread",
  "lib.variant.retail": "Eintrag zur Verkaufs-CD",
- "lib.m01note": "Notiz eines Mobile01-Mitglieds (2003, Chinesisch)"
+ "lib.m01note": "Notiz eines Mobile01-Mitglieds (2003, Chinesisch)",
+ "js.lastPlayed": "Zuletzt gespielt {when}",
+ "js.notPlayed": "Noch nicht gespielt",
+ "js.findGame": "Meine Spiele durchsuchen…"
 }

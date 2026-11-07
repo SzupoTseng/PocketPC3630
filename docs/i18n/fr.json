@@ -231,5 +231,8 @@
  "lib.reason.plugin": "Un module pour un autre programme (comme un codec de lecteur), pas un programme qui se lance seul",
  "lib.m01": "Fil Mobile01",
  "lib.variant.retail": "Fiche du disque commercial",
- "lib.m01note": "Note d’un membre de Mobile01 (2003, en chinois)"
+ "lib.m01note": "Note d’un membre de Mobile01 (2003, en chinois)",
+ "js.lastPlayed": "Joué {when}",
+ "js.notPlayed": "Pas encore joué",
+ "js.findGame": "Rechercher dans mes jeux…"
 }

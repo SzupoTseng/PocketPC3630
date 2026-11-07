@@ -231,5 +231,8 @@
  "lib.reason.plugin": "다른 프로그램용 플러그인(플레이어 코덱 등)으로, 혼자 실행되는 프로그램이 아닙니다",
  "lib.m01": "Mobile01 토론글",
  "lib.variant.retail": "정품 디스크 기록",
- "lib.m01note": "Mobile01 회원 한마디 (2003, 중국어)"
+ "lib.m01note": "Mobile01 회원 한마디 (2003, 중국어)",
+ "js.lastPlayed": "마지막 플레이: {when}",
+ "js.notPlayed": "아직 플레이하지 않음",
+ "js.findGame": "내 게임 검색…"
 }

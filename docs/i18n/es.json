@@ -231,5 +231,8 @@
  "lib.reason.plugin": "Un complemento para otro programa (como un códec de un reproductor), no un programa que se abra solo",
  "lib.m01": "Hilo de Mobile01",
  "lib.variant.retail": "Registro del disco comercial",
- "lib.m01note": "Nota de un usuario de Mobile01 (2003, en chino)"
+ "lib.m01note": "Nota de un usuario de Mobile01 (2003, en chino)",
+ "js.lastPlayed": "Jugado {when}",
+ "js.notPlayed": "Aún no jugado",
+ "js.findGame": "Buscar en mis juegos…"
 }

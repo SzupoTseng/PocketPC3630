@@ -231,5 +231,8 @@
  "lib.reason.plugin": "ほかのプログラム用のプラグイン（プレーヤーのコーデックなど）で、単独で起動するプログラムではありません",
  "lib.m01": "Mobile01 のスレッド",
  "lib.variant.retail": "市販ディスクの記録",
- "lib.m01note": "Mobile01 ユーザーの一言（2003 年・中国語）"
+ "lib.m01note": "Mobile01 ユーザーの一言（2003 年・中国語）",
+ "js.lastPlayed": "前回のプレイ：{when}",
+ "js.notPlayed": "まだ遊んでいません",
+ "js.findGame": "マイゲームを検索…"
 }
