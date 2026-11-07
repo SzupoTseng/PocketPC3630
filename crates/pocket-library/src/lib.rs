@@ -1671,6 +1671,20 @@ impl Library {
                     let committed = self.library.games.iter().any(|g| g.id == *old_id)
                         && dir.join("game.json").is_file();
                     if committed {
+                        // Importing a game again updates it: the player's
+                        // progress and settings carry over to the new copy.
+                        carry_progress(old, &dir);
+                        if let Some(previous) = listed.iter().find(|g| g.id == *old_id) {
+                            let settings = previous.settings.clone();
+                            if let Some(entry) =
+                                self.library.games.iter_mut().find(|g| g.id == *old_id)
+                            {
+                                entry.settings = settings;
+                                let entry = entry.clone();
+                                let _ = write_json(&dir.join("game.json"), &entry);
+                            }
+                            let _ = self.save();
+                        }
                         if let Err(e) = fs::remove_dir_all(old) {
                             log::warn!("could not remove {}: {e}", old.display());
                         }
@@ -1964,6 +1978,41 @@ fn find_resource_companion_cabs(source: &Path) -> Vec<PathBuf> {
         .collect();
     matches.sort();
     matches
+}
+
+/// Carry a replaced game's progress into its new copy: the save folder, and
+/// the registry snapshot a game keeps beside its files. What the new copy
+/// already has of its own is kept.
+fn carry_progress(old: &Path, new: &Path) {
+    fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
+        fs::create_dir_all(to)?;
+        for entry in fs::read_dir(from)? {
+            let entry = entry?;
+            let target = to.join(entry.file_name());
+            if entry.file_type()?.is_dir() {
+                copy_tree(&entry.path(), &target)?;
+            } else if !target.exists() {
+                fs::copy(entry.path(), &target)?;
+            }
+        }
+        Ok(())
+    }
+    let saves = old.join(save_data::SAVE_DIR_NAME);
+    if saves.is_dir() {
+        if let Err(e) = copy_tree(&saves, &new.join(save_data::SAVE_DIR_NAME)) {
+            log::warn!("could not carry saves over to {}: {e}", new.display());
+        }
+    }
+    let registry = old.join("extracted").join(save_archive::REGISTRY_FILE);
+    let target = new.join("extracted").join(save_archive::REGISTRY_FILE);
+    if registry.is_file() && !target.exists() && target.parent().is_some_and(Path::is_dir) {
+        if let Err(e) = fs::copy(&registry, &target) {
+            log::warn!(
+                "could not carry the registry over to {}: {e}",
+                new.display()
+            );
+        }
+    }
 }
 
 /// Settle what an import cut short (a crash, a closed tab) left set aside:
@@ -3218,6 +3267,53 @@ mod tests {
             .collect();
         names.sort();
         assert_eq!(names, ["device", "other"]);
+    }
+
+    /// Importing a game again keeps its saves, its registry snapshot and
+    /// its settings.
+    #[test]
+    fn a_reimport_keeps_progress_and_settings() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut library = Library::open(dir.path().join("library")).unwrap();
+        let cab = dir.path().join("device.cab");
+        legacy_cab(&cab, MACHINE_ARM);
+        library.import_direct(&cab).unwrap();
+        let game = dir.path().join("library").join("games").join("device");
+        fs::create_dir_all(game.join("saves").join("slot")).unwrap();
+        fs::write(
+            game.join("saves").join("slot").join("hero.sav"),
+            b"level 12",
+        )
+        .unwrap();
+        fs::write(
+            game.join("extracted").join(save_archive::REGISTRY_FILE),
+            b"registry",
+        )
+        .unwrap();
+        let mut entry = library.get("device").unwrap().clone();
+        entry.settings.max_slices = 9_000_000;
+        library
+            .update_settings("device", entry.settings.clone())
+            .unwrap();
+
+        library.import_direct(&cab).unwrap();
+        assert_eq!(
+            fs::read(game.join("saves").join("slot").join("hero.sav")).unwrap(),
+            b"level 12"
+        );
+        assert_eq!(
+            fs::read(game.join("extracted").join(save_archive::REGISTRY_FILE)).unwrap(),
+            b"registry"
+        );
+        assert_eq!(
+            library.get("device").unwrap().settings.max_slices,
+            9_000_000
+        );
+        let reopened = Library::open(dir.path().join("library")).unwrap();
+        assert_eq!(
+            reopened.get("device").unwrap().settings.max_slices,
+            9_000_000
+        );
     }
 
     /// A download that does not import leaves no game folder behind.
