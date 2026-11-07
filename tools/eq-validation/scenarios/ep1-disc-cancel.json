@@ -1,0 +1,5 @@
+[
+  {"at": 1, "shot": "before"},
+  {"at": 2, "tap": [179, 136]},
+  {"at": 4, "shot": "after-cancel"}
+]
