@@ -51,7 +51,7 @@ use std::{rc::Rc, sync::Arc};
 // Even if it would be, this makes it not UB and just return err/eof.
 #[inline(always)]
 fn data_len_safe(len: usize) -> c_int {
-    len.min(c_int::max_value() as usize) as c_int
+    len.min(c_int::MAX as usize) as c_int
 }
 
 /// Returns the source slice from a received `mp3dec_frame_info_t`.

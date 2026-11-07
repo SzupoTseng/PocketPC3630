@@ -16,3 +16,5 @@ Changes are limited to src/lib.rs:
 Both FMOD file decoding and the emulated MAS1 stream device use this patched
 crate through the workspace patch. Public APIs, features and C decoder remain
 unchanged. Regression tests live with the emulator's audio callers.
+- Use `c_int::MAX` for the deprecated `c_int::max_value()`: as a path
+  dependency the crate is built with the workspace's `-D warnings`.
