@@ -234,5 +234,7 @@
  "lib.m01note": "Mobile01 ユーザーの一言（2003 年・中国語）",
  "js.lastPlayed": "前回のプレイ：{when}",
  "js.notPlayed": "まだ遊んでいません",
- "js.findGame": "マイゲームを検索…"
+ "js.findGame": "マイゲームを検索…",
+ "play.pad": "ボタン",
+ "play.padTitle": "画面のボタンを表示／非表示。スタイラスで遊ぶゲームでは隠すと画面が大きくなります"
 }

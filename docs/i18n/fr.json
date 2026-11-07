@@ -234,5 +234,7 @@
  "lib.m01note": "Note d’un membre de Mobile01 (2003, en chinois)",
  "js.lastPlayed": "Joué {when}",
  "js.notPlayed": "Pas encore joué",
- "js.findGame": "Rechercher dans mes jeux…"
+ "js.findGame": "Rechercher dans mes jeux…",
+ "play.pad": "Touches",
+ "play.padTitle": "Afficher ou masquer les touches à l'écran ; masquez-les pour les jeux au stylet afin d'agrandir l'écran"
 }

@@ -234,5 +234,7 @@
  "lib.m01note": "Mobile01 网友短评（2003）",
  "js.lastPlayed": "上次玩：{when}",
  "js.notPlayed": "还没玩过",
- "js.findGame": "搜索我的游戏…"
+ "js.findGame": "搜索我的游戏…",
+ "play.pad": "按键",
+ "play.padTitle": "显示或隐藏屏幕按键；用触控笔玩的游戏可隐藏，让画面更大"
 }

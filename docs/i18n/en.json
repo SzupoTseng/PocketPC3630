@@ -234,5 +234,7 @@
  "lib.m01note": "Mobile01 member's note (2003, Chinese)",
  "js.lastPlayed": "Last played {when}",
  "js.notPlayed": "Not played yet",
- "js.findGame": "Search my games…"
+ "js.findGame": "Search my games…",
+ "play.pad": "Keys",
+ "play.padTitle": "Show or hide the on-screen keys; hide them for games played with the stylus to make the screen bigger"
 }

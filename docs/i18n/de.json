@@ -234,5 +234,7 @@
  "lib.m01note": "Notiz eines Mobile01-Mitglieds (2003, Chinesisch)",
  "js.lastPlayed": "Zuletzt gespielt {when}",
  "js.notPlayed": "Noch nicht gespielt",
- "js.findGame": "Meine Spiele durchsuchen…"
+ "js.findGame": "Meine Spiele durchsuchen…",
+ "play.pad": "Tasten",
+ "play.padTitle": "Bildschirmtasten ein- oder ausblenden; bei Spielen mit Eingabestift ausblenden, damit das Bild größer wird"
 }
