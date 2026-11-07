@@ -33,7 +33,6 @@
 use std::io::{Seek, SeekFrom, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 /// Maximum number of i16 samples we keep buffered. At 44.1 kHz
 /// stereo this is about twelve seconds — plenty to absorb scheduling
@@ -134,7 +133,9 @@ struct Shared {
     /// Wall-clock playback estimate, in guest samples.
     virtual_cursor: u64,
     /// When the wall-clock estimate was last advanced.
-    virtual_tick: Option<Instant>,
+    /// Guest time of the last advance; guest time stands still while play
+    /// is paused, so the virtual cursor does too.
+    virtual_tick: Option<std::time::Duration>,
     /// `true` between `waveOutPause` and `waveOutRestart`. The device
     /// keeps its queue but stops consuming, so the playback cursor
     /// freezes and buffer-done notifications stop until playback
@@ -192,9 +193,9 @@ impl Shared {
         }
         let rate =
             self.guest_format.sample_rate.max(1) as u64 * self.guest_format.channels.max(1) as u64;
-        let now = Instant::now();
+        let now = crate::guest_clock::elapsed();
         let last = *self.virtual_tick.get_or_insert(now);
-        let elapsed_us = now.saturating_duration_since(last).as_micros() as u64;
+        let elapsed_us = now.saturating_sub(last).as_micros() as u64;
         if elapsed_us > 0 {
             self.virtual_tick = Some(now);
             self.virtual_cursor = self

@@ -236,5 +236,8 @@
  "js.notPlayed": "Pas encore joué",
  "js.findGame": "Rechercher dans mes jeux…",
  "play.pad": "Touches",
- "play.padTitle": "Afficher ou masquer les touches à l'écran ; masquez-les pour les jeux au stylet afin d'agrandir l'écran"
+ "play.padTitle": "Afficher ou masquer les touches à l'écran ; masquez-les pour les jeux au stylet afin d'agrandir l'écran",
+ "play.pause": "Pause",
+ "play.paused": "En pause",
+ "play.resumeHint": "Touchez pour reprendre ; le temps du jeu est arrêté aussi"
 }

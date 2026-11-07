@@ -41,6 +41,7 @@ pub mod font;
 pub mod framebuffer;
 pub mod gapi;
 pub mod gdi;
+pub mod guest_clock;
 pub mod gz;
 pub mod itemview;
 pub mod msgbox;

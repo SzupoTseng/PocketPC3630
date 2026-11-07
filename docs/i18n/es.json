@@ -236,5 +236,8 @@
  "js.notPlayed": "Aún no jugado",
  "js.findGame": "Buscar en mis juegos…",
  "play.pad": "Botones",
- "play.padTitle": "Mostrar u ocultar los botones en pantalla; ocúltalos en juegos con lápiz para agrandar la pantalla"
+ "play.padTitle": "Mostrar u ocultar los botones en pantalla; ocúltalos en juegos con lápiz para agrandar la pantalla",
+ "play.pause": "Pausa",
+ "play.paused": "En pausa",
+ "play.resumeHint": "Toca para continuar; el tiempo del juego también se detiene"
 }

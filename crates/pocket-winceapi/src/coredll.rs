@@ -1928,17 +1928,10 @@ fn get_tick_count(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError
     Ok(DispatchOutcome::ReturnedR0(get_tick_count_value()))
 }
 
+/// Milliseconds since start-up, in guest time: it stands still while play
+/// is paused (see `pocket_kernel::guest_clock`).
 fn get_tick_count_value() -> u32 {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static START: AtomicU64 = AtomicU64::new(0);
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis() as u64)
-        .unwrap_or(0);
-    if START.load(Ordering::Relaxed) == 0 {
-        START.store(now, Ordering::Relaxed);
-    }
-    now.saturating_sub(START.load(Ordering::Relaxed)) as u32
+    pocket_kernel::guest_clock::millis() as u32
 }
 
 fn read_guest_regs(cpu: &mut dyn pocket_cpu::Cpu) -> Result<[u32; 17], KernelError> {
@@ -9447,10 +9440,7 @@ fn get_capture(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 }
 
 fn monotonic_ms() -> u64 {
-    use std::sync::OnceLock;
-    use std::time::Instant;
-    static START: OnceLock<Instant> = OnceLock::new();
-    START.get_or_init(Instant::now).elapsed().as_millis() as u64
+    pocket_kernel::guest_clock::millis()
 }
 
 fn update_key_state(ctx: &mut CallCtx<'_>, ev: pocket_kernel::InputEvent) {
@@ -15403,10 +15393,20 @@ fn query_performance_counter(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, K
     if p == 0 {
         return Ok(DispatchOutcome::ReturnedR0(0));
     }
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_micros() as u64)
-        .unwrap_or(0);
+    // A counter at 1 MHz (QueryPerformanceFrequency) in guest time, so it
+    // stands still while play is paused. It starts from the wall clock's
+    // microseconds at start-up, the size of value it always had.
+    let now = {
+        use std::sync::OnceLock;
+        static BASE: OnceLock<u64> = OnceLock::new();
+        let base = *BASE.get_or_init(|| {
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_micros() as u64)
+                .unwrap_or(0)
+        });
+        base + pocket_kernel::guest_clock::micros()
+    };
     let lo = (now & 0xFFFF_FFFF) as u32;
     let hi = (now >> 32) as u32;
     let mut buf = [0u8; 8];

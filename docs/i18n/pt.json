@@ -236,5 +236,8 @@
  "js.notPlayed": "Ainda não jogado",
  "js.findGame": "Pesquisar meus jogos…",
  "play.pad": "Botões",
- "play.padTitle": "Mostrar ou ocultar os botões na tela; oculte-os em jogos com caneta para aumentar a tela"
+ "play.padTitle": "Mostrar ou ocultar os botões na tela; oculte-os em jogos com caneta para aumentar a tela",
+ "play.pause": "Pausar",
+ "play.paused": "Pausado",
+ "play.resumeHint": "Toque para continuar; o tempo do jogo também para"
 }

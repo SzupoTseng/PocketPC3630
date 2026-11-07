@@ -15,7 +15,7 @@ exports=(
   _pocket_boot_warning _pocket_import_note _pocket_boot _pocket_tick
   _pocket_frame_ptr _pocket_frame_serial _pocket_width _pocket_height
   _pocket_pointer _pocket_key _pocket_audio _pocket_last_error
-  _pocket_million_instructions _pocket_set_lang _pocket_delete_game
+  _pocket_million_instructions _pocket_set_lang _pocket_delete_game _pocket_pause
 )
 EX=$(IFS=,; echo "${exports[*]}")
 

@@ -236,5 +236,8 @@
  "js.notPlayed": "아직 플레이하지 않음",
  "js.findGame": "내 게임 검색…",
  "play.pad": "버튼",
- "play.padTitle": "화면 버튼 표시/숨기기. 스타일러스로 하는 게임은 숨기면 화면이 커집니다"
+ "play.padTitle": "화면 버튼 표시/숨기기. 스타일러스로 하는 게임은 숨기면 화면이 커집니다",
+ "play.pause": "일시 정지",
+ "play.paused": "일시 정지됨",
+ "play.resumeHint": "탭하면 계속합니다. 게임 시간도 멈춰 있습니다"
 }

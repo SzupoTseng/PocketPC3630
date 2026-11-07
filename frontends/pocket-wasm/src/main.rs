@@ -536,6 +536,14 @@ pub extern "C" fn pocket_pointer(kind: i32, x: i32, y: i32) {
     });
 }
 
+/// Pause (`1`) or resume (`0`) play: the guest clock stands still while
+/// paused, so timers, frame steps and countdowns do not jump on resuming.
+/// The page stops calling `pocket_tick` meanwhile.
+#[no_mangle]
+pub extern "C" fn pocket_pause(paused: i32) {
+    pocket_core::kernel::guest_clock::set_paused(paused != 0);
+}
+
 /// Keyboard input with a Windows virtual-key code; `down` is 1 or 0.
 #[no_mangle]
 pub extern "C" fn pocket_key(down: i32, vk: i32) {
