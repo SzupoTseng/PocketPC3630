@@ -91,6 +91,9 @@ const WS_DISABLED: u32 = 0x0800_0000;
 #[derive(Debug, Clone)]
 pub struct DialogPanel {
     pub hwnd: u32,
+    /// Dialog template styles, queried by EverQuest's MFC layout code.
+    pub style: u32,
+    pub ex_style: u32,
     /// Top-left of the *window*, in screen coordinates. Children are
     /// laid out relative to the client area just inside the border.
     pub x: i32,
@@ -757,6 +760,20 @@ impl Controls {
     pub const HWND_BASE: u32 = 0xDEAD_0E00;
     /// One past the last control handle.
     pub const HWND_END: u32 = 0xDEAD_0F00;
+
+    /// First visible, enabled tab stop in template order. EverQuest's
+    /// registration dialog expects this edit handle in WM_INITDIALOG.
+    pub fn first_dialog_tab_stop(&self, parent: u32) -> u32 {
+        self.children
+            .iter()
+            .find(|child| {
+                child.parent == parent
+                    && child.visible
+                    && child.style & 0x0001_0000 != 0 // WS_TABSTOP
+                    && child.is_focusable()
+            })
+            .map_or(0, |child| child.hwnd)
+    }
 
     /// Does `hwnd` fall in the control handle range? Stateless so the
     /// `IsWindow` family can answer without borrowing the kernel.
@@ -1483,6 +1500,49 @@ mod tests {
     }
 
     #[test]
+    fn dialog_tab_stop_follows_template_order_and_skips_ineligible_controls() {
+        let mut controls = Controls::default();
+        let tab = WS_VISIBLE | 0x0001_0000;
+        for (parent, class, style) in [
+            (PARENT + 1, ControlClass::Edit, tab),
+            (PARENT, ControlClass::Static, tab),
+            (PARENT, ControlClass::Edit, tab | WS_DISABLED),
+            (PARENT, ControlClass::Edit, 0x0001_0000),
+            (PARENT, ControlClass::Edit, WS_VISIBLE),
+        ] {
+            controls.create(parent, class, 1, String::new(), style, 0, 0, 40, 20);
+        }
+        assert_eq!(controls.first_dialog_tab_stop(PARENT), 0);
+        let first = controls.create(
+            PARENT,
+            ControlClass::Edit,
+            2,
+            String::new(),
+            tab,
+            0,
+            0,
+            40,
+            20,
+        );
+        controls.create(
+            PARENT,
+            ControlClass::Button,
+            3,
+            String::new(),
+            tab,
+            0,
+            0,
+            40,
+            20,
+        );
+        assert_eq!(controls.first_dialog_tab_stop(PARENT), first);
+        assert_eq!(
+            controls.focus, 0,
+            "suggesting a control must not focus it before WM_INITDIALOG"
+        );
+    }
+
+    #[test]
     fn keys_are_left_alone_when_no_control_has_the_focus() {
         let mut ctrls = Controls::default();
         ctrls.create(
@@ -1674,6 +1734,8 @@ mod tests {
     fn captioned_panel(hwnd: u32) -> DialogPanel {
         DialogPanel {
             hwnd,
+            style: 0,
+            ex_style: 0,
             x: 20,
             y: 24,
             w: 200,
@@ -1830,6 +1892,8 @@ mod tests {
         // it — the Solitaire layout that exposed this.
         ctrls.add_panel(DialogPanel {
             hwnd: STRIP,
+            style: 0,
+            ex_style: 0,
             x: 80,
             y: 0,
             w: 40,
@@ -1852,6 +1916,8 @@ mod tests {
         );
         ctrls.add_panel(DialogPanel {
             hwnd: MODAL,
+            style: 0,
+            ex_style: 0,
             x: 10,
             y: 5,
             w: 100,

@@ -133,7 +133,7 @@ PocketPC3630 **不附任何遊戲，也不附微軟的檔案**。請使用你合
 
 | 名稱 | CPU | 說明 |
 |---|---|---|
-| **EverQuest for the Pocket PC** | ARM | 建立角色、進入世界、存檔與讀檔，三個平台都驗證過 |
+| **EverQuest for the Pocket PC** | ARM | 第一部與第三部原版安裝包：匯入、啟動與註冊對話框，Windows 與網頁版已驗證。註冊後的遊玩需要你自己的註冊碼，尚未以正版註冊碼驗證。 |
 | **Pocket Quake** | ARM | 在瀏覽器中操作選單與遊玩，附螢幕按鍵 |
 | **Pocket Slay** | ARM · MIPS · SH3 | 開局時畫面是黑的：點一下畫面，在 *New Game* 按 OK。三個版本都有完整彩色地圖 |
 | **FreeCell**（Pocket-G） | ARM · MIPS · SH3 | 三個版本發出完全相同的牌局 |

@@ -173,6 +173,8 @@ struct Mount {
     display_prefix: String,
     host_dir: PathBuf,
     read_only: bool,
+    /// EverQuest saves must override an install mount with the same prefix.
+    save_overlay: bool,
 }
 
 /// The Gizmondo registration service device exposed as `REG1:`.
@@ -260,12 +262,12 @@ impl Vfs {
     /// Mount `host_dir` at `guest_prefix`. The prefix is matched
     /// case-insensitively and accepts both `\` and `/` separators.
     pub fn mount(&mut self, guest_prefix: &str, host_dir: impl Into<PathBuf>) {
-        self.mount_with_options(guest_prefix, host_dir, false);
+        self.mount_with_options(guest_prefix, host_dir, false, false);
     }
 
     /// Mount a host directory as read-only guest storage.
     pub fn mount_read_only(&mut self, guest_prefix: &str, host_dir: impl Into<PathBuf>) {
-        self.mount_with_options(guest_prefix, host_dir, true);
+        self.mount_with_options(guest_prefix, host_dir, true, false);
     }
 
     pub fn mount_save_dir(&mut self, guest_prefix: &str, host_dir: impl Into<PathBuf>) {
@@ -273,7 +275,7 @@ impl Vfs {
         if let Err(error) = std::fs::create_dir_all(&host_dir) {
             log::warn!("vfs.mount_save_dir({host_dir:?}) could not create directory: {error}");
         }
-        self.mount_with_options(guest_prefix, host_dir, false);
+        self.mount_with_options(guest_prefix, host_dir, false, true);
     }
 
     fn mount_with_options(
@@ -281,6 +283,7 @@ impl Vfs {
         guest_prefix: &str,
         host_dir: impl Into<PathBuf>,
         read_only: bool,
+        save_overlay: bool,
     ) {
         let mut p = guest_prefix.replace('\\', "/").to_ascii_lowercase();
         if !p.starts_with('/') {
@@ -310,6 +313,7 @@ impl Vfs {
             display_prefix: display,
             host_dir: host_dir.into(),
             read_only,
+            save_overlay,
         });
     }
 
@@ -347,7 +351,7 @@ impl Vfs {
                 normalised == root || normalised.starts_with(&mount.prefix)
             })
             .collect();
-        mounts.sort_by_key(|mount| std::cmp::Reverse(mount.prefix.len()));
+        mounts.sort_by_key(|mount| std::cmp::Reverse((mount.prefix.len(), mount.save_overlay)));
         mounts
     }
 
@@ -653,6 +657,17 @@ impl Vfs {
                 .into_iter()
                 .find(|mount| !mount.read_only)?;
             let path = self.host_path_for_mount(mount, &normalised)?;
+            // EverQuest may reopen an existing character file for updates.
+            // Preserve the installed copy while seeding the writable overlay;
+            // truncating creates do not need to copy the old contents.
+            if mount.save_overlay && !path.exists() && (!create || access == Access::ReadWrite) {
+                if let Some(source) = self.resolve(guest_path).filter(|source| source.is_file()) {
+                    if let Some(parent) = path.parent() {
+                        std::fs::create_dir_all(parent).ok()?;
+                    }
+                    std::fs::copy(source, &path).ok()?;
+                }
+            }
             if create {
                 if let Some(parent) = path.parent() {
                     std::fs::create_dir_all(parent).ok();
@@ -1192,6 +1207,60 @@ mod tests {
     }
 
     #[test]
+    fn save_overlay_at_install_prefix_owns_writes_and_overrides_reads() {
+        let install = tempfile::tempdir().unwrap();
+        let saves = tempfile::tempdir().unwrap();
+        std::fs::write(install.path().join("map.gaf"), b"map").unwrap();
+        std::fs::write(install.path().join("hero.sav"), b"old").unwrap();
+        let mut v = Vfs::new();
+        // Match the CLI: its writable install mount is registered first.
+        v.mount(r"\Program Files\Games\PocketEQ\", install.path());
+        v.mount_save_dir(r"\Program Files\Games\PocketEQ\", saves.path());
+        let path = r"\Program Files\Games\PocketEQ\hero.sav";
+        let handle = v.open(path, Access::Write, true).unwrap();
+        assert_eq!(v.write(handle, b"new"), Some(3));
+        v.close(handle);
+        assert_eq!(
+            std::fs::read(install.path().join("hero.sav")).unwrap(),
+            b"old"
+        );
+        assert_eq!(
+            std::fs::read(saves.path().join("hero.sav")).unwrap(),
+            b"new"
+        );
+        assert_eq!(std::fs::read(v.resolve(path).unwrap()).unwrap(), b"new");
+        assert_eq!(
+            std::fs::read(v.resolve(r"\Program Files\Games\PocketEQ\map.gaf").unwrap()).unwrap(),
+            b"map"
+        );
+    }
+
+    #[test]
+    fn save_overlay_copies_existing_file_before_nontruncating_updates() {
+        for create in [false, true] {
+            let install = tempfile::tempdir().unwrap();
+            let saves = tempfile::tempdir().unwrap();
+            std::fs::write(install.path().join("hero.sav"), b"old-state").unwrap();
+            let mut v = Vfs::new();
+            v.mount_read_only(r"\Game\", install.path());
+            v.mount_save_dir(r"\Game\", saves.path());
+            let handle = v
+                .open(r"\Game\hero.sav", Access::ReadWrite, create)
+                .unwrap();
+            assert_eq!(v.write(handle, b"new"), Some(3));
+            v.close(handle);
+            assert_eq!(
+                std::fs::read(install.path().join("hero.sav")).unwrap(),
+                b"old-state"
+            );
+            assert_eq!(
+                std::fs::read(saves.path().join("hero.sav")).unwrap(),
+                b"new-state"
+            );
+        }
+    }
+
+    #[test]
     fn read_only_mount_rejects_writes() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("data.bin"), b"abcdef").unwrap();
@@ -1442,6 +1511,25 @@ mod tests {
         assert!(v.close(h));
         assert!(!v.is_mp3_decoder(h));
         assert_eq!(v.feed_mp3_decoder(h, 417), None);
+    }
+
+    #[test]
+    fn mp3_decoder_device_recovers_from_garbage_before_valid_audio() {
+        let mut v = Vfs::new();
+        let handle = v.open("MAS1:", Access::Write, false).unwrap();
+        assert_eq!(v.feed_mp3_decoder_data(handle, &[0; 512]), Some(512));
+        assert!(v.take_mp3_decoder_pcm(handle).is_none());
+        // Independent silence frames keep this fixture free of game audio.
+        let mut frames = Vec::new();
+        for _ in 0..12 {
+            frames.extend_from_slice(&[0xff, 0xfb, 0x90, 0x00]);
+            frames.extend_from_slice(&[0; 413]);
+        }
+        assert_eq!(v.feed_mp3_decoder_data(handle, &frames), Some(512 + 5004));
+        let (rate, channels, samples) = v.take_mp3_decoder_pcm(handle).unwrap();
+        assert_eq!((rate, channels), (44_100, 2));
+        assert_eq!(samples.len(), 12 * 2304);
+        assert!(samples.iter().all(|&sample| sample == 0));
     }
 
     /// Windows CE has no drive letters: a storage card is a directory in

@@ -244,7 +244,13 @@ impl Emulator {
 
     pub fn mount_save_dir(&mut self, guest_prefix: &str, host_dir: impl Into<std::path::PathBuf>) {
         if let Some(p) = self.process.as_mut() {
-            p.state.vfs.mount_save_dir(guest_prefix, host_dir);
+            let host_dir = host_dir.into();
+            p.state.vfs.mount_save_dir(guest_prefix, &host_dir);
+            // EverQuest EP3 lists its .sav files through registry entries.
+            // Exporting only the files made characters disappear on reimport.
+            p.state
+                .registry
+                .attach_save_file(host_dir.join("pockethle-registry.dat"));
         } else {
             log::warn!("mount_save_dir called before load_pe; ignored");
         }

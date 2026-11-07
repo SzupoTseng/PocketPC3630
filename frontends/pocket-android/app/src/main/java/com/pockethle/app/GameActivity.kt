@@ -317,7 +317,9 @@ class GameActivity : AppCompatActivity() {
                 val channels = (packed and 0xffff).toInt().coerceIn(1, 2)
                 val channelMask = if (channels == 2) AudioFormat.CHANNEL_OUT_STEREO else AudioFormat.CHANNEL_OUT_MONO
                 val minBuffer = AudioTrack.getMinBufferSize(rate, channelMask, AudioFormat.ENCODING_PCM_16BIT)
-                val bufferSize = maxOf(minBuffer.takeIf { it > 0 } ?: 0, rate * channels * 2 / 2, 4096)
+                // EverQuest button/attack effects must not queue behind half a
+                // second of audio. Keep ~100 ms while respecting the device minimum.
+                val bufferSize = maxOf(minBuffer.takeIf { it > 0 } ?: 0, rate * channels * 2 / 10, 4096)
                 track = AudioTrack.Builder()
                     .setAudioAttributes(AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_GAME)
@@ -338,10 +340,23 @@ class GameActivity : AppCompatActivity() {
                 audioTrack = track
                 track.play()
                 android.util.Log.i("PocketHLE", "AudioTrack started: ${rate}Hz, ${channels}ch, buffer=${bufferSize}B")
+                var reportedAudible = false
+                var reportedPlayback = false
                 while (audioRunning && session == handle) {
                     val pcm = NativeBridge.nativePollAudio(handle, 4096)
                     if (pcm != null && pcm.isNotEmpty()) {
                         writeAudio(track, pcm)
+                        if (!reportedAudible) {
+                            val peak = pcm.maxOf { kotlin.math.abs(it.toInt()) }
+                            if (peak > 0) {
+                                reportedAudible = true
+                                android.util.Log.i("PocketHLE", "AudioTrack received non-silent mix: peak=$peak")
+                            }
+                        }
+                        if (!reportedPlayback && track.playbackHeadPosition > 0) {
+                            reportedPlayback = true
+                            android.util.Log.i("PocketHLE", "AudioTrack output advancing: ${track.playbackHeadPosition} frames")
+                        }
                     } else {
                         writeSilence(track, maxOf(channels * rate / 200, 256))
                         Thread.sleep(5)
@@ -350,10 +365,19 @@ class GameActivity : AppCompatActivity() {
             } catch (error: Throwable) {
                 android.util.Log.e("PocketHLE", "AudioTrack playback failed", error)
             } finally {
+                track?.let {
+                    if (it.state == AudioTrack.STATE_INITIALIZED) {
+                        android.util.Log.i("PocketHLE", "AudioTrack finished: ${it.playbackHeadPosition} frames, ${it.underrunCount} underruns")
+                    }
+                }
                 try { track?.pause() } catch (_: Throwable) {}
                 try { track?.flush() } catch (_: Throwable) {}
                 try { track?.release() } catch (_: Throwable) {}
                 if (audioTrack === track) audioTrack = null
+                if (audioThread === Thread.currentThread()) {
+                    audioRunning = false
+                    audioThread = null
+                }
             }
         }, "pockethle-audio")
         audioThread?.start()
@@ -376,6 +400,9 @@ class GameActivity : AppCompatActivity() {
         var offset = 0
         while (offset < pcm.size && audioRunning) {
             val written = track.write(pcm, offset, pcm.size - offset, AudioTrack.WRITE_BLOCKING)
+            if (written < 0 && audioRunning) {
+                throw IllegalStateException("AudioTrack.write failed: $written")
+            }
             if (written <= 0) return
             offset += written
         }

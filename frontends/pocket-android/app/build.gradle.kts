@@ -6,6 +6,8 @@ plugins {
 android {
     namespace = "com.pockethle.app"
     compileSdk = 34
+    // Match the r26d native build in CI so AGP can strip the EQ emulator libraries.
+    ndkVersion = "26.3.11579264"
 
     defaultConfig {
         applicationId = "com.pockethle.app"

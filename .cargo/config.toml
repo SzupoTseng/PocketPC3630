@@ -20,3 +20,5 @@
 [env]
 CMAKE_TOOLCHAIN_FILE_aarch64-linux-android = { value = "build-support/cmake/android-arm64-v8a.toolchain.cmake", relative = true, force = false }
 CMAKE_TOOLCHAIN_FILE_armv7-linux-androideabi = { value = "build-support/cmake/android-armeabi-v7a.toolchain.cmake", relative = true, force = false }
+
+CMAKE_TOOLCHAIN_FILE_x86_64-linux-android = { value = "build-support/cmake/android-x86_64.toolchain.cmake", relative = true, force = false }

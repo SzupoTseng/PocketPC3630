@@ -1,7 +1,8 @@
 //! Tiny built-in 6x8 ASCII bitmap font used to render `DrawTextW` /
 //! `TextOutW` calls when no real font rasteriser is wired up.
 //!
-//! Only the printable 7-bit ASCII range (0x20–0x7E) is covered. Each
+//! The printable ASCII range and the copyright/registered symbols used by
+//! EverQuest registration dialogs are covered. Each
 //! glyph is six columns wide (last column is spacing) and eight rows
 //! tall, packed as eight bytes; bit 7 of each byte is the leftmost
 //! pixel of that row.
@@ -209,11 +210,14 @@ const GLYPHS: [[u8; 8]; 0x5F] = [
 /// Draw a single character at `(x, y)` (top-left corner) in `color`
 /// (RGB565). Unsupported characters draw nothing.
 pub fn draw_char(surf: &mut Surface<'_>, x: i32, y: i32, ch: char, color: u16) {
-    let i = ch as u32;
-    if !(0x20..=0x7E).contains(&i) {
-        return;
-    }
-    let g = &GLYPHS[(i - 0x20) as usize];
+    // EverQuest's original registration dialog includes both symbols. Keep
+    // the six-pixel cell so existing control clipping and caret positions agree.
+    let g = match ch {
+        '©' => &[0x70, 0x88, 0xB8, 0xA8, 0xA8, 0xB8, 0x88, 0x70],
+        '®' => &[0x70, 0x88, 0xB8, 0xA8, 0xB8, 0xA8, 0x88, 0x70],
+        ' '..='~' => &GLYPHS[(ch as u32 - 0x20) as usize],
+        _ => return,
+    };
     for (dy, row) in g.iter().enumerate() {
         for dx in 0i32..5 {
             if (row >> (7 - dx)) & 1 != 0 {
@@ -224,12 +228,12 @@ pub fn draw_char(surf: &mut Surface<'_>, x: i32, y: i32, ch: char, color: u16) {
 }
 
 /// Draw a Rust string left-to-right at `(x, y)` in `color`, returning
-/// the advance in pixels. Non-ASCII characters render as `?`, matching
+/// the advance in pixels. Unsupported characters render as `?`, matching
 /// [`draw_str_u16`].
 pub fn draw_str(surf: &mut Surface<'_>, x: i32, y: i32, s: &str, color: u16) -> i32 {
     let mut cx = x;
     for ch in s.chars() {
-        let ch = if ch.is_ascii_graphic() || ch == ' ' {
+        let ch = if ch.is_ascii_graphic() || matches!(ch, ' ' | '©' | '®') {
             ch
         } else {
             '?'
@@ -246,7 +250,7 @@ pub fn str_width(s: &str) -> i32 {
 }
 
 /// Draw a UTF-16 string left-to-right at `(x, y)` in `color`.
-/// Characters outside ASCII are rendered as `?`.
+/// Unsupported characters are rendered as `?`.
 pub fn draw_str_u16(surf: &mut Surface<'_>, x: i32, y: i32, s: &[u16], color: u16) -> i32 {
     let mut cx = x;
     for &u in s {
@@ -254,7 +258,7 @@ pub fn draw_str_u16(surf: &mut Surface<'_>, x: i32, y: i32, s: &[u16], color: u1
             break;
         }
         let ch = char::from_u32(u as u32).unwrap_or('?');
-        let ch = if ch.is_ascii_graphic() || ch == ' ' {
+        let ch = if ch.is_ascii_graphic() || matches!(ch, ' ' | '©' | '®') {
             ch
         } else {
             '?'
@@ -263,4 +267,45 @@ pub fn draw_str_u16(surf: &mut Surface<'_>, x: i32, y: i32, s: &[u16], color: u1
         cx += GLYPH_W;
     }
     cx - x
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::gdi::Bitmap;
+
+    fn render(text: &str, wide: bool) -> (i32, Vec<u8>) {
+        let mut bitmap = Bitmap::new(120, 8);
+        let mut surface = Surface::Bitmap(&mut bitmap);
+        let width = if wide {
+            let mut text: Vec<u16> = text.encode_utf16().collect();
+            text.extend([0, b'X' as u16]);
+            draw_str_u16(&mut surface, 0, 0, &text, 0xffff)
+        } else {
+            draw_str(&mut surface, 0, 0, text, 0xffff)
+        };
+        (width, surface.pixels().to_vec())
+    }
+
+    #[test]
+    fn eq_registration_symbols_survive_both_text_paths() {
+        let question = render("?", false).1;
+        let copyright = render("©", false).1;
+        let registered = render("®", false).1;
+        assert_ne!(copyright, question);
+        assert_ne!(registered, question);
+        assert_ne!(copyright, registered);
+        assert!(copyright.iter().any(|&byte| byte != 0));
+        for text in ["©", "®", "EverQuest® © 2003"] {
+            let narrow = render(text, false);
+            assert_eq!(narrow.0, str_width(text));
+            assert_eq!(narrow, render(text, true));
+        }
+    }
+
+    #[test]
+    fn unsupported_characters_keep_the_existing_fallback() {
+        assert_eq!(render("漢", false), render("?", false));
+        assert_eq!(render("漢", true), render("?", true));
+    }
 }

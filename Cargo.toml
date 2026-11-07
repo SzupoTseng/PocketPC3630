@@ -1,5 +1,6 @@
 [workspace]
 resolver = "2"
+exclude = ["third_party/rmp3"]
 members = [
     "crates/pocket-cab",
     "crates/pocket-pe",
@@ -56,3 +57,8 @@ debug = 1
 
 [profile.dev]
 opt-level = 1
+
+# Keep MP3 frame metadata initialized and reject invalid source ranges.
+# See third_party/rmp3/PATCHES.md for the small upstream patch.
+[patch.crates-io]
+rmp3 = { path = "third_party/rmp3" }

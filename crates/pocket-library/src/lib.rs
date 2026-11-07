@@ -32,6 +32,7 @@ use rars::ArchiveReader;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub mod audio_patch;
 pub mod bundle;
 pub mod import_kb;
 pub mod import_problem;
@@ -1162,6 +1163,18 @@ impl Library {
     /// ARM PE32 inside the archive is picked as the entry point.
     pub fn import_zip(&mut self, zip_path: impl AsRef<Path>) -> Result<&GameEntry, LibraryError> {
         let zip_path = zip_path.as_ref();
+        if let Some(patch) = audio_patch::read(zip_path)? {
+            let entry = self
+                .get(&patch.game)
+                .ok_or_else(|| LibraryError::NotFound(patch.game.clone()))?;
+            let count = patch.apply(&entry.extracted_dir(&self.root))?;
+            self.last_import_note = Some(format!(
+                "Added {count} missing sound(s); saved progress preserved."
+            ));
+            return self
+                .get(&patch.game)
+                .ok_or(LibraryError::NotFound(patch.game));
+        }
         if let Some(id) = self.import_cab_package(zip_path)? {
             return self.get(&id).ok_or(LibraryError::NoExecutable);
         }
@@ -1334,7 +1347,9 @@ impl Library {
         let names: Vec<String> = archive.file_names().map(str::to_string).collect();
         let is_root_cab = |n: &String| !n.contains('/') && n.to_ascii_lowercase().ends_with(".cab");
         if names.iter().filter(|n| is_root_cab(n)).count() != 1
-            || names.iter().any(|n| n.contains('/') && !n.ends_with('/'))
+            || names
+                .iter()
+                .any(|n| n.contains('/') && n.to_ascii_lowercase().ends_with(".cab"))
         {
             return Ok(None);
         }
@@ -1344,11 +1359,27 @@ impl Library {
         let mut cab = None;
         let mut budget = limits::Budget::default();
         for name in &names {
-            let safe = Path::new(name).file_name().map(PathBuf::from);
-            let Some(leaf) = safe.filter(|_| !name.ends_with('/')) else {
+            if name.ends_with('/') {
                 continue;
-            };
+            }
+            // EverQuest audio supplements keep Sounds/ beside the CAB. Preserve
+            // that layout, but never allow an extra to escape the staging root.
+            let leaf = PathBuf::from(name);
+            if name.contains(['\\', ':'])
+                || !leaf
+                    .components()
+                    .all(|c| matches!(c, std::path::Component::Normal(_)))
+            {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "unsafe package entry",
+                )
+                .into());
+            }
             let out = temp.join(&leaf);
+            if let Some(parent) = out.parent() {
+                fs::create_dir_all(parent)?;
+            }
             let mut entry = archive
                 .by_name(name)
                 .map_err(|error| std::io::Error::other(error.to_string()))?;
@@ -1361,7 +1392,10 @@ impl Library {
         }
         let result = (|| {
             let cab = cab.ok_or(LibraryError::NoExecutable)?;
-            let id = self.import_cab(&cab)?.id.clone();
+            // EverQuest EP2's local CAB needs checksum recovery. Recover the
+            // cabinet here so Sounds/ supplements survive; recovering the
+            // outer ZIP alone selects a bare CAB and loses its extra files.
+            let id = self.import_any(&cab)?.id.clone();
             let exe = self
                 .get(&id)
                 .map(|entry| {
@@ -1373,7 +1407,11 @@ impl Library {
                 .ok_or(LibraryError::NoExecutable)?;
             let target = exe.parent().ok_or(LibraryError::NoExecutable)?;
             for (leaf, source) in &extras {
-                fs::copy(source, target.join(leaf))?;
+                let dest = target.join(leaf);
+                if let Some(parent) = dest.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                fs::copy(source, dest)?;
             }
             Ok::<String, LibraryError>(id)
         })();
@@ -2612,14 +2650,14 @@ mod tests {
         assert_eq!(super::cab_name_processor_rank("game.cab"), 1);
     }
 
-    /// A ZIP holding folders is an ordinary game, not a CAB package.
+    /// A nested installer CAB must retain the ordinary wrapper import path.
     #[test]
-    fn a_zip_with_folders_is_not_a_cab_package() {
+    fn a_zip_with_a_nested_cab_is_not_a_root_cab_package() {
         use std::io::Write;
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("game.zip");
         let mut zip = zip::ZipWriter::new(fs::File::create(&path).unwrap());
-        zip.start_file("a.cab", zip::write::FileOptions::default())
+        zip.start_file("installer/a.cab", zip::write::FileOptions::default())
             .unwrap();
         zip.write_all(b"not a cabinet").unwrap();
         zip.start_file("data/b.bin", zip::write::FileOptions::default())
@@ -2628,6 +2666,138 @@ mod tests {
         zip.finish().unwrap();
         let mut library = Library::open(dir.path().join("library")).unwrap();
         assert!(library.import_cab_package(&path).unwrap().is_none());
+    }
+
+    #[test]
+    fn cab_package_preserves_eq_sound_supplements_and_rejects_escape_paths() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let cabinet = dir.path().join("device.cab");
+        legacy_cab(&cabinet, MACHINE_ARM);
+        let source = fs::read(&cabinet).unwrap();
+        for name in [
+            "Sounds/Rat_Att.wav",
+            "../escape.wav",
+            "C:/escape.wav",
+            "Sounds\\escape.wav",
+        ] {
+            let zip_path = dir.path().join("supplement.zip");
+            let mut zip = zip::ZipWriter::new(fs::File::create(&zip_path).unwrap());
+            let opt = zip::write::FileOptions::default();
+            zip.start_file("device.cab", opt).unwrap();
+            zip.write_all(&source).unwrap();
+            zip.start_file(name, opt).unwrap();
+            zip.write_all(b"sound fixture").unwrap();
+            zip.finish().unwrap();
+            let mut lib = Library::open(dir.path().join("lib")).unwrap();
+            let result = lib.import_cab_package(&zip_path);
+            if name == "Sounds/Rat_Att.wav" {
+                let id = result.unwrap().unwrap();
+                assert_eq!(
+                    fs::read(lib.get(&id).unwrap().extracted_dir(lib.root()).join(name)).unwrap(),
+                    b"sound fixture"
+                );
+            } else {
+                assert!(result.is_err(), "{name}");
+            }
+        }
+    }
+
+    #[test]
+    fn eq_audio_supplements_survive_inner_cab_checksum_recovery() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let cabinet = dir.path().join("device.cab");
+        legacy_cab(&cabinet, MACHINE_ARM);
+        let mut bytes = fs::read(&cabinet).unwrap();
+        let block = u32::from_le_bytes(bytes[36..40].try_into().unwrap()) as usize;
+        bytes[block..block + 4].copy_from_slice(&1u32.to_le_bytes());
+        let zip_path = dir.path().join("audio.zip");
+        let mut zip = zip::ZipWriter::new(fs::File::create(&zip_path).unwrap());
+        let opt = zip::write::FileOptions::default();
+        zip.start_file("device.cab", opt).unwrap();
+        zip.write_all(&bytes).unwrap();
+        zip.start_file("Sounds/Rat_Att.wav", opt).unwrap();
+        zip.write_all(b"supplement fixture").unwrap();
+        zip.finish().unwrap();
+        let mut lib = Library::open(dir.path().join("library")).unwrap();
+        let entry = lib.import_any(&zip_path).unwrap().clone();
+        assert_eq!(
+            fs::read(entry.extracted_dir(lib.root()).join("Sounds/Rat_Att.wav")).unwrap(),
+            b"supplement fixture"
+        );
+        assert!(entry.launch_path(lib.root()).is_file());
+        assert!(lib.last_import_note().is_some());
+    }
+
+    #[test]
+    fn eq_audio_patch_preserves_progress_executable_and_game_metadata() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let cab = dir.path().join("device.cab");
+        legacy_cab(&cab, MACHINE_ARM);
+        let mut library = Library::open(dir.path().join("library")).unwrap();
+        let entry = library.import_any(&cab).unwrap().clone();
+        let game = library.root().join(entry.relative_dir());
+        fs::create_dir_all(game.join("saves")).unwrap();
+        for name in ["hero.sav", "hero.css", "pockethle-registry.dat"] {
+            fs::write(game.join("saves").join(name), name).unwrap();
+        }
+        let before = fs::read(game.join("game.json")).unwrap();
+        let exe = fs::read(entry.launch_path(library.root())).unwrap();
+        let patch = dir.path().join("sounds.zip");
+        let wav = b"RIFF\x10\0\0\0WAVEaudio fixture";
+        let write_patch = |leaf: &str, data: &[u8]| {
+            let mut zip = zip::ZipWriter::new(fs::File::create(&patch).unwrap());
+            let options = zip::write::FileOptions::default();
+            zip.start_file(audio_patch::MANIFEST, options).unwrap();
+            zip.write_all(
+                &serde_json::to_vec(&audio_patch::Manifest {
+                    version: 1,
+                    game: entry.id.clone(),
+                    files: vec![leaf.into()],
+                })
+                .unwrap(),
+            )
+            .unwrap();
+            zip.start_file(leaf, options).unwrap();
+            zip.write_all(data).unwrap();
+            zip.finish().unwrap();
+        };
+        write_patch("Sounds/Rat_Att.wav", wav);
+        for _ in 0..2 {
+            assert_eq!(library.import_any(&patch).unwrap().id, entry.id);
+            assert_eq!(library.games().len(), 1);
+            assert_eq!(fs::read(game.join("game.json")).unwrap(), before);
+            assert_eq!(fs::read(entry.launch_path(library.root())).unwrap(), exe);
+            for name in ["hero.sav", "hero.css", "pockethle-registry.dat"] {
+                assert_eq!(
+                    fs::read(game.join("saves").join(name)).unwrap(),
+                    name.as_bytes()
+                );
+            }
+        }
+        write_patch("Sounds/Rat_Att.wav", b"RIFF\x10\0\0\0WAVEdifferent sound");
+        assert!(library.import_any(&patch).is_err());
+        assert_eq!(
+            fs::read(
+                entry
+                    .extracted_dir(library.root())
+                    .join("Sounds/Rat_Att.wav")
+            )
+            .unwrap(),
+            wav
+        );
+        for bad in [
+            "Sounds/../../escape.wav",
+            "Sounds/evil.exe",
+            "Sounds/C:/escape.wav",
+            "Sounds\\escape.wav",
+        ] {
+            write_patch(bad, wav);
+            assert!(library.import_any(&patch).is_err(), "{bad}");
+            assert_eq!(fs::read(game.join("saves/hero.sav")).unwrap(), b"hero.sav");
+        }
     }
 
     use super::*;

@@ -128,6 +128,30 @@ refactor.
     key-release bits. See `keyboard_messages_include_scan_and_transition_bits`
     in `crates/pocket-winceapi/src/coredll.rs`.
 
+Dialog-template panels preserve their style and extended style for
+`GetWindowLongW` / `SetWindowLongW`; the visible bit follows live panel
+visibility. EverQuest's MFC registration code queries `GWL_STYLE`, so
+returning zero changes its layout branches. `CreateDialogIndirectParamW`
+passes the first visible, enabled tab stop to `WM_INITDIALOG`, and assigns
+that focus only when the callback returns TRUE; FALSE preserves the
+application's choice. The Pocket PC 2003 probe in
+`tools/wince-dialog-test` records the reference behavior. These contracts
+do not imply that dialog caption geometry or font metrics already match.
+
+The native CLI display polls held host keys and generates each CE key
+edge once. EverQuest EP3 needs text input while its registration dialog
+is static; minifb pressed/released flags belong to a window update, not
+to a guest CPU slice, so do not replay them on every frame-hook call.
+When launching an imported game for tests, replay all supplied string
+registry entries, including EP3's owner entry, rather than only InstallDir.
+
+CAB registry string payloads are text, not install directories. Expand
+`%CEn%` / `%InstallDir%` substitutions without adding separators to
+ordinary owner names, empty values or URLs. EverQuest EP3 compares its
+owner registry value when checking registration; turning a plain name
+into a rooted path rejects the supplied registration information. Path
+normalization belongs to install directories and registry key names.
+
 ## 2. Crate graph
 
 Dependencies point downward; nothing below depends on anything above.
@@ -544,6 +568,8 @@ Hello, World! / OK" message box, accepts Enter, and halts through
 
 **Android JNI must link the target's compiler-rt cache-flush helper.** Unicorn's Android JIT emits `__clear_cache`; bionic does not export it, so leaving the runtime archive out of `libpockethle_jni.so` can fail when Android loads the library. `frontends/pocket-android-jni/build.rs` searches both `lib/clang` and `lib64/clang` layouts for the target-specific archive. NDK releases differ in which layout they use; `frontends/pocket-android-jni/src/android_link.rs` pins both with regression tests.
 
+**Android host ABI and guest CPU are separate.** The verified EQ APK includes ARM64 phones and x86_64 Android emulators; both execute the guest ARM game with Unicorn. `.cargo/config.toml` selects an NDK CMake wrapper for each host target, including x86_64, without enabling Unicorn `arch_all`. The app pins NDK r26d (`26.3.11579264`) so Gradle strips the same target libraries cargo-ndk built; after changing this toolchain use a clean APK build to avoid stale unstripped ZIP contents. ARM64 compilation alone is not physical-device runtime validation.
+
 ## 8. The synthetic message pump — read this before diagnosing a stall
 
 There is no host message queue. `GetMessageW` and `PeekMessageW`
@@ -762,15 +788,38 @@ game's "SD card removed" screen instead of its menu.
 **`MAS1:` is the Gizmondo's MP3 decoder.** CE exposes the Micronas MAS
 chip behind the console's audio as a stream device; a title plays music
 by opening `MAS1:`, configuring it with a `DeviceIoControl`, and writing
-MP3 frames to it. Nothing here decodes MP3, but the device still has to
-open and accept both, because a missing one is not a case these games
+MP3 frames to it. The device must open and accept writes, because a
+missing one is not a case these games
 handle: Ball Busters builds its music player by opening the device first
 and the file second, and on failure leaves the player zeroed — then calls
 it anyway on the next loading tick and dereferences a NULL stream.
-Swallowing the frames is what gets the game past its loading screen.
+Accepting the frames gets Ball Busters past its loading screen. The VFS
+also decodes valid frames into PCM for the audio output path. Both this
+path and FMOD use the locally patched rmp3 0.3.1 in third_party/rmp3.
+Keep its zero-initialized frame metadata and checked source ranges:
+the upstream wrapper can otherwise abort on non-audio input, as the
+FMOD garbage-input regression demonstrates. See PATCHES.md there.
 
 Both pseudo-devices resolve *before* path resolution, since neither is a
 file and `resolve` would otherwise fail them.
+
+**A save directory includes the guest registry snapshot.** EverQuest
+EP3 stores its character list in Char0File / Char0Level / related values;
+exporting .sav files alone hides those characters after a clean import.
+`Emulator::mount_save_dir` redirects registry persistence into that same
+host directory. A missing snapshot inherits the legacy install-side
+registry; an existing snapshot is authoritative so deleted characters
+cannot reappear from an old installation. Repeated aliases of the same
+save directory must not reload or discard current registry state.
+
+**Save mounts win ties with install mounts.** EverQuest EP1/EP2 write
+character files under their install prefix. The CLI mounts that prefix
+before mounting its save overlay; equal-length prefixes must prefer the
+save mount, or `.sav` / `.nam` updates silently modify extracted game
+files and exports miss them. Reads fall through to installed assets.
+When updating an installed file without truncating it, seed the save
+copy first and leave the original unchanged. Ordinary mount tie ordering
+and longest-prefix matching remain unchanged.
 
 **File mapping is backed by bounded VFS objects.** Rayman Ultimate imports
 `CreateFileForMappingW`, `CreateFileMappingW`, `MapViewOfFile`,
@@ -876,8 +925,8 @@ object on every level change.
 **Voice groups.** `play_voice_with` takes `VoiceParams { looped, group,
 volume }`. The groups exist so `stopMusics` can silence music without
 cutting the sound effects that are still playing — JumpyBall calls it on
-every level change. Voice mixing is `#[cfg(feature = "audio-cpal")]`;
-without that feature `play_voice` degrades to `push_samples`.
+every level change. Voices and the waveOut ring share `render_frames` on all builds; cpal,
+Web Audio and Android AudioTrack consume that same mix through their own outputs.
 
 **`--dump-audio-to` records at submission time**, inside
 `add_voice`/`push_samples` — not as a real-time mixdown. A capture WAV
@@ -894,10 +943,11 @@ an audio bug presents. The host side is `run_audio_worker`, and *every*
 one of its failure paths — no default device, `default_output_config`
 failing, an unsupported sample format, `build_output_stream` failing,
 `stream.play()` failing, the thread failing to spawn, or the
-`audio-cpal` feature being off — leaves the run silent while the guest
+`audio-cpal` feature being off without a frontend AudioTap consumer — leaves the run silent while the guest
 carries on submitting samples and noticing nothing. They all log at
 `warn` for that reason: a silent run is a user-visible failure, not a
-detail. The one line that confirms real output is
+detail. The feature-off diagnostic is informational because Web and Android
+provide an AudioTap consumer. The line that confirms the native output device opened is
 
 ```
 AudioEngine: opened "<device>" at 44100 Hz / 2 ch (F32)
@@ -912,6 +962,14 @@ nobody. It therefore tees `log` to `<library root>/pockethle-gui.log`,
 truncated per launch. When diagnosing "no sound in the GUI but the CLI
 is fine", read that file first — and prefer reproducing through the CLI,
 which has a console and takes the same code path.
+
+**FMOD state is per guest process.** EverQuest EP1-3 use FMOD samples and an MP3 stream. `KernelState::fmod` owns clip handles, decoded-file cache, channel assignments and master volume; do not restore a host-global cache/state that survives a game reload. Each FMOD channel owns a private mixer group. FSOUND_FREE must search for an actually inactive voice group, including completed one-shots, rather than blindly wrapping a counter and stealing EverQuest's looping or paused theme. Replaying a stream reuses its one channel and restarts its cursor. Reusing a channel replaces its voice, pausing preserves its sample cursor, and `FSOUND_Stream_Stop(handle)` only stops that stream. `FSOUND_SetSFXMasterVolume` updates already-playing FSOUND channels (including streams), not just future voices. `FSOUND_Close` clears this guest's FMOD state without stopping HSS or waveOut. Web Audio and Android AudioTrack pull the same `AudioTap::render_mix` as the cpal callback; disabling audio-cpal does not discard voices. The first non-silent mixed buffer is logged once per AudioEngine; Android additionally logs accepted non-silent PCM and playback-head advancement. These observations do not constitute an acoustic listening test.
+
+Dropping `AudioEngine` stops its worker and clears both PCM and voices, even
+when an external `AudioTap` survives. EverQuest restart/error paths must not
+leave a looping theme audible after the guest is destroyed.
+
+**EQ audio supplements remain user-local.** EP2/EP3 request some sounds absent from their local CABs but present in other supplied episodes. Supplements are built locally from the user's own copies and never committed. CAB packages may include safe relative extras such as Sounds/Rat_Att.wav, preserving directories beside the installed EXE. Reject traversal, drive-prefixed and backslash names. Never synthesize a silent replacement or embed game audio in source. For an existing library use the audio-only patch manifest pockethle-audio.json (version 1): it targets an installed game and only adds missing RIFF/WAVE files under Sounds, without reinstalling its CAB or touching progress/manifests. Validate the complete patch before writes, reject conflicting installed sounds, and keep repeated imports idempotent. Full game reimport remains a separate operation.
 
 ## 13. Frontend input and launcher settings
 
@@ -1068,3 +1126,34 @@ Inferring the root only from directories that contain a file yields
 `None`; materialization then falls back to basenames and resource
 `FindFirstFileW` searches fail. Keep this behavior pinned by
 `nested_install_subdirectories_share_their_true_root` in `pocket-cab`.
+
+### Host control symbols (2026-11-07)
+
+The fixed 6x8 host-control font (`pocket-kernel/src/font.rs`) also includes
+copyright and registered symbols: original EverQuest registration dialogs use
+both. `draw_str` and `draw_str_u16` preserve them instead of replacing them
+with question marks; other unsupported characters keep the existing fallback.
+The cell remains six pixels wide, so control clipping and caret measurements
+do not change. This does not migrate host controls to the guest TrueType font.
+
+
+### Control composition must not dirty the frame (2026-11-07)
+
+`KernelState::composite_controls` preserves the framebuffer counter around
+control/modal rendering. `Surface::fill_rect` dirties a screen even when called
+by the compositor; without preserving the incoming counter, EverQuest's idle
+registration dialog continuously requests identical frames. Pixel writes are
+kept, and a new guest dirty counter remains observable. Regression tests cover
+controls and modal-only composition, including repeated composition and a new
+guest frame. This implements the existing presentation-boundary contract; it
+does not change input polling or decide when a guest frame is whole.
+
+### CE-tagged system colors (2026-11-07)
+
+`GetSysColor` recognizes the three CE-tagged indices measured by the
+Pocket PC 2003 dialog probe: `0x40000005` returns `0x00ffffff`,
+`0x4000000f` returns `0x00c0ccd9`, and `0x40000012` returns zero.
+EverQuest registration uses tagged colors; falling through to silver loses
+its background and text colors. Untagged palette behavior is preserved.
+This covers only these measured `GetSysColor` values, not `GetSysColorBrush`
+or a complete device theme. Reference: `tools/wince-dialog-test/reference/`.

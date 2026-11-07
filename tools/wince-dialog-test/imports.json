@@ -1,0 +1,20 @@
+[
+  "CreateDialogIndirectParamW",
+  "DestroyWindow",
+  "GetWindowRect",
+  "GetClientRect",
+  "GetWindowLongW",
+  "GetFocus",
+  "GetDlgItem",
+  "CreateFileW",
+  "WriteFile",
+  "CloseHandle",
+  "ShowWindow",
+  "PeekMessageW",
+  "DispatchMessageW",
+  "GetSysColor",
+  "GetDC",
+  "GetTextMetricsW",
+  "ReleaseDC",
+  "Sleep"
+]

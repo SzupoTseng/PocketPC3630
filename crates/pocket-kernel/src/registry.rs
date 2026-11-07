@@ -181,6 +181,33 @@ impl Registry {
         self.file = Some(file);
     }
 
+    /// Keep EverQuest's character-list registry beside its .sav files.
+    /// A first save directory inherits the legacy install-side registry;
+    /// an existing save snapshot is authoritative, including deletions.
+    pub fn attach_save_file(&mut self, file: PathBuf) {
+        if self.file.as_ref() == Some(&file) {
+            return;
+        }
+        if file.exists() {
+            let old_keys: Vec<_> = self.guest_values.keys().cloned().collect();
+            for (key, name) in old_keys {
+                self.delete_value(&key, &name);
+            }
+            self.guest_values.clear();
+        }
+        if let Some(parent) = file.parent() {
+            if let Err(error) = std::fs::create_dir_all(parent) {
+                log::warn!(
+                    "cannot create registry save directory {}: {error}",
+                    parent.display()
+                );
+            }
+        }
+        self.attach_file(file);
+        // Preserve legacy characters even if this run never changes a value.
+        self.write_file();
+    }
+
     /// `RegSetValueEx`: like [`Self::set_value`], and persisted if attached.
     pub fn set_guest_value(&mut self, path: &str, name: &str, value: RegistryValue) {
         self.set_value(path, name, value.clone());
@@ -544,6 +571,48 @@ mod persistence_tests {
             Some(&RegistryValue::Dword(7))
         );
         assert_eq!(second.value(key, "Gone"), None);
+    }
+
+    #[test]
+    fn save_directory_migrates_character_list_without_changing_install_registry() {
+        let dir = tempfile::tempdir().unwrap();
+        let install = dir.path().join("install.dat");
+        let save = dir.path().join("saves/registry.dat");
+        let key = r"HKCU\Software\Emodiv\PocketEQ\EQPPCE3";
+        let mut registry = Registry::new();
+        registry.attach_file(install.clone());
+        registry.set_guest_value(key, "Char0Level", RegistryValue::Dword(25));
+        let original = std::fs::read(&install).unwrap();
+        registry.attach_save_file(save.clone());
+        let mut reopened = Registry::new();
+        reopened.attach_save_file(save);
+        assert_eq!(
+            reopened.value(key, "Char0Level"),
+            Some(&RegistryValue::Dword(25))
+        );
+        registry.set_guest_value(key, "Char0Level", RegistryValue::Dword(26));
+        assert_eq!(std::fs::read(install).unwrap(), original);
+    }
+
+    #[test]
+    fn existing_save_registry_does_not_resurrect_deleted_install_characters() {
+        let dir = tempfile::tempdir().unwrap();
+        let install = dir.path().join("install.dat");
+        let save = dir.path().join("save.dat");
+        let key = r"HKCU\Software\Emodiv\PocketEQ\EQPPCE3";
+        let mut old = Registry::new();
+        old.attach_file(install.clone());
+        old.set_guest_value(key, "Char0Level", RegistryValue::Dword(25));
+        let mut current = Registry::new();
+        current.attach_file(save.clone());
+        current.set_guest_value(key, "Char1Level", RegistryValue::Dword(30));
+        current.attach_file(install);
+        current.attach_save_file(save);
+        assert_eq!(current.value(key, "Char0Level"), None);
+        assert_eq!(
+            current.value(key, "Char1Level"),
+            Some(&RegistryValue::Dword(30))
+        );
     }
 
     #[test]

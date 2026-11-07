@@ -319,9 +319,11 @@ fn parse_msce(data: &[u8]) -> Option<WinCeInstallHeader> {
     if let Some(install_dir) = header.install_dir.clone() {
         for value in header.registry.iter_mut() {
             if let Some(text) = value.string.as_mut() {
-                *text = substitute_install_dir(text, &install_dir)
-                    .trim_end_matches('\\')
-                    .to_string();
+                if text.contains("%InstallDir%") {
+                    *text = substitute_install_dir(text, &install_dir)
+                        .trim_end_matches('\\')
+                        .to_string();
+                }
             }
         }
     }
@@ -1065,9 +1067,11 @@ impl WinCeSetupScript {
             }
             for value in script.registry.iter_mut() {
                 if let Some(text) = value.string.as_mut() {
-                    *text = substitute_install_dir(text, &install_dir)
-                        .trim_end_matches('\\')
-                        .to_string();
+                    if text.contains("%InstallDir%") {
+                        *text = substitute_install_dir(text, &install_dir)
+                            .trim_end_matches('\\')
+                            .to_string();
+                    }
                 }
             }
         }
@@ -1185,46 +1189,7 @@ fn canonicalise_shortcut_target(raw: &str) -> String {
 /// `%CE1%\Astraware\Zuma` -> `\Program Files\Astraware\Zuma\` (CE1 is
 /// the `\Program Files\` macro on Windows Mobile 5/6).
 fn canonicalise_install_dir(raw: &str) -> String {
-    let mut s = raw.replace('/', "\\");
-    // The documented CabWiz `%CEn%` install-macro table. Getting these
-    // wrong is not cosmetic: the expansion becomes the guest path we
-    // mount the payload at *and* the module path we report from
-    // `GetModuleFileNameW`, so a bogus expansion sends every
-    // asset-loading `fopen` to a directory that does not exist.
-    // Longest macros first — a plain `str::replace` pass would rewrite
-    // the `%CE1%` prefix inside `%CE14%`.
-    for (macro_name, replacement) in [
-        ("%CE17%", "\\Windows\\Start Menu"),
-        ("%CE16%", "\\Windows\\Recent"),
-        ("%CE15%", "\\Windows\\Fonts"),
-        ("%CE14%", "\\Windows\\Start Menu\\Programs\\Games"),
-        ("%CE13%", "\\Windows\\Start Menu\\Programs\\Communications"),
-        ("%CE12%", "\\Windows\\Start Menu\\Programs\\Accessories"),
-        ("%CE11%", "\\Windows\\Start Menu\\Programs"),
-        ("%CE10%", "\\Program Files\\Office"),
-        ("%CE9%", "\\Program Files\\Pocket Outlook"),
-        ("%CE8%", "\\Program Files\\Games"),
-        ("%CE7%", "\\Program Files\\Communication"),
-        ("%CE6%", "\\Program Files\\Accessories"),
-        ("%CE5%", "\\My Documents"),
-        ("%CE4%", "\\Windows\\StartUp"),
-        ("%CE3%", "\\Windows\\Desktop"),
-        ("%CE2%", "\\Windows"),
-        ("%CE1%", "\\Program Files"),
-    ] {
-        s = s.replace(macro_name, replacement);
-    }
-    // Anything we don't know about would otherwise leak a literal
-    // `%CE9%` into a mount prefix; treat it as the device root.
-    while let Some(start) = s.find("%CE") {
-        match s[start + 1..].find('%') {
-            Some(offset) => {
-                let end = start + 1 + offset + 1;
-                s.replace_range(start..end, "");
-            }
-            None => break,
-        }
-    }
+    let mut s = expand_ce_macros(raw).replace('/', "\\");
     if !s.starts_with('\\') {
         s.insert(0, '\\');
     }
@@ -1283,16 +1248,51 @@ fn canonicalise_registry_key(raw: &str) -> String {
     s
 }
 
-/// Expand the `%CEn%` install macros inside a registry payload without
-/// forcing the trailing separator [`canonicalise_install_dir`] adds.
+/// Expand install macros without treating arbitrary REG_SZ values as paths.
+/// EverQuest EP3's owner name must remain byte-for-byte text: adding a
+/// leading backslash changes the name used by its registration check.
 fn expand_ce_macros(raw: &str) -> String {
-    let expanded = canonicalise_install_dir(raw);
-    let trimmed = expanded.trim_end_matches('\\');
-    if raw.ends_with('\\') || trimmed.is_empty() {
-        expanded
-    } else {
-        trimmed.to_string()
+    let mut s = raw.to_string();
+    // The documented CabWiz `%CEn%` install-macro table. Getting these
+    // wrong is not cosmetic: the expansion becomes the guest path we
+    // mount the payload at *and* the module path we report from
+    // `GetModuleFileNameW`, so a bogus expansion sends every
+    // asset-loading `fopen` to a directory that does not exist.
+    // Longest macros first — a plain `str::replace` pass would rewrite
+    // the `%CE1%` prefix inside `%CE14%`.
+    for (macro_name, replacement) in [
+        ("%CE17%", "\\Windows\\Start Menu"),
+        ("%CE16%", "\\Windows\\Recent"),
+        ("%CE15%", "\\Windows\\Fonts"),
+        ("%CE14%", "\\Windows\\Start Menu\\Programs\\Games"),
+        ("%CE13%", "\\Windows\\Start Menu\\Programs\\Communications"),
+        ("%CE12%", "\\Windows\\Start Menu\\Programs\\Accessories"),
+        ("%CE11%", "\\Windows\\Start Menu\\Programs"),
+        ("%CE10%", "\\Program Files\\Office"),
+        ("%CE9%", "\\Program Files\\Pocket Outlook"),
+        ("%CE8%", "\\Program Files\\Games"),
+        ("%CE7%", "\\Program Files\\Communication"),
+        ("%CE6%", "\\Program Files\\Accessories"),
+        ("%CE5%", "\\My Documents"),
+        ("%CE4%", "\\Windows\\StartUp"),
+        ("%CE3%", "\\Windows\\Desktop"),
+        ("%CE2%", "\\Windows"),
+        ("%CE1%", "\\Program Files"),
+    ] {
+        s = s.replace(macro_name, replacement);
     }
+    // Anything we don't know about would otherwise leak a literal
+    // `%CE9%` into a mount prefix; treat it as the device root.
+    while let Some(start) = s.find("%CE") {
+        match s[start + 1..].find('%') {
+            Some(offset) => {
+                let end = start + 1 + offset + 1;
+                s.replace_range(start..end, "");
+            }
+            None => break,
+        }
+    }
+    s
 }
 
 /// `_setup.xml` writes integers in decimal or as `0x`-prefixed hex.
@@ -1516,6 +1516,40 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn registry_strings_preserve_owner_names_and_other_non_path_values() {
+        let xml = br#"<wap-provisioningdoc>
+<characteristic type="Install">
+<parm name="InstallDir" value="%CE8%\EQTest" />
+</characteristic>
+<characteristic type="Registry">
+<characteristic type="HKCU\ControlPanel\Owner">
+<parm name="Owner" value="EQ Test Owner" datatype="string" />
+<parm name="Empty" value="" datatype="string" />
+<parm name="URL" value="https://example.invalid/test/" datatype="string" />
+<parm name="Relative" value="relative\folder\" datatype="string" />
+<parm name="DataDir" value="%InstallDir%\Data" datatype="string" />
+</characteristic>
+</characteristic>
+</wap-provisioningdoc>"#;
+        let script = WinCeSetupScript::parse_bytes(xml);
+        let strings: Vec<_> = script
+            .registry
+            .iter()
+            .map(|value| value.string.as_deref().unwrap())
+            .collect();
+        assert_eq!(
+            strings,
+            [
+                "EQ Test Owner",
+                "",
+                "https://example.invalid/test/",
+                "relative\\folder\\",
+                "\\Program Files\\Games\\EQTest\\Data"
+            ]
+        );
+    }
 
     #[test]
     fn parses_registry_section() {

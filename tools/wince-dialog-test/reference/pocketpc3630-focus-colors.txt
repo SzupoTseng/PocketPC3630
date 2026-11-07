@@ -1,0 +1,63 @@
+dialog-test 2 (numbers hexadecimal)
+color 5=ffffff
+color f=c8c8c8
+color 12=0
+color 40000005=ffffff
+color 4000000f=c0ccd9
+color 40000012=0
+case system captioned popup
+init suggested_is_edit=1
+init window=1:0,0,ee,a3, client=1:0,0,ec,a1, style=0 edit=1:d,41,e0,59, focus_is_edit=0
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+created=1
+after create window=1:0,0,ee,a3, client=1:0,0,ec,a1, style=0 edit=1:d,41,e0,59, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+after show window=1:0,0,ee,a3, client=1:0,0,ec,a1, style=0 edit=1:d,41,e0,59, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+after normal pump window=1:0,0,ee,a3, client=1:0,0,ec,a1, style=0 edit=1:d,41,e0,59, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+case system child
+init suggested_is_edit=1
+init window=1:0,0,ec,a1, client=1:0,0,ec,a1, style=0 edit=1:c,40,df,58, focus_is_edit=0
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+created=1
+after create window=1:0,0,ec,a1, client=1:0,0,ec,a1, style=0 edit=1:c,40,df,58, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+after show window=1:0,0,ec,a1, client=1:0,0,ec,a1, style=0 edit=1:c,40,df,58, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+after normal pump window=1:0,0,ec,a1, client=1:0,0,ec,a1, style=0 edit=1:c,40,df,58, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+case system modal-frame popup
+init suggested_is_edit=1
+init window=1:0,0,ee,a3, client=1:0,0,ec,a1, style=0 edit=1:d,41,e0,59, focus_is_edit=0
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+created=1
+after create window=1:0,0,ee,a3, client=1:0,0,ec,a1, style=0 edit=1:d,41,e0,59, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+after show window=1:0,0,ee,a3, client=1:0,0,ec,a1, style=0 edit=1:d,41,e0,59, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+after normal pump window=1:0,0,ee,a3, client=1:0,0,ec,a1, style=0 edit=1:d,41,e0,59, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+case system bare popup
+init suggested_is_edit=1
+init window=1:0,0,ec,a1, client=1:0,0,ec,a1, style=0 edit=1:c,40,df,58, focus_is_edit=0
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+created=1
+after create window=1:0,0,ec,a1, client=1:0,0,ec,a1, style=0 edit=1:c,40,df,58, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+after show window=1:0,0,ec,a1, client=1:0,0,ec,a1, style=0 edit=1:c,40,df,58, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+after normal pump window=1:0,0,ec,a1, client=1:0,0,ec,a1, style=0 edit=1:c,40,df,58, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+case tahoma captioned popup
+init suggested_is_edit=1
+init window=1:0,0,ee,a3, client=1:0,0,ec,a1, style=0 edit=1:d,41,e0,59, focus_is_edit=0
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+created=1
+after create window=1:0,0,ee,a3, client=1:0,0,ec,a1, style=0 edit=1:d,41,e0,59, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+after show window=1:0,0,ee,a3, client=1:0,0,ec,a1, style=0 edit=1:d,41,e0,59, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+after normal pump window=1:0,0,ee,a3, client=1:0,0,ec,a1, style=0 edit=1:d,41,e0,59, focus_is_edit=1
+metrics ok=1 height=e ascent=b descent=3 average_width=7
+end
