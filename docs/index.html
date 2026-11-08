@@ -42,6 +42,11 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
 .game .when { display: block; font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 2px; }
 .find-game { width: 100%; box-sizing: border-box; margin: 0 0 10px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: inherit; font: inherit; }
 .game[hidden] { display: none; }
+.menu-slider { display: flex; align-items: center; gap: 10px; }
+.menu-slider input { flex: 1; min-width: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .spin, .busy-bar.indeterminate i { animation: none; }
+}
 .games-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; align-items: center; }
 .games-tool { min-height: 40px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; }
 .games-tool:hover { border-color: var(--accent); }
@@ -825,6 +830,17 @@ function gameId(index) {
 // BEGIN GENERATED THEME LIST (tools/ui/gen-themes.py)
 const EM_THEMES = [['red', '紅', 'Red'], ['classic', '2003 經典', '2003 classic'], ['blue', '藍＋橘', 'Blue + orange'], ['green', '綠', 'Green'], ['purple', '紫', 'Purple'], ['orange', '橘', 'Orange'], ['graphite', '石墨', 'Graphite'], ['nightred', '深色紅（夜間）', 'Dark red (night)']];
 // END GENERATED THEME LIST
+// On-screen keys are touch controls: give each a role and a name a screen reader can say
+// ("Up", "Action", "Soft key 1") instead of the glyph, and keep them out of the Tab order.
+function nameScreenKeys(root = document) {
+  for (const key of root.querySelectorAll('.pad .key')) {
+    const vk = Number(key.dataset.vk);
+    const record = PocketLibraryUI.keys.find((k) => k[0] === vk);
+    key.setAttribute('role', 'button');
+    key.setAttribute('aria-label', record ? uiText(record[2], record[3]) : `VK ${vk}`);
+    key.tabIndex = -1;
+  }
+}
 function emTheme() {
   let name = 'red';
   try {
@@ -842,6 +858,7 @@ function applyEmTheme(name) {
 }
 applyEmTheme(emTheme());
 const uiText = (zh, en) => (I18N.lang.startsWith('zh') ? zh : en);
+nameScreenKeys();
 let activeControls = PocketLibraryUI.defaultConfig();
 const pauseReasons = new Set();
 function setPaused(reason, value) {
@@ -975,6 +992,7 @@ function applyControls(config) {
     });
     pad.append(key);
   });
+  nameScreenKeys(pad);
   pad.hidden = value.keys.length === 0;
   pad.removeAttribute('aria-hidden');
   $('vkbd').hidden = !value.keyboard;
@@ -1026,7 +1044,11 @@ function openGameMenu() {
     M._pocket_set_volume(Number(volume.value));
   };
   volume.onchange = () => writeControls(gameId(runningIndex), activeControls).catch((e) => toast(String(e)));
-  gameMenu.append(volume);
+  // A visible label, not only one for screen readers: the slider alone did not say what it set.
+  const volumeLabel = document.createElement('label');
+  volumeLabel.className = 'menu-slider';
+  volumeLabel.append(uiText('音量 ', 'Volume '), volume);
+  gameMenu.append(volumeLabel);
   const themeLabel = document.createElement('label');
   themeLabel.textContent = uiText('介面主題 ', 'Interface theme ');
   const themeSelect = document.createElement('select');
@@ -1053,7 +1075,10 @@ function openGameMenu() {
     fitCanvas();
   };
   zoom.onchange = () => writeControls(gameId(runningIndex), activeControls).catch((e) => toast(String(e)));
-  gameMenu.append(zoom);
+  const zoomLabel = document.createElement('label');
+  zoomLabel.className = 'menu-slider';
+  zoomLabel.append(uiText('畫面放大 ', 'Zoom '), zoom);
+  gameMenu.append(zoomLabel);
   for (const name of ['zoom_x', 'zoom_y']) {
     const row = document.createElement('label');
     row.textContent =
