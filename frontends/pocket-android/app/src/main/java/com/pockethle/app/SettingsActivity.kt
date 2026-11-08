@@ -109,17 +109,32 @@ class SettingsActivity : AppCompatActivity() {
             // Stored as a 0..1 float in `config.json` (the desktop
             // launcher reads the same field), shown here as a percentage
             // because a SeekBarPreference only deals in ints.
+            // The play screen takes its button opacity from the controls settings
+            // (Controls.opacity: global default, or a program's own override), so this
+            // slider edits the global default there too. Before, it only wrote
+            // config.json and had no lasting effect on the buttons.
             findPreference<SeekBarPreference>("controls_opacity")?.apply {
-                value = (current.controlsOpacity * 100f).toInt().coerceIn(10, 100)
+                val shown = globalControls()?.optDouble("opacity", current.controlsOpacity.toDouble())
+                    ?: current.controlsOpacity.toDouble()
+                value = (shown * 100).toInt().coerceIn(10, 100)
                 setOnPreferenceChangeListener { _, newValue ->
                     val percent = (newValue as Int).coerceIn(10, 100)
                     current = current.copy(controlsOpacity = percent / 100f)
                     writeConfig()
+                    globalControls()?.let {
+                        it.put("opacity", percent / 100.0)
+                        NativeBridge.writeControls(rootDir, "", it.toString())
+                    }
                     true
                 }
             }
             findPreference<Preference>("library_root")?.summary = rootDir
         }
+
+        /** The global default controls (an empty id), or null if they cannot be read. */
+        private fun globalControls(): JSONObject? = runCatching {
+            JSONObject(NativeBridge.readControls(rootDir, "")).takeIf { it.optBoolean("ok") }?.getJSONObject("value")
+        }.getOrNull()
 
         private fun readConfig(): LauncherConfig? {
             val raw = NativeBridge.readConfig(rootDir)

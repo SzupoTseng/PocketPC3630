@@ -206,12 +206,15 @@
         } catch { result.textContent = label('無法保存配置，請重試；未回報為成功。', 'Could not save controls. Please retry; success was not reported.'); }
         finally { restore.disabled = false; select.disabled = false; custom.disabled = false; redraw(); }
       };
+      // Filled in once the advanced editors exist; Restore uses it so they show the restored values.
+      let refreshEditors = () => {};
       restore.disabled = !local;
       restore.onclick = async () => {
         save.disabled = true; restore.disabled = true; select.disabled = true; custom.disabled = true;
         try {
           draft = normalize(await reset(local.id)); local.invalid=false; selected = draft.profile; select.value = selected;
           for (const [vk, box] of checks) box.checked = draft.keys.includes(vk); kbd.checked = draft.keyboard;
+          refreshEditors();
           result.textContent = label('已恢復 繼承設定，其他軟體與進度不變。', 'Inherited controls restored; other programs and progress are unchanged.');
         } catch { result.textContent = label('無法恢復設定，請重試。', 'Could not restore controls. Please retry.'); }
         finally { restore.disabled = false; select.disabled = false; custom.disabled = false; redraw(); }
@@ -220,17 +223,24 @@
       const help = el('p', label('映射範例：{"input":"PadA","vk":13}；鍵盤使用 Up、A、Space；位置 x/y 為 0～1，size 為 0.03～0.4。空布局使用預設位置。', 'Binding example: {"input":"PadA","vk":13}; keyboard names: Up, A, Space. Layout x/y: 0–1, size: 0.03–0.4. Empty layouts use defaults.'));
       advanced.append(help);
       const shortcutLabel=el('label',label('選單快捷鍵','Menu shortcut')); const shortcut=el('input');shortcut.value=draft.menu_key;shortcut.oninput=()=>{draft.menu_key=shortcut.value;};shortcutLabel.append(shortcut);advanced.append(shortcutLabel);
-      const editors = {};
+      const editors = {}, ranges = {};
       for (const name of ['bindings', 'portrait', 'landscape']) {
         const row = el('label', name); const input = el('textarea'); input.rows = 4; input.value = JSON.stringify(draft[name], null, 2); input.setAttribute('aria-label', name);
         editors[name] = input; row.append(input); advanced.append(row);
       }
       for (const [name,min,max,step] of [['opacity',.1,1,.05],['volume',0,1,.05],['zoom',1,4,.25],['zoom_x',0,1,.05],['zoom_y',0,1,.05]]) {
         const row = el('label', name); const input = el('input'); input.type = 'range'; input.min = min; input.max = max; input.step = step; input.value = draft[name];
-        input.oninput = () => { draft[name] = Number(input.value); }; row.append(input); advanced.append(row);
+        input.oninput = () => { draft[name] = Number(input.value); }; row.append(input); advanced.append(row); ranges[name] = input;
       }
       const auto = el('label', label('連接手把時隱藏觸控盤', 'Hide touch controls with gamepad')); const autoBox = el('input'); autoBox.type = 'checkbox'; autoBox.checked = draft.auto_hide_gamepad;
       autoBox.onchange = () => { draft.auto_hide_gamepad = autoBox.checked; }; auto.append(autoBox); advanced.append(auto);
+      // Without this, Restore changed the draft but the editors kept the old text, and
+      // Apply then copied the old override back in.
+      refreshEditors = () => {
+        for (const name of Object.keys(editors)) editors[name].value = JSON.stringify(draft[name], null, 2);
+        for (const name of Object.keys(ranges)) ranges[name].value = draft[name];
+        autoBox.checked = draft.auto_hide_gamepad; shortcut.value = draft.menu_key;
+      };
       form.append(advanced);
       const originalSave = save.onclick;
       save.onclick = async () => {

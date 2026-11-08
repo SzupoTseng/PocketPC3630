@@ -44,13 +44,17 @@ test('overlapping keyboard and touch holds emit one key pair; cleanup cancels de
   const html = readFileSync('frontends/pocket-wasm/web/index.html', 'utf8');
   const source = html.slice(html.indexOf('const pressedAt ='), html.indexOf('// Landscape games'));
   const events = [], timers = new Map(); let id = 0;
-  const context = {running: true, M: {_pocket_key: (...args) => events.push(args)},
+  const context = {running: true, pauseReasons: new Set(), M: {_pocket_key: (...args) => events.push(args)},
     performance: {now: () => 0}, frameMs: 33, MAX_PRESS_MS: 1000, FRAMES_PER_PRESS: 3,
     setTimeout: action => {timers.set(++id, action); return id;}, clearTimeout: n => timers.delete(n),
     document: {querySelectorAll: () => []}};
   vm.createContext(context); vm.runInContext(source, context);
   vm.runInContext("press(38); press(38, 'pad:1'); release(38);", context);
   assert.deepEqual(events, [[1, 38]]); assert.equal(timers.size, 0);
+  // While paused nothing is queued for the guest (an on-screen keyboard tap included).
+  vm.runInContext("pauseReasons.add('menu'); press(65, 'vkbd');", context);
+  assert.deepEqual(events, [[1, 38]]);
+  vm.runInContext("pauseReasons.clear();", context);
   vm.runInContext("release(38, 'pad:1'); press(38);", context);
   assert.equal(timers.size, 0); assert.deepEqual(events, [[1, 38]]);
   vm.runInContext('release(38); releaseAllInput();', context);

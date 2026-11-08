@@ -71,11 +71,21 @@
         <item name="android:statusBarColor" tools:targetApi="21">#353b46</item>
     </style>
 
-    <style name="Theme.PocketHLE.NightRed" parent="Theme.PocketHLE">
+    <style name="Theme.PocketHLE.NightRed" parent="Theme.MaterialComponents.NoActionBar">
+        <!-- Always dark, unlike the DayNight parent of the other themes: the night theme
+             keeps dark surfaces even when the phone itself uses a light system theme. -->
         <item name="colorPrimary">#b3322a</item>
         <item name="colorPrimaryVariant">#6a2a26</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
         <item name="colorSecondary">#d8392e</item>
         <item name="colorOnSecondary">#ffffff</item>
+        <item name="colorSurface">#1d1112</item>
+        <item name="colorOnSurface">#f1e4e2</item>
+        <item name="android:colorBackground">#1d1112</item>
+        <item name="colorOnBackground">#f1e4e2</item>
+        <item name="android:textColorPrimary">#f1e4e2</item>
+        <item name="android:textColorSecondary">#a58885</item>
         <item name="android:statusBarColor" tools:targetApi="21">#6a2a26</item>
+        <item name="android:windowBackground">?attr/colorSurface</item>
     </style>
 </resources>

@@ -1477,7 +1477,9 @@ function keyUp(vk) {
   M._pocket_key(0, vk);
 }
 function press(vk, source = 'keyboard') {
-  if (!running) return;
+  // Nothing reaches the guest while paused: a key tapped on the on-screen keyboard
+  // during a pause would otherwise be delivered all at once on resuming.
+  if (!running || pauseReasons.size) return;
   const sources = keySources.get(vk) || new Set();
   if (sources.has(source)) return;
   sources.add(source);
@@ -1640,7 +1642,7 @@ function attachInput(canvas, width, height) {
       document.querySelector('dialog[open]') ||
       event.metaKey ||
       event.altKey ||
-      event.keyCode >= 112 ||
+      (event.keyCode >= 112 && binding(hostName(event), null) === null) ||
       event.target.closest?.('input,select,textarea,button,[role=button],[contenteditable=true]')
     )
       return;

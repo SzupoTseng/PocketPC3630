@@ -24,9 +24,12 @@ object Themes {
     /** The style for a saved id; anything unknown (or empty) is the red default. */
     fun styleFor(id: String?): Int = styles[id] ?: R.style.Theme_PocketHLE
 
+    /** The saved theme id (null until the player picks one). */
+    fun id(activity: Activity): String? =
+        PreferenceManager.getDefaultSharedPreferences(activity).getString(KEY, null)
+
     /** Call before `super.onCreate` so the whole screen uses the chosen theme. */
     fun apply(activity: Activity) {
-        val id = PreferenceManager.getDefaultSharedPreferences(activity).getString(KEY, null)
-        activity.setTheme(styleFor(id))
+        activity.setTheme(styleFor(id(activity)))
     }
 }

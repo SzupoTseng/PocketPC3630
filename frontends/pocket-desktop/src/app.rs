@@ -158,15 +158,17 @@ fn apply_theme(ctx: &egui::Context, theme: &pocket_library::theme::Theme) {
     visuals.selection.bg_fill = color(theme.select);
     visuals.selection.stroke = egui::Stroke::new(1.0_f32, color(theme.select_ink));
     visuals.hyperlink_color = flat;
-    visuals.window_rounding = 8.0.into();
-    visuals.menu_rounding = 8.0.into();
+    // Rounded like Windows Mobile, or square like the Pocket PC 2003 (classic theme).
+    let (round, widget_round) = if theme.square { (0.0, 0.0) } else { (8.0, 6.0) };
+    visuals.window_rounding = round.into();
+    visuals.menu_rounding = round.into();
     for widgets in [
         &mut visuals.widgets.inactive,
         &mut visuals.widgets.hovered,
         &mut visuals.widgets.active,
         &mut visuals.widgets.noninteractive,
     ] {
-        widgets.rounding = 6.0.into();
+        widgets.rounding = widget_round.into();
         widgets.bg_stroke = egui::Stroke::new(1.0_f32, color(theme.line));
     }
     visuals.widgets.inactive.weak_bg_fill = color(theme.panel2);

@@ -67,6 +67,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Themes.apply(this)
+        appliedTheme = Themes.id(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setSupportActionBar(findViewById<Toolbar>(R.id.toolbar))
@@ -99,8 +100,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onSaveInstanceState(state: Bundle) {state.putString("library_query",query);state.putBoolean("recent_first",recentFirst);super.onSaveInstanceState(state)}
+    /** Theme this screen was created with; Settings can change it while we are in the back stack. */
+    private var appliedTheme: String? = null
+
     override fun onResume() {
         super.onResume()
+        // A theme picked in Settings only reaches screens created afterwards; the
+        // library was created before, so rebuild it to match the other screens.
+        if (Themes.id(this) != appliedTheme) {
+            recreate()
+            return
+        }
         launching = false
         refreshLibrary()
     }

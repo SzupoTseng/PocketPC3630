@@ -38,6 +38,8 @@ pub struct Theme {
     pub dim: Rgb,
     /// True when the surfaces are dark (a night theme).
     pub dark: bool,
+    /// Square corners, as on the Pocket PC 2003 itself (the classic theme).
+    pub square: bool,
 }
 
 /// The theme used until the player chooses another.
@@ -59,6 +61,7 @@ pub const THEMES: &[Theme] = &[
         line: 0xd7a6a2,
         dim: 0x8c6a67,
         dark: false,
+        square: false,
     },
     Theme {
         id: "classic",
@@ -74,6 +77,7 @@ pub const THEMES: &[Theme] = &[
         line: 0x848284,
         dim: 0x636563,
         dark: false,
+        square: true,
     },
     Theme {
         id: "blue",
@@ -89,6 +93,7 @@ pub const THEMES: &[Theme] = &[
         line: 0x9bb0d6,
         dim: 0x6a7a99,
         dark: false,
+        square: false,
     },
     Theme {
         id: "green",
@@ -104,6 +109,7 @@ pub const THEMES: &[Theme] = &[
         line: 0x9cc8a4,
         dim: 0x5f7d66,
         dark: false,
+        square: false,
     },
     Theme {
         id: "purple",
@@ -119,6 +125,7 @@ pub const THEMES: &[Theme] = &[
         line: 0xb9a0e0,
         dim: 0x7b6a99,
         dark: false,
+        square: false,
     },
     Theme {
         id: "orange",
@@ -134,6 +141,7 @@ pub const THEMES: &[Theme] = &[
         line: 0xe0b784,
         dim: 0x9a7f5f,
         dark: false,
+        square: false,
     },
     Theme {
         id: "graphite",
@@ -149,6 +157,7 @@ pub const THEMES: &[Theme] = &[
         line: 0xaab2c0,
         dim: 0x767e8d,
         dark: false,
+        square: false,
     },
     Theme {
         id: "nightred",
@@ -164,6 +173,7 @@ pub const THEMES: &[Theme] = &[
         line: 0x5a3436,
         dim: 0xa58885,
         dark: true,
+        square: false,
     },
 ];
 
@@ -271,6 +281,13 @@ mod tests {
         assert_eq!(load(dir.path()).id, "green");
         save(dir.path(), "no-such-theme").unwrap();
         assert_eq!(load(dir.path()).id, "red");
+    }
+
+    #[test]
+    fn only_the_classic_theme_is_square() {
+        for t in THEMES {
+            assert_eq!(t.square, t.id == "classic", "{}", t.id);
+        }
     }
 
     #[test]
