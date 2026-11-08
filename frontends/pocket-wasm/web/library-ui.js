@@ -183,11 +183,76 @@
           }
         } else {
           preview.classList.remove('device-preview');
-          for (const [vk, glyph, zh, en] of keys.filter(k => draft.keys.includes(k[0]))) {
-            const button = el('button', glyph); button.type = 'button'; button.setAttribute('aria-label', label(zh, en));
-            button.onclick = () => { feedback.textContent = label(`${zh}：預覽，不會送出按鍵。`, `${en}: preview; no key is sent.`); };
-            preview.append(button);
-          }
+          // Drag editor: the keys sit where they will sit in play (same formula as the
+          // player's pad: 100% wide, 210 px high, positions 0-1, size as a share of the
+          // width). Drag a key, or select it and use the arrow keys and + / -; the
+          // result goes into draft.portrait / draft.landscape, the same data the
+          // advanced JSON editors show.
+          const orient = landscape ? 'landscape' : 'portrait';
+          const pad = el('div', '', 'pad-editor'); pad.setAttribute('role', 'group');
+          pad.setAttribute('aria-label', label('拖曳按鍵調整位置；選取後可用方向鍵移動、＋／－調整大小', 'Drag keys to place them; when one is selected, arrow keys move it and + / - resize it'));
+          const visible = keys.filter(k => draft.keys.includes(k[0]));
+          const defaultPos = (vk, i) => {
+            const panel = draft.profile === 'ppc2003' ? ppc2003.buttons.find(b => b.vk === vk) : null;
+            return panel ? { vk, x: panel.x, y: panel.y, size: panel.size } : { vk, x: .1 + (i % 5) * .19, y: .14 + Math.floor(i / 5) * .28, size: .12 };
+          };
+          const posOf = (vk, i) => draft[orient].find(p => p.vk === vk) || defaultPos(vk, i);
+          const store = (pos) => {
+            const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.round(v * 1000) / 1000));
+            const next = { vk: pos.vk, x: clamp(pos.x, 0, 1), y: clamp(pos.y, 0, 1), size: clamp(pos.size, .03, .4) };
+            // Keys not moved yet keep their default place explicitly once any key is edited,
+            // so the layout shown is exactly the layout saved.
+            const all = visible.map(([vk], i) => (vk === next.vk ? next : posOf(vk, i)));
+            draft[orient] = all;
+            refreshEditors();
+            return next;
+          };
+          let selectedKey = null;
+          const sizeRow = el('label', label('按鍵大小 ', 'Key size ')); sizeRow.className = 'pad-size';
+          const sizeInput = el('input'); sizeInput.type = 'range'; sizeInput.min = .03; sizeInput.max = .4; sizeInput.step = .01; sizeRow.append(sizeInput); sizeRow.hidden = true;
+          const place = (button, pos) => Object.assign(button.style, {
+            left: `clamp(0px, calc(${pos.x * 100}% - 24px), calc(100% - 48px))`,
+            top: `clamp(0px, calc(${pos.y * 100}% - 24px), calc(100% - 48px))`,
+            width: `max(44px, ${pos.size * 100}%)`,
+          });
+          visible.forEach(([vk, glyph, zh, en], i) => {
+            const button = el('button', glyph); button.type = 'button'; button.className = 'pad-editor-key';
+            button.setAttribute('aria-label', label(zh, en)); place(button, posOf(vk, i));
+            const select = () => {
+              for (const b of pad.querySelectorAll('.pad-editor-key')) b.setAttribute('aria-pressed', String(b === button));
+              selectedKey = { vk, i, button }; sizeRow.hidden = false; sizeInput.value = posOf(vk, i).size;
+              feedback.textContent = label(`已選取「${zh}」：拖曳移動，或用方向鍵與＋／－調整。`, `${en} selected: drag it, or use the arrow keys and + / -.`);
+            };
+            button.onpointerdown = (event) => {
+              event.preventDefault(); select(); button.setPointerCapture(event.pointerId);
+              const rect = pad.getBoundingClientRect(), keyRect = button.getBoundingClientRect();
+              const dx = event.clientX - keyRect.left, dy = event.clientY - keyRect.top;
+              button.onpointermove = (move) => {
+                const left = move.clientX - rect.left - dx, top = move.clientY - rect.top - dy;
+                const pos = { ...posOf(vk, i), x: (left + 24) / rect.width, y: (top + 24) / rect.height };
+                place(button, store(pos));
+              };
+              button.onpointerup = button.onpointercancel = () => { button.onpointermove = null; };
+            };
+            button.onkeydown = (event) => {
+              const step = { ArrowLeft: [-.02, 0, 0], ArrowRight: [.02, 0, 0], ArrowUp: [0, -.02, 0], ArrowDown: [0, .02, 0], '+': [0, 0, .01], '=': [0, 0, .01], '-': [0, 0, -.01] }[event.key];
+              if (!step) return;
+              event.preventDefault(); select();
+              const p = posOf(vk, i);
+              place(button, store({ ...p, x: p.x + step[0], y: p.y + step[1], size: p.size + step[2] }));
+              sizeInput.value = posOf(vk, i).size;
+            };
+            button.onfocus = select;
+            pad.append(button);
+          });
+          sizeInput.oninput = () => {
+            if (!selectedKey) return;
+            const p = posOf(selectedKey.vk, selectedKey.i);
+            place(selectedKey.button, store({ ...p, size: Number(sizeInput.value) }));
+          };
+          const resetLayout = el('button', label('重設位置', 'Reset positions')); resetLayout.type = 'button';
+          resetLayout.onclick = () => { draft[orient] = []; refreshEditors(); redraw(); feedback.textContent = label('已恢復預設位置。', 'Default positions restored.'); };
+          preview.append(pad, sizeRow, resetLayout);
           if (draft.keyboard) preview.append(el('p', label('螢幕鍵盤', 'On-screen keyboard')));
         }
         save.disabled = !local || !profile.available || local.invalid === true;

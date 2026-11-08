@@ -137,6 +137,27 @@ try {
   check(clock && clock.pausedFor <= 20 && clock.afterResume > 300 && clock.overlay === true,
     '4. pause stops the guest clock, resume restarts it', JSON.stringify(clock));
 
+  const editor = await evaluate(`(async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    document.getElementById('software-controls').click();
+    for (let i = 0; i < 40 && !document.querySelector('.pad-editor-key'); i++) await wait(250);
+    const key = document.querySelector('.pad-editor-key');
+    if (!key) return { keys: 0 };
+    const before = key.style.left;
+    key.focus();
+    key.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await wait(200);
+    const portrait = [...document.querySelectorAll('textarea')].find((t) => t.getAttribute('aria-label') === 'portrait');
+    const saved = JSON.parse(portrait?.value || '[]');
+    const result = { keys: document.querySelectorAll('.pad-editor-key').length, moved: key.style.left !== before, stored: saved.length };
+    document.querySelector('dialog[open] button')?.click();
+    document.querySelectorAll('dialog[open]').forEach((d) => d.close());
+    await wait(300);
+    return result;
+  })()`, 20000);
+  check(editor?.keys > 0 && editor?.moved && editor?.stored === editor?.keys,
+    '7. the touch-key editor moves a key and stores the layout', JSON.stringify(editor));
+
   const theme = await evaluate(`(() => {
     applyEmTheme('blue');
     const blue = getComputedStyle(document.documentElement).getPropertyValue('--em-flat').trim();

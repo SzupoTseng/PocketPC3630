@@ -47,6 +47,12 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
 @media (prefers-reduced-motion: reduce) {
   .spin, .busy-bar.indeterminate i { animation: none; }
 }
+.pad-editor { position: relative; width: 100%; height: 210px; border: 1px dashed var(--line); border-radius: 12px; background: var(--surface); touch-action: none; }
+.pad-editor-key { position: absolute; height: 44px; min-width: 44px; cursor: grab; touch-action: none; }
+.pad-editor-key:active { cursor: grabbing; }
+.pad-editor-key[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pad-size { display: flex; gap: 8px; align-items: center; width: 100%; }
+.pad-size input { flex: 1; min-width: 0; }
 .games-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; align-items: center; }
 .games-tool { min-height: 40px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; }
 .games-tool:hover { border-color: var(--accent); }
