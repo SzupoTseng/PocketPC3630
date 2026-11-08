@@ -15,14 +15,7 @@
     </style>
 
     <!-- Interface themes: the same colors as crates/pocket-library/src/theme.rs. Red is the default. -->
-    <style name="Theme.PocketHLE.Red" parent="Theme.PocketHLE">
-        <item name="colorPrimary">#c8372d</item>
-        <item name="colorPrimaryVariant">#a3231b</item>
-        <item name="colorSecondary">#d8392e</item>
-        <item name="colorOnSecondary">#ffffff</item>
-        <item name="android:statusBarColor" tools:targetApi="21">#a3231b</item>
-    </style>
-
+    <!-- BEGIN GENERATED THEMES (tools/ui/gen-themes.py) -->
     <style name="Theme.PocketHLE.Classic" parent="Theme.PocketHLE">
         <item name="colorPrimary">#1055b5</item>
         <item name="colorPrimaryVariant">#0a3a8a</item>
@@ -30,7 +23,6 @@
         <item name="colorOnSecondary">#ffffff</item>
         <item name="android:statusBarColor" tools:targetApi="21">#0a3a8a</item>
     </style>
-
     <style name="Theme.PocketHLE.Blue" parent="Theme.PocketHLE">
         <item name="colorPrimary">#2f5fb8</item>
         <item name="colorPrimaryVariant">#1f4796</item>
@@ -38,7 +30,6 @@
         <item name="colorOnSecondary">#2a1600</item>
         <item name="android:statusBarColor" tools:targetApi="21">#1f4796</item>
     </style>
-
     <style name="Theme.PocketHLE.Green" parent="Theme.PocketHLE">
         <item name="colorPrimary">#2e8b3d</item>
         <item name="colorPrimaryVariant">#237a34</item>
@@ -46,7 +37,6 @@
         <item name="colorOnSecondary">#2b2000</item>
         <item name="android:statusBarColor" tools:targetApi="21">#237a34</item>
     </style>
-
     <style name="Theme.PocketHLE.Purple" parent="Theme.PocketHLE">
         <item name="colorPrimary">#6b3fb0</item>
         <item name="colorPrimaryVariant">#5a2f96</item>
@@ -54,7 +44,6 @@
         <item name="colorOnSecondary">#1f0a3a</item>
         <item name="android:statusBarColor" tools:targetApi="21">#5a2f96</item>
     </style>
-
     <style name="Theme.PocketHLE.Orange" parent="Theme.PocketHLE">
         <item name="colorPrimary">#d9770f</item>
         <item name="colorPrimaryVariant">#b85a08</item>
@@ -62,7 +51,6 @@
         <item name="colorOnSecondary">#ffffff</item>
         <item name="android:statusBarColor" tools:targetApi="21">#b85a08</item>
     </style>
-
     <style name="Theme.PocketHLE.Graphite" parent="Theme.PocketHLE">
         <item name="colorPrimary">#4a525f</item>
         <item name="colorPrimaryVariant">#353b46</item>
@@ -70,9 +58,8 @@
         <item name="colorOnSecondary">#10151e</item>
         <item name="android:statusBarColor" tools:targetApi="21">#353b46</item>
     </style>
-
     <style name="Theme.PocketHLE.NightRed" parent="Theme.MaterialComponents.NoActionBar">
-        <!-- Always dark, unlike the DayNight parent of the other themes: the night theme
+        <!-- Always dark, unlike the DayNight parent of the other themes: a night theme
              keeps dark surfaces even when the phone itself uses a light system theme. -->
         <item name="colorPrimary">#b3322a</item>
         <item name="colorPrimaryVariant">#6a2a26</item>
@@ -88,4 +75,5 @@
         <item name="android:statusBarColor" tools:targetApi="21">#6a2a26</item>
         <item name="android:windowBackground">?attr/colorSurface</item>
     </style>
+    <!-- END GENERATED THEMES -->
 </resources>

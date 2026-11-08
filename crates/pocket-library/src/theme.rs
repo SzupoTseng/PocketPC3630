@@ -46,7 +46,9 @@ pub struct Theme {
 pub const DEFAULT_ID: &str = "red";
 
 /// Every theme, default first.
+/// Generated from `data/themes.json` by `tools/ui/gen-themes.py`; edit the JSON, not this table.
 pub const THEMES: &[Theme] = &[
+    // BEGIN GENERATED THEMES (tools/ui/gen-themes.py)
     Theme {
         id: "red",
         zh: "紅",
@@ -175,6 +177,7 @@ pub const THEMES: &[Theme] = &[
         dark: true,
         square: false,
     },
+    // END GENERATED THEMES
 ];
 
 /// The theme with this id, or the default for an unknown or empty one (a

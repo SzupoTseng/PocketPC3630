@@ -411,14 +411,16 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
 /* Emulator interface: the glossy Windows Mobile 5/6 look. Red is the default; the other
    colors are themes chosen in the game menu. Only the player (toolbar, on-screen keys,
    pause veil, in-game dialogs) uses it; the software library keeps its own look. */
+/* BEGIN GENERATED THEMES (tools/ui/gen-themes.py) */
 :root{--em-radius:8px;--em-radius-lg:10px;--em-title:linear-gradient(#ee6a5e 0%,#d1382e 48%,#a9231b 50%,#c63127 100%);--em-edge:#a3231b;--em-sel:linear-gradient(#ff7a6c,#d8392e);--em-selink:#fff;--em-flat:#c8372d;--em-panel:#fbf5f4;--em-panel2:#f3e3e1;--em-ink:#3a1412;--em-line:#d7a6a2;--em-dim:#8c6a67;--em-btn:linear-gradient(#fffefe,#f3dcd9);--em-btnink:#3a1412;--em-btnline:#c98b86;}
-:root[data-em-theme="classic"]{--em-radius:0px;--em-radius-lg:0px;--em-title:#1055b5;--em-edge:#0a3a8a;--em-sel:#00009c;--em-selink:#fff;--em-flat:#1055b5;--em-panel:#fff;--em-panel2:#bdebff;--em-ink:#000;--em-line:#848284;--em-dim:#636563;--em-btn:#bdebff;--em-btnink:#000;--em-btnline:#848284}
+:root[data-em-theme="classic"]{--em-radius:0px;--em-radius-lg:0px;--em-title:#1055b5;--em-edge:#0a3a8a;--em-sel:#00009c;--em-selink:#fff;--em-flat:#1055b5;--em-panel:#fff;--em-panel2:#bdebff;--em-ink:#000;--em-line:#848284;--em-dim:#636563;--em-btn:#bdebff;--em-btnink:#000;--em-btnline:#848284;}
 :root[data-em-theme="blue"]{--em-title:linear-gradient(#4c7bd0 0%,#2f5fb8 48%,#1f4796 50%,#2d5cb0 100%);--em-edge:#1f4796;--em-sel:linear-gradient(#ffb64a,#f58a14);--em-selink:#2a1600;--em-flat:#2f5fb8;--em-panel:#f4f7fc;--em-panel2:#e4ebf8;--em-ink:#14213d;--em-line:#9bb0d6;--em-dim:#6a7a99;--em-btn:linear-gradient(#fdfeff,#d9e3f5);--em-btnink:#14213d;--em-btnline:#7f95c2;}
 :root[data-em-theme="green"]{--em-title:linear-gradient(#6cc47a 0%,#3a9a4b 48%,#237a34 50%,#33903f 100%);--em-edge:#237a34;--em-sel:linear-gradient(#ffd966,#f0b020);--em-selink:#2b2000;--em-flat:#2e8b3d;--em-panel:#f4faf5;--em-panel2:#e1f1e4;--em-ink:#10281a;--em-line:#9cc8a4;--em-dim:#5f7d66;--em-btn:linear-gradient(#fdfffd,#d9ecdd);--em-btnink:#10281a;--em-btnline:#82b48b;}
 :root[data-em-theme="purple"]{--em-title:linear-gradient(#a780dc 0%,#7a4cc0 48%,#5a2f96 50%,#6e42ae 100%);--em-edge:#5a2f96;--em-sel:linear-gradient(#d9bcff,#a874ec);--em-selink:#1f0a3a;--em-flat:#6b3fb0;--em-panel:#f8f5fc;--em-panel2:#ebe3f7;--em-ink:#21143a;--em-line:#b9a0e0;--em-dim:#7b6a99;--em-btn:linear-gradient(#fefcff,#e4d9f6);--em-btnink:#21143a;--em-btnline:#a58bd0;}
 :root[data-em-theme="orange"]{--em-title:linear-gradient(#f5a54a 0%,#e07a14 48%,#b85a08 50%,#d06e0e 100%);--em-edge:#b85a08;--em-sel:linear-gradient(#5b8de0,#2d5fbd);--em-selink:#fff;--em-flat:#d9770f;--em-panel:#fdf8f1;--em-panel2:#f6e8d3;--em-ink:#33200c;--em-line:#e0b784;--em-dim:#9a7f5f;--em-btn:linear-gradient(#fffefb,#f8e3c4);--em-btnink:#33200c;--em-btnline:#d3a468;}
 :root[data-em-theme="graphite"]{--em-title:linear-gradient(#8a93a1 0%,#555d6a 48%,#353b46 50%,#4b5360 100%);--em-edge:#353b46;--em-sel:linear-gradient(#b4bdcc,#7a8497);--em-selink:#10151e;--em-flat:#4a525f;--em-panel:#f5f6f8;--em-panel2:#e6e9ef;--em-ink:#1a1f29;--em-line:#aab2c0;--em-dim:#767e8d;--em-btn:linear-gradient(#fdfdfe,#e1e5ec);--em-btnink:#1a1f29;--em-btnline:#9aa3b3;}
 :root[data-em-theme="nightred"]{--em-title:linear-gradient(#d4564c 0%,#a82a22 48%,#7d1812 50%,#972119 100%);--em-edge:#6a2a26;--em-sel:linear-gradient(#ff7a6c,#d8392e);--em-selink:#fff;--em-flat:#b3322a;--em-panel:#1d1112;--em-panel2:#2a1819;--em-ink:#f1e4e2;--em-line:#5a3436;--em-dim:#a58885;--em-btn:linear-gradient(#3a2425,#2a1819);--em-btnink:#f1e4e2;--em-btnline:#6a3a3c;}
+/* END GENERATED THEMES */
 .bar{background:var(--em-title);border-bottom:1px solid var(--em-edge);color:var(--em-selink)}
 .bar button{color:#fff;border:1px solid rgb(255 255 255 / 38%);background:rgb(255 255 255 / 14%);box-shadow:inset 0 1px 0 rgb(255 255 255 / 30%)}
 .bar button:hover{background:rgb(255 255 255 / 24%)}
@@ -820,10 +822,9 @@ function gameId(index) {
 }
 
 // The emulator's color theme: red unless the player chose another in the game menu.
-const EM_THEMES = [
-  ['red', '紅', 'Red'], ['classic', '2003 經典', '2003 classic'], ['blue', '藍＋橘', 'Blue + orange'], ['green', '綠', 'Green'], ['purple', '紫', 'Purple'],
-  ['orange', '橘', 'Orange'], ['graphite', '石墨', 'Graphite'], ['nightred', '深色紅（夜間）', 'Dark red (night)'],
-];
+// BEGIN GENERATED THEME LIST (tools/ui/gen-themes.py)
+const EM_THEMES = [['red', '紅', 'Red'], ['classic', '2003 經典', '2003 classic'], ['blue', '藍＋橘', 'Blue + orange'], ['green', '綠', 'Green'], ['purple', '紫', 'Purple'], ['orange', '橘', 'Orange'], ['graphite', '石墨', 'Graphite'], ['nightred', '深色紅（夜間）', 'Dark red (night)']];
+// END GENERATED THEME LIST
 function emTheme() {
   let name = 'red';
   try {

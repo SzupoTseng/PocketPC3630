@@ -11,6 +11,7 @@ import androidx.preference.PreferenceManager
 object Themes {
     const val KEY = "ui_theme"
     private val styles = mapOf(
+    // BEGIN GENERATED THEMES (tools/ui/gen-themes.py)
         "red" to R.style.Theme_PocketHLE,
         "classic" to R.style.Theme_PocketHLE_Classic,
         "blue" to R.style.Theme_PocketHLE_Blue,
@@ -19,6 +20,7 @@ object Themes {
         "orange" to R.style.Theme_PocketHLE_Orange,
         "graphite" to R.style.Theme_PocketHLE_Graphite,
         "nightred" to R.style.Theme_PocketHLE_NightRed,
+    // END GENERATED THEMES
     )
 
     /** The style for a saved id; anything unknown (or empty) is the red default. */

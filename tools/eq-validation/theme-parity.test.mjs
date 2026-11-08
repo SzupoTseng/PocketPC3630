@@ -39,3 +39,9 @@ test('Android has a style for every theme with the same main color', () => {
   const kotlin = readFileSync('frontends/pocket-android/app/src/main/java/com/pockethle/app/Themes.kt', 'utf8');
   for (const {id} of themes) assert.ok(kotlin.includes(`"${id}" to`), `Themes.kt ${id}`);
 });
+
+test('every generated copy is up to date with crates/pocket-library/data/themes.json', async () => {
+  const {execFileSync} = await import('node:child_process');
+  // Exits 1 and names the stale files when someone edited a generated copy by hand.
+  execFileSync('python3', ['tools/ui/gen-themes.py', '--check'], {stdio: 'pipe'});
+});
