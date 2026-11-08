@@ -153,9 +153,12 @@ jobs:
         with:
           targets: wasm32-unknown-emscripten
       - uses: Swatinem/rust-cache@v2
+      # Cache emsdk and the 3.1.74 toolchain: without it every run downloaded emsdk from
+      # GitHub, and the web build failed whenever that download got HTTP 502.
       - uses: mymindstorm/setup-emsdk@v14
         with:
           version: 3.1.74
+          actions-cache-folder: emsdk-cache
       - name: build pocket-wasm the way the site is built
         env:
           EXTRA_RUSTFLAGS: -D warnings
