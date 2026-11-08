@@ -1,0 +1,16 @@
+{
+  "2": {
+    "game": "eq_e2",
+    "files": 6,
+    "bytes": 110914,
+    "path": "target/eq-validation/audio-packages/ep2-audio-patch.zip",
+    "sha256": "fa0f5c3457307b82915030d6d4886a95aea80441ca041923449698cf3ffd7e87"
+  },
+  "3": {
+    "game": "eq_e3",
+    "files": 15,
+    "bytes": 310116,
+    "path": "target/eq-validation/audio-packages/ep3-audio-patch.zip",
+    "sha256": "b7d670470997a4bd2b1d11c1ab830dec00b142155fcfa73ac2562101c999007e"
+  }
+}

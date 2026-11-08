@@ -21,6 +21,7 @@ class GameAdapter(
     private val onSettings: (GameEntry) -> Unit,
     private val onRemove: (GameEntry) -> Unit,
     private val onSave: (GameEntry, String) -> Unit,
+    private val onControls: (GameEntry) -> Unit,
     private val libraryRoot: String,
 ) : RecyclerView.Adapter<GameAdapter.ViewHolder>() {
 
@@ -50,7 +51,9 @@ class GameAdapter(
         private val moreBtn: ImageButton = view.findViewById(R.id.btn_more)
 
         fun bind(entry: GameEntry) {
-            title.text = entry.displayName
+            title.text = (if(entry.favorite) "★ " else "") + entry.alias.ifBlank { entry.displayName }
+            title.maxLines = 4
+            title.contentDescription = entry.displayName
             val iconFile = entry.icon?.let { File(libraryRoot, "games/${entry.id}/$it") }
             val bitmap = iconFile?.takeIf { it.isFile }?.let { BitmapFactory.decodeFile(it.absolutePath) }
             if (bitmap != null) {
@@ -60,11 +63,8 @@ class GameAdapter(
                 icon.setImageResource(R.drawable.ic_game)
                 icon.imageTintList = itemView.context.getColorStateList(com.google.android.material.R.color.material_dynamic_primary40)
             }
-            publisherLabel.text = itemView.context.getString(
-                R.string.publisher_label,
-                entry.provider?.takeIf { it.isNotBlank() }
-                    ?: itemView.context.getString(R.string.publisher_unknown),
-            )
+            publisherLabel.text = entry.controlsLabel + " · " + if(entry.controlsOverridden) "此軟體 / Custom" else "繼承 / Inherited"
+            moreBtn.contentDescription = "${entry.displayName}: 操作、進度與設定 / Controls, progress and settings"
             itemView.setOnClickListener { onRun(entry) }
             moreBtn.setOnClickListener { anchor -> showOverflowMenu(anchor, entry) }
         }
@@ -76,6 +76,7 @@ class GameAdapter(
             popup.menu.add(0, 4, 2, R.string.action_reset_save)
             popup.menu.add(0, 0, 3, R.string.action_settings)
             popup.menu.add(0, 1, 4, R.string.action_remove)
+            popup.menu.add(0, 5, 5, "操作方式 / Controls")
             popup.setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     0 -> onSettings(entry)
@@ -83,6 +84,7 @@ class GameAdapter(
                     2 -> onSave(entry, "export")
                     3 -> onSave(entry, "import")
                     4 -> onSave(entry, "reset")
+                    5 -> onControls(entry)
                 }
                 true
             }

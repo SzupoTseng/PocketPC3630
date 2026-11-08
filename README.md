@@ -152,7 +152,7 @@ Showcase titles, each verified by hand:
 
 | Title | CPU | Notes |
 |---|---|---|
-| **EverQuest for the Pocket PC** | ARM | Character creation, the world, saving and loading, on all three platforms |
+| **EverQuest for the Pocket PC** | ARM | EP1 and EP3: import, registration controls and cancellation checked with the existing WASM build. Registered gameplay/save/reload and EP2 original-package validation remain pending; see [test evidence](tools/eq-validation/README.md). |
 | **Pocket Quake** | ARM | Menus and gameplay in the browser, with on-screen controls |
 | **Pocket Slay** | ARM · MIPS · SH3 | Starts on a black screen: tap it, then OK in *New Game*. Full colour map on all three builds |
 | **FreeCell** (Pocket-G) | ARM · MIPS · SH3 | All three builds deal the same game |

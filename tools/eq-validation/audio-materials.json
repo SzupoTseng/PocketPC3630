@@ -1,0 +1,185 @@
+{
+  "scope": "Supplement missing requested EQ sounds from user-local episode assets; originals never replaced; no synthesized substitutes",
+  "episodes": {
+    "1": {
+      "original_package_sha256": "81eb91a2800eb959427ab00d1a4c97bc1c77d1bff13d48ae718ffe8916542a98",
+      "package": "target/eq-validation/audio-packages/ep1-audio-complete.zip",
+      "package_sha256": "81eb91a2800eb959427ab00d1a4c97bc1c77d1bff13d48ae718ffe8916542a98",
+      "added": [],
+      "unresolved": []
+    },
+    "2": {
+      "original_package_sha256": "03a5081f22083533e03179bd82fe42e60505fe540e014665978141f401ecbf58",
+      "package": "target/eq-validation/audio-packages/ep2-audio-complete.zip",
+      "package_sha256": "cc5ea0e5830b7a059fa5c696b477d5e7cfb81811f1c5016b462019841f7fc238",
+      "added": [
+        {
+          "name": "Croc_Att.wav",
+          "donor_episode": "1",
+          "source": "target/eq-validation/modified-library/games/pocketeq_e1/extracted/Sounds/Croc_Att.WAV",
+          "sha256": "851543244436b9055a72b63119fe8fb3854b2a8a443756b2814c085ef2001f57",
+          "destination": "Sounds/Croc_Att.wav"
+        },
+        {
+          "name": "Croc_Die.wav",
+          "donor_episode": "1",
+          "source": "target/eq-validation/modified-library/games/pocketeq_e1/extracted/Sounds/Croc_Die.WAV",
+          "sha256": "4393cdcb618b4fd223225b2141844eb3e0d04531ff71d485ef75af43edff4549",
+          "destination": "Sounds/Croc_Die.wav"
+        },
+        {
+          "name": "Croc_Hit.wav",
+          "donor_episode": "1",
+          "source": "target/eq-validation/modified-library/games/pocketeq_e1/extracted/Sounds/Croc_Hit.WAV",
+          "sha256": "d6d10f34502d3ac51bff928707103617538f333ca91d692a2ca238151bdac4a2",
+          "destination": "Sounds/Croc_Hit.wav"
+        },
+        {
+          "name": "Rat_Att.wav",
+          "donor_episode": "1",
+          "source": "target/eq-validation/modified-library/games/pocketeq_e1/extracted/Sounds/Rat_Att.WAV",
+          "sha256": "ac8aac8d480082348c5da85074f759b7791fca273fc1c6bba8050de293b1edde",
+          "destination": "Sounds/Rat_Att.wav"
+        },
+        {
+          "name": "Rat_Die.wav",
+          "donor_episode": "1",
+          "source": "target/eq-validation/modified-library/games/pocketeq_e1/extracted/Sounds/Rat_Die.WAV",
+          "sha256": "76e2b884baa219d38ab53d61e29fa3e7b9e18f35395a5a2f66fb8cbaa7b11d4c",
+          "destination": "Sounds/Rat_Die.wav"
+        },
+        {
+          "name": "Rat_Hit.wav",
+          "donor_episode": "1",
+          "source": "target/eq-validation/modified-library/games/pocketeq_e1/extracted/Sounds/Rat_Hit.WAV",
+          "sha256": "595be8b7a3f86778952aee6b5e7a14e7fe36542720970a43980396bc758f992b",
+          "destination": "Sounds/Rat_Hit.wav"
+        }
+      ],
+      "unresolved": []
+    },
+    "3": {
+      "original_package_sha256": "083a4b276ce7c332c6382e739e22c1360d3111d367ea601943eedfc0ad246f99",
+      "package": "target/eq-validation/audio-packages/ep3-audio-complete.zip",
+      "package_sha256": "1b2d633a88413164f7a0c2e6664e290143cf57ba1cd93bb1917a7487ffc1464b",
+      "added": [
+        {
+          "name": "AviakAtt.wav",
+          "donor_episode": "2",
+          "source": "target/eq-validation/modified-library/games/eq_e2/extracted/Sounds/AviakAtt.WAV",
+          "sha256": "6874f6494ec07a862d98bf5466fbb7053965610a23800c843e03f5d636936443",
+          "destination": "Sounds/AviakAtt.wav"
+        },
+        {
+          "name": "AviakDie.wav",
+          "donor_episode": "2",
+          "source": "target/eq-validation/modified-library/games/eq_e2/extracted/Sounds/AviakDie.wav",
+          "sha256": "c6fd0106e419336f65ad48f133318a7676f6f8a1d8e6ad686df7c6c512855b35",
+          "destination": "Sounds/AviakDie.wav"
+        },
+        {
+          "name": "AviakHit.wav",
+          "donor_episode": "2",
+          "source": "target/eq-validation/modified-library/games/eq_e2/extracted/Sounds/AviakHit.WAV",
+          "sha256": "95bb14aa7a4ba353816125e37a135d6bfb2313204a43aaa8ffd9b6234763ad2b",
+          "destination": "Sounds/AviakHit.wav"
+        },
+        {
+          "name": "AviakSAt.wav",
+          "donor_episode": "2",
+          "source": "target/eq-validation/modified-library/games/eq_e2/extracted/Sounds/AviakSAt.WAV",
+          "sha256": "72fd3298bd1bdcb8069e26c466a70f9e4869ec7b01e51fcbc2cbcd81b706b784",
+          "destination": "Sounds/AviakSAt.wav"
+        },
+        {
+          "name": "Centaur_atk.wav",
+          "donor_episode": "2",
+          "source": "target/eq-validation/modified-library/games/eq_e2/extracted/Sounds/centaur_atk.wav",
+          "sha256": "17707aa87111436695475820ca4dcf9749f3be4da7f4be7d55ed6168140e5785",
+          "destination": "Sounds/Centaur_atk.wav"
+        },
+        {
+          "name": "Centaur_dam.wav",
+          "donor_episode": "2",
+          "source": "target/eq-validation/modified-library/games/eq_e2/extracted/Sounds/centaur_dam.wav",
+          "sha256": "2e1e527278bfbeb32b8fdf618a92b5285148d8026259445cb71b76815d39b084",
+          "destination": "Sounds/Centaur_dam.wav"
+        },
+        {
+          "name": "Centaur_dth.wav",
+          "donor_episode": "2",
+          "source": "target/eq-validation/modified-library/games/eq_e2/extracted/Sounds/centaur_dth.wav",
+          "sha256": "d7246ad17b78c141c31906a0760a1b6c1e0f4a0fa896ab82aca88a672aae6170",
+          "destination": "Sounds/Centaur_dth.wav"
+        },
+        {
+          "name": "Croc_Att.wav",
+          "donor_episode": "1",
+          "source": "target/eq-validation/modified-library/games/pocketeq_e1/extracted/Sounds/Croc_Att.WAV",
+          "sha256": "851543244436b9055a72b63119fe8fb3854b2a8a443756b2814c085ef2001f57",
+          "destination": "Sounds/Croc_Att.wav"
+        },
+        {
+          "name": "Croc_Die.wav",
+          "donor_episode": "1",
+          "source": "target/eq-validation/modified-library/games/pocketeq_e1/extracted/Sounds/Croc_Die.WAV",
+          "sha256": "4393cdcb618b4fd223225b2141844eb3e0d04531ff71d485ef75af43edff4549",
+          "destination": "Sounds/Croc_Die.wav"
+        },
+        {
+          "name": "Croc_Hit.wav",
+          "donor_episode": "1",
+          "source": "target/eq-validation/modified-library/games/pocketeq_e1/extracted/Sounds/Croc_Hit.WAV",
+          "sha256": "d6d10f34502d3ac51bff928707103617538f333ca91d692a2ca238151bdac4a2",
+          "destination": "Sounds/Croc_Hit.wav"
+        },
+        {
+          "name": "GnollAtt.wav",
+          "donor_episode": "2",
+          "source": "target/eq-validation/modified-library/games/eq_e2/extracted/Sounds/GnollAtt.WAV",
+          "sha256": "9beb0694fed8beff0246612d5b999856e29cde93050fa184bda0cc3d41e31ae7",
+          "destination": "Sounds/GnollAtt.wav"
+        },
+        {
+          "name": "GnollHit.wav",
+          "donor_episode": "2",
+          "source": "target/eq-validation/modified-library/games/eq_e2/extracted/Sounds/GnollHit.WAV",
+          "sha256": "4dace83427765c7623c5a9c9cb6b59d637cfc667816650b6e1bc8bede496e0a4",
+          "destination": "Sounds/GnollHit.wav"
+        },
+        {
+          "name": "Rat_Att.wav",
+          "donor_episode": "1",
+          "source": "target/eq-validation/modified-library/games/pocketeq_e1/extracted/Sounds/Rat_Att.WAV",
+          "sha256": "ac8aac8d480082348c5da85074f759b7791fca273fc1c6bba8050de293b1edde",
+          "destination": "Sounds/Rat_Att.wav"
+        },
+        {
+          "name": "Rat_Die.wav",
+          "donor_episode": "1",
+          "source": "target/eq-validation/modified-library/games/pocketeq_e1/extracted/Sounds/Rat_Die.WAV",
+          "sha256": "76e2b884baa219d38ab53d61e29fa3e7b9e18f35395a5a2f66fb8cbaa7b11d4c",
+          "destination": "Sounds/Rat_Die.wav"
+        },
+        {
+          "name": "Rat_Hit.wav",
+          "donor_episode": "1",
+          "source": "target/eq-validation/modified-library/games/pocketeq_e1/extracted/Sounds/Rat_Hit.WAV",
+          "sha256": "595be8b7a3f86778952aee6b5e7a14e7fe36542720970a43980396bc758f992b",
+          "destination": "Sounds/Rat_Hit.wav"
+        }
+      ],
+      "unresolved": []
+    }
+  },
+  "common_assets": {
+    "1-2": {
+      "shared": 44,
+      "different": []
+    },
+    "2-3": {
+      "shared": 56,
+      "different": []
+    }
+  }
+}

@@ -1,0 +1,327 @@
+{
+  "everquest": {
+    "recommended": "stylus",
+    "needs": [
+      "stylus"
+    ],
+    "steps": {
+      "zh": [
+        "先選擇角色，進入 Freeport。",
+        "點地移動；使用遊戲內背包、法術書、任務與地圖。",
+        "遊戲右上角 Options 與模擬器的「操作方式」是不同入口。"
+      ],
+      "en": [
+        "Select a character and enter Freeport.",
+        "Tap to move; use the in-game inventory, spellbook, quests and map.",
+        "The game’s Options button is separate from the emulator’s Controls menu."
+      ]
+    },
+    "save": {
+      "zh": "請先使用軟體內的保存／退出功能，再備份進度 ZIP。備份只包含已寫出的進度，不是目前執行畫面的快照。",
+      "en": "Save inside the program before exporting progress. A progress ZIP contains written files, not a snapshot of the running screen."
+    }
+  },
+  "everquest-e2": {
+    "recommended": "stylus",
+    "needs": [
+      "stylus"
+    ],
+    "steps": {
+      "zh": [
+        "選角後進入 Qeynos。",
+        "點地移動，與 NPC 對話；每次點擊只應翻一頁。",
+        "從遊戲 Options 正常保存退出，再下載進度備份。"
+      ],
+      "en": [
+        "Select a character and enter Qeynos.",
+        "Tap to move and talk to NPCs; one tap should advance one page.",
+        "Save and exit through the game’s Options before exporting progress."
+      ]
+    },
+    "save": {
+      "zh": "請先使用軟體內的保存／退出功能，再備份進度 ZIP。備份只包含已寫出的進度，不是目前執行畫面的快照。",
+      "en": "Save inside the program before exporting progress. A progress ZIP contains written files, not a snapshot of the running screen."
+    }
+  },
+  "everquest-e3": {
+    "recommended": "stylus",
+    "needs": [
+      "stylus",
+      "text"
+    ],
+    "steps": {
+      "zh": [
+        "此版本需要合法註冊設定；註冊對話框與世界操作分開驗證。",
+        "選角後進入 Butcherblock；點地移動、開啟地圖與遊戲 Options。",
+        "需要輸入時可開啟模擬器鍵盤；可使用主機 IME 組字，再送入客體。"
+      ],
+      "en": [
+        "This version requires valid registration; the registration dialog and world controls are tested separately.",
+        "Select a character, enter Butcherblock, tap to move and open the map or in-game Options.",
+        "Open the emulator keyboard for text; Host IME composition can be committed to the guest."
+      ]
+    },
+    "save": {
+      "zh": "請先使用軟體內的保存／退出功能，再備份進度 ZIP。備份只包含已寫出的進度，不是目前執行畫面的快照。",
+      "en": "Save inside the program before exporting progress. A progress ZIP contains written files, not a snapshot of the running screen."
+    }
+  },
+  "tucows_164867_Pocket_Quake": {
+    "recommended": "desktop",
+    "needs": [
+      "direction",
+      "mouse",
+      "keyboard"
+    ],
+    "steps": {
+      "zh": [
+        "先在該版本的設定確認移動、確認與射擊按鍵。",
+        "滑鼠目前作絕對位置觸控筆；相對滑鼠及游標擷取尚未提供。",
+        "不同 Quake port 的操作與相容性結果不能互用。"
+      ],
+      "en": [
+        "Check movement, confirmation and fire bindings in this port’s settings.",
+        "The mouse currently acts as an absolute stylus; relative mouse and pointer lock are not available.",
+        "Controls and compatibility results do not transfer between Quake ports."
+      ]
+    },
+    "save": {
+      "zh": "請先使用軟體內的保存／退出功能，再備份進度 ZIP。備份只包含已寫出的進度，不是目前執行畫面的快照。",
+      "en": "Save inside the program before exporting progress. A progress ZIP contains written files, not a snapshot of the running screen."
+    }
+  },
+  "zuma-deluxe-ppc": {
+    "recommended": "stylus",
+    "needs": [
+      "stylus",
+      "mouse"
+    ],
+    "steps": {
+      "zh": [
+        "先進入遊戲關卡。",
+        "指向畫面目標並點擊；以實際射擊落點確認座標。",
+        "暫停與離開請依遊戲選單，模擬器選單會暫停客體，仍請區分遊戲內保存與主機備份。"
+      ],
+      "en": [
+        "Enter a level.",
+        "Point and click; verify aim using the actual shot.",
+        "Use the game’s pause and exit menu; the emulator menu pauses execution; game saves and host backups remain separate."
+      ]
+    },
+    "save": {
+      "zh": "請先使用軟體內的保存／退出功能，再備份進度 ZIP。備份只包含已寫出的進度，不是目前執行畫面的快照。",
+      "en": "Save inside the program before exporting progress. A progress ZIP contains written files, not a snapshot of the running screen."
+    }
+  },
+  "q3ce-1.0-release-armv4ppc2003": {
+    "recommended": "desktop",
+    "needs": [
+      "direction",
+      "mouse",
+      "keyboard"
+    ],
+    "steps": {
+      "zh": [
+        "先在該版本的設定確認移動、確認與射擊按鍵。",
+        "滑鼠目前作絕對位置觸控筆；相對滑鼠及游標擷取尚未提供。",
+        "不同 Quake port 的操作與相容性結果不能互用。"
+      ],
+      "en": [
+        "Check movement, confirmation and fire bindings in this port’s settings.",
+        "The mouse currently acts as an absolute stylus; relative mouse and pointer lock are not available.",
+        "Controls and compatibility results do not transfer between Quake ports."
+      ]
+    },
+    "save": {
+      "zh": "請先使用軟體內的保存／退出功能，再備份進度 ZIP。備份只包含已寫出的進度，不是目前執行畫面的快照。",
+      "en": "Save inside the program before exporting progress. A progress ZIP contains written files, not a snapshot of the running screen."
+    }
+  },
+  "wm-uno": {
+    "recommended": "stylus",
+    "needs": [
+      "stylus",
+      "text"
+    ],
+    "steps": {
+      "zh": [
+        "先完成姓名與選單；需要時開啟鍵盤。",
+        "以畫面點選牌及該版本提供的操作。",
+        "此版本使用 480×800 畫面，注意縮放後的小型目標。"
+      ],
+      "en": [
+        "Complete name entry and menus; open the keyboard when needed.",
+        "Select cards using the controls supported by this version.",
+        "This version uses 480×800; check small targets after scaling."
+      ]
+    },
+    "save": {
+      "zh": "請先使用軟體內的保存／退出功能，再備份進度 ZIP。備份只包含已寫出的進度，不是目前執行畫面的快照。",
+      "en": "Save inside the program before exporting progress. A progress ZIP contains written files, not a snapshot of the running screen."
+    }
+  },
+  "tucows_32347_BasiCE": {
+    "recommended": "text",
+    "needs": [
+      "stylus",
+      "text",
+      "keyboard"
+    ],
+    "steps": {
+      "zh": [
+        "先開啟此版本提供的輸入／編輯介面。",
+        "輸入文字、移動游標與退格；切換模擬器選單時確認焦點。",
+        "保存及重讀只依該版實際功能，不保證所有編輯命令可用。"
+      ],
+      "en": [
+        "Open the input or editor provided by this version.",
+        "Type, move the cursor and backspace; check focus when using emulator menus.",
+        "Save and reopen using this version’s actual features; editing support is not guaranteed."
+      ]
+    },
+    "save": {
+      "zh": "請先使用軟體內的保存／退出功能，再備份進度 ZIP。備份只包含已寫出的進度，不是目前執行畫面的快照。",
+      "en": "Save inside the program before exporting progress. A progress ZIP contains written files, not a snapshot of the running screen."
+    }
+  },
+  "tucows_212355_Calc98": {
+    "recommended": "stylus",
+    "needs": [
+      "stylus",
+      "text"
+    ],
+    "steps": {
+      "zh": [
+        "點畫面數字與運算鍵，例如 12 + 34 =。",
+        "以實際結果確認點擊沒有重複；清除後再試鍵盤。",
+        "進階功能請依該版本提供的頁面與按鈕操作。"
+      ],
+      "en": [
+        "Tap digits and operations, for example 12 + 34 =.",
+        "Verify the result and check for duplicate input; clear and try the keyboard.",
+        "Use the function pages available in this version."
+      ]
+    },
+    "save": {
+      "zh": "請先使用軟體內的保存／退出功能，再備份進度 ZIP。備份只包含已寫出的進度，不是目前執行畫面的快照。",
+      "en": "Save inside the program before exporting progress. A progress ZIP contains written files, not a snapshot of the running screen."
+    }
+  },
+  "calc-9853-wince": {
+    "recommended": "stylus",
+    "needs": [
+      "stylus",
+      "text"
+    ],
+    "steps": {
+      "zh": [
+        "點畫面數字與運算鍵，例如 12 + 34 =。",
+        "以實際結果確認點擊沒有重複；清除後再試鍵盤。",
+        "進階功能請依該版本提供的頁面與按鈕操作。"
+      ],
+      "en": [
+        "Tap digits and operations, for example 12 + 34 =.",
+        "Verify the result and check for duplicate input; clear and try the keyboard.",
+        "Use the function pages available in this version."
+      ]
+    },
+    "save": {
+      "zh": "請先使用軟體內的保存／退出功能，再備份進度 ZIP。備份只包含已寫出的進度，不是目前執行畫面的快照。",
+      "en": "Save inside the program before exporting progress. A progress ZIP contains written files, not a snapshot of the running screen."
+    }
+  },
+  "tucows_315702_Pocket_Quake_II": {
+    "recommended": "desktop",
+    "needs": [
+      "direction",
+      "mouse",
+      "keyboard"
+    ],
+    "steps": {
+      "zh": [
+        "先在該版本的設定確認移動、確認與射擊按鍵。",
+        "滑鼠目前作絕對位置觸控筆；相對滑鼠及游標擷取尚未提供。",
+        "不同 Quake port 的操作與相容性結果不能互用。"
+      ],
+      "en": [
+        "Check movement, confirmation and fire bindings in this port’s settings.",
+        "The mouse currently acts as an absolute stylus; relative mouse and pointer lock are not available.",
+        "Controls and compatibility results do not transfer between Quake ports."
+      ]
+    },
+    "save": {
+      "zh": "請先使用軟體內的保存／退出功能，再備份進度 ZIP。備份只包含已寫出的進度，不是目前執行畫面的快照。",
+      "en": "Save inside the program before exporting progress. A progress ZIP contains written files, not a snapshot of the running screen."
+    }
+  },
+  "haali-reader-2.0b227-a-book-reader-for-windows-ce": {
+    "recommended": "text",
+    "needs": [
+      "stylus",
+      "text",
+      "hardware"
+    ],
+    "steps": {
+      "zh": [
+        "先確認指定版本可啟動；現有目錄記錄有系統 DLL 相容性限制。",
+        "開啟自己的文字檔，依軟體功能翻頁、搜尋及使用書籤。",
+        "硬體翻頁鍵須另行確認映射，通用 CE 按鍵可選，指定機型參照尚待驗證。"
+      ],
+      "en": [
+        "First check that this version starts; existing catalog records include system DLL limitations.",
+        "Open your own text and use available paging, search and bookmarks.",
+        "Hardware page keys need separate mapping verification; generic CE buttons are available; device-specific reference testing is pending."
+      ]
+    },
+    "save": {
+      "zh": "請先使用軟體內的保存／退出功能，再備份進度 ZIP。備份只包含已寫出的進度，不是目前執行畫面的快照。",
+      "en": "Save inside the program before exporting progress. A progress ZIP contains written files, not a snapshot of the running screen."
+    }
+  },
+  "20221104_20221104_0126": {
+    "recommended": "text",
+    "needs": [
+      "stylus",
+      "text",
+      "hardware"
+    ],
+    "steps": {
+      "zh": [
+        "先確認指定版本可啟動；現有目錄記錄有系統 DLL 相容性限制。",
+        "開啟自己的文字檔，依軟體功能翻頁、搜尋及使用書籤。",
+        "硬體翻頁鍵須另行確認映射，通用 CE 按鍵可選，指定機型參照尚待驗證。"
+      ],
+      "en": [
+        "First check that this version starts; existing catalog records include system DLL limitations.",
+        "Open your own text and use available paging, search and bookmarks.",
+        "Hardware page keys need separate mapping verification; generic CE buttons are available; device-specific reference testing is pending."
+      ]
+    },
+    "save": {
+      "zh": "請先使用軟體內的保存／退出功能，再備份進度 ZIP。備份只包含已寫出的進度，不是目前執行畫面的快照。",
+      "en": "Save inside the program before exporting progress. A progress ZIP contains written files, not a snapshot of the running screen."
+    }
+  },
+  "Nova_EQPPC_USA": {
+    "recommended": "stylus",
+    "needs": [
+      "stylus"
+    ],
+    "steps": {
+      "zh": [
+        "先選擇角色，進入 Freeport。",
+        "點地移動；使用遊戲內背包、法術書、任務與地圖。",
+        "遊戲右上角 Options 與模擬器的「操作方式」是不同入口。"
+      ],
+      "en": [
+        "Select a character and enter Freeport.",
+        "Tap to move; use the in-game inventory, spellbook, quests and map.",
+        "The game’s Options button is separate from the emulator’s Controls menu."
+      ]
+    },
+    "save": {
+      "zh": "請先使用軟體內的保存／退出功能，再備份進度 ZIP。備份只包含已寫出的進度，不是目前執行畫面的快照。",
+      "en": "Save inside the program before exporting progress. A progress ZIP contains written files, not a snapshot of the running screen."
+    }
+  }
+}

@@ -191,7 +191,7 @@ impl ManagedGame {
                 0x0d | 0x20 => self.fire(),
                 _ => {}
             },
-            InputEvent::KeyUp { .. } => {}
+            InputEvent::KeyUp { .. } | InputEvent::Text { .. } => {}
         }
     }
 
@@ -324,10 +324,21 @@ pub(crate) fn run(
         let mut stop = false;
         loop {
             match input_rx.try_recv() {
-                Ok(InputCommand::Input(event)) => game.handle(event),
+                Ok(InputCommand::Input(event)) => {
+                    if !state.paused.load(std::sync::atomic::Ordering::Acquire) {
+                        game.handle(event);
+                    }
+                }
                 Ok(InputCommand::Stop) => stop = true,
+                Ok(InputCommand::SetPaused(value)) => state
+                    .paused
+                    .store(value, std::sync::atomic::Ordering::Release),
+                Ok(InputCommand::SetVolume(_)) => {}
                 Err(TryRecvError::Empty) => break,
-                Err(TryRecvError::Disconnected) => stop = true,
+                Err(TryRecvError::Disconnected) => {
+                    stop = true;
+                    break;
+                }
             }
         }
         if stop {
@@ -335,6 +346,10 @@ pub(crate) fn run(
                 "Managed vAlienAttack renderer completed for {}",
                 exe.display()
             );
+        }
+        if state.paused.load(std::sync::atomic::Ordering::Acquire) {
+            thread::sleep(Duration::from_millis(16));
+            continue;
         }
         game.tick();
         game.render(&mut framebuffer);

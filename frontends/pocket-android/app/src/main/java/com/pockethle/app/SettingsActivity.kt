@@ -37,6 +37,14 @@ class SettingsActivity : AppCompatActivity() {
             rootDir = LibraryPaths.root(requireContext())
             current = readConfig() ?: LauncherConfig.default()
             setPreferencesFromResource(R.xml.preferences_global, rootKey)
+            findPreference<SwitchPreferenceCompat>("apply_run_limits")?.apply {
+                isChecked = current.applyRunLimits
+                setOnPreferenceChangeListener { _, newValue ->
+                    current = current.copy(applyRunLimits = newValue as Boolean)
+                    writeConfig()
+                    true
+                }
+            }
             findPreference<ListPreference>("default_cpu_backend")?.apply {
                 value = current.defaultCpuBackend
                 setOnPreferenceChangeListener { _, newValue ->

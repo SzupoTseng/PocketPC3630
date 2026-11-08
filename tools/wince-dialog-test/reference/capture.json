@@ -1,0 +1,13 @@
+{
+  "probe_sha256": "e136d099b91fa1f7f3790d58f6bb01ace31f98b91b73ffe1d469919c26a80189",
+  "reference_rom": "Pocket PC 2003",
+  "scope": "Synthetic dialog API conformance; no game code or registration data",
+  "date": "2026-11-07",
+  "captures": {
+    "device-emulator-ppc2003.txt": "Pocket PC 2003 reference",
+    "pocketpc3630-before.txt": "Before focus and tagged-color fixes; styles unimplemented",
+    "pocketpc3630-focus-colors.txt": "Rebuilt native CLI; initial focus and three CE tagged colors now match. Style and geometry still differ.",
+    "pocketpc3630-styles.txt": "Native CLI after dialog style metadata support; focus and tagged colors match, geometry and font metrics still differ; child visible bit during init remains different."
+  },
+  "latest_cli_sha256": "eb7bd4338f6df02600185225bee31e35382970484a323dc63d3ac7c331395af7"
+}

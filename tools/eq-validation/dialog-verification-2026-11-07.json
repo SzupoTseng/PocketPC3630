@@ -1,0 +1,26 @@
+{
+  "scope": "Native dialog focus, tagged system colors, and dialog style metadata; not full EQ gameplay acceptance",
+  "workspace_tests": {
+    "exit_code": 0,
+    "passed": 582,
+    "ignored": 11
+  },
+  "fmt_exit_code": 0,
+  "native_probe_exit_code": 0,
+  "probe_sha256": "e136d099b91fa1f7f3790d58f6bb01ace31f98b91b73ffe1d469919c26a80189",
+  "cli_sha256": "eb7bd4338f6df02600185225bee31e35382970484a323dc63d3ac7c331395af7",
+  "ep1_ep3_registration_pixels_match_prior_native": true,
+  "game_runs_end": "Intentional max_slices=50000; no full gameplay validation",
+  "remaining": [
+    "caption placement and geometry",
+    "font metrics and font-dependent dialog units",
+    "child visible bit during WM_INITDIALOG",
+    "EP1-3 full gameplay, audio and save/reopen acceptance",
+    "EP2 original package provenance and registration prerequisites"
+  ],
+  "clippy": {
+    "command": "cargo clippy --workspace --all-targets --offline",
+    "exit_code": 0,
+    "warning": "Existing unknown clippy::chunks_exact_to_as_chunks lint; not a warning-free check"
+  }
+}

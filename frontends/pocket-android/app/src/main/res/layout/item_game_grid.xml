@@ -78,8 +78,8 @@
 
         <ImageButton
             android:id="@+id/btn_more"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:layout_gravity="top|end"
             android:layout_margin="4dp"
             android:background="@drawable/bg_card_overflow"

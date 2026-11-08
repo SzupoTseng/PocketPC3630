@@ -443,6 +443,7 @@ pub(crate) mod tests {
             wave_out_format: GuestFormat::default(),
             wave_out: Default::default(),
             hss: Default::default(),
+            fmod: Default::default(),
             gz_files: Default::default(),
             posted_messages: Default::default(),
             main_window_destroyed: false,

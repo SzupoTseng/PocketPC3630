@@ -1,0 +1,982 @@
+{
+  "date": "2026-11-08",
+  "reference": "PPC2003 CE 4.21 build 1088; Pocket_PC/PPC_2003_SE.xml",
+  "scope": "One 150ms skin press/release per non-power button; four separate 3s holds. Not full DE-01-08 acceptance. No ROM/skin binary redistribution.",
+  "hashes": {
+    "devemu.exe": "10450af3fa230ddda637bf2fd11e39fd2127ff791edc54403fdf7b073cb3a8ee",
+    "images/ppc2003.bin": "7c4b6f77c70bd25d267300fb7975446057f700120d4df428bb6bf948bcdfd552",
+    "skins/Pocket_PC/PPC_2003_SE.xml": "b499ea5b277242e6d967ec658862e985428e360b4c7af1589482585e85a5d0f5",
+    "skins/Pocket_PC/Pocket_PC_Emulator_Mask.bmp": "ee633a87ec7409ec18e63bfc57c1b8984335fe064ec43b36c6ce684f9ca712ec",
+    "skins/Pocket_PC/Pocket_PC_Emulator_Up.bmp": "777a9415bc7fc5ddedadfca618887888f28f219dac971f1a92ebfe8211c3da00",
+    "skins/Pocket_PC/Pocket_PC_Emulator_Down.bmp": "bfdedf0566d3d3c425dd39d8088fc3dc63f22e0dc3d63382971077cb6f362f6f"
+  },
+  "probe_sha256": "cae8881509e7dd8c3e02b6757153d246844ef3c076b571fb4fa976bd33bdec0a",
+  "single_press": [
+    {
+      "name": "record",
+      "scan_code": 68,
+      "policy": "hold",
+      "mapping_rgb": [
+        128,
+        64,
+        255
+      ],
+      "bbox": [
+        45,
+        21,
+        87,
+        52
+      ],
+      "interior": [
+        60,
+        36
+      ],
+      "events": [
+        {
+          "seq": 8,
+          "tick": 2511195,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 121,
+          "l": 4784129,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 9,
+          "tick": 2511340,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 121,
+          "l": 3226009601,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=8 tick=26515b mode=1 target=A msg=100 w=79 l=490001 sync=0 async=ffff focus=2e5f80\r\nevent seq=9 tick=2651ec mode=1 target=A msg=101 w=79 l=c0490001 sync=0 async=0 focus=2e5f80\r\n"
+    },
+    {
+      "name": "rocker-up",
+      "scan_code": 72,
+      "policy": "hold",
+      "mapping_rgb": [
+        128,
+        128,
+        255
+      ],
+      "bbox": [
+        0,
+        79,
+        35,
+        113
+      ],
+      "interior": [
+        16,
+        96
+      ],
+      "events": [
+        {
+          "seq": 10,
+          "tick": 2512808,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 7077889,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 11,
+          "tick": 2512963,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 38,
+          "l": 3228303361,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=a tick=2657a8 mode=1 target=A msg=100 w=26 l=6c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=b tick=265843 mode=1 target=A msg=101 w=26 l=c06c0001 sync=0 async=0 focus=2e5f80\r\n"
+    },
+    {
+      "name": "rocker-down",
+      "scan_code": 80,
+      "policy": "hold",
+      "mapping_rgb": [
+        0,
+        0,
+        192
+      ],
+      "bbox": [
+        0,
+        116,
+        35,
+        150
+      ],
+      "interior": [
+        16,
+        132
+      ],
+      "events": [
+        {
+          "seq": 12,
+          "tick": 2514337,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 40,
+          "l": 6946817,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 13,
+          "tick": 2514481,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 40,
+          "l": 3228172289,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=c tick=265da1 mode=1 target=A msg=100 w=28 l=6a0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=d tick=265e31 mode=1 target=A msg=101 w=28 l=c06a0001 sync=0 async=0 focus=2e5f80\r\n"
+    },
+    {
+      "name": "softkey 1",
+      "scan_code": 59,
+      "policy": "click",
+      "mapping_rgb": [
+        255,
+        0,
+        255
+      ],
+      "bbox": [
+        55,
+        401,
+        115,
+        434
+      ],
+      "interior": [
+        68,
+        419
+      ],
+      "events": [
+        {
+          "seq": 14,
+          "tick": 2516006,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 112,
+          "l": 3211265,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        },
+        {
+          "seq": 15,
+          "tick": 2516007,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 112,
+          "l": 3224436737,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=e tick=266426 mode=1 target=A msg=100 w=70 l=310001 sync=0 async=0 focus=2e5f80\r\nevent seq=f tick=266427 mode=1 target=A msg=101 w=70 l=c0310001 sync=0 async=0 focus=2e5f80\r\n"
+    },
+    {
+      "name": "softkey 2",
+      "scan_code": 60,
+      "policy": "click",
+      "mapping_rgb": [
+        255,
+        0,
+        0
+      ],
+      "bbox": [
+        116,
+        406,
+        180,
+        434
+      ],
+      "interior": [
+        129,
+        419
+      ],
+      "events": [
+        {
+          "seq": 16,
+          "tick": 2517587,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 113,
+          "l": 3735553,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        },
+        {
+          "seq": 17,
+          "tick": 2517588,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 113,
+          "l": 3224961025,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=10 tick=266a53 mode=1 target=A msg=100 w=71 l=390001 sync=0 async=0 focus=2e5f80\r\nevent seq=11 tick=266a54 mode=1 target=A msg=101 w=71 l=c0390001 sync=0 async=0 focus=2e5f80\r\n"
+    },
+    {
+      "name": "softkey 3",
+      "scan_code": 66,
+      "policy": "click",
+      "mapping_rgb": [
+        0,
+        255,
+        255
+      ],
+      "bbox": [
+        180,
+        406,
+        242,
+        434
+      ],
+      "interior": [
+        193,
+        419
+      ],
+      "events": [
+        {
+          "seq": 18,
+          "tick": 2519166,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 119,
+          "l": 5701633,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        },
+        {
+          "seq": 19,
+          "tick": 2519167,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 119,
+          "l": 3226927105,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=12 tick=26707e mode=1 target=A msg=100 w=77 l=570001 sync=0 async=0 focus=2e5f80\r\nevent seq=13 tick=26707f mode=1 target=A msg=101 w=77 l=c0570001 sync=0 async=0 focus=2e5f80\r\n"
+    },
+    {
+      "name": "softkey 4",
+      "scan_code": 67,
+      "policy": "click",
+      "mapping_rgb": [
+        0,
+        255,
+        215
+      ],
+      "bbox": [
+        243,
+        402,
+        303,
+        434
+      ],
+      "interior": [
+        255,
+        419
+      ],
+      "events": [
+        {
+          "seq": 20,
+          "tick": 2520713,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 120,
+          "l": 4259841,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        },
+        {
+          "seq": 21,
+          "tick": 2520714,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 120,
+          "l": 3225485313,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=14 tick=267689 mode=1 target=A msg=100 w=78 l=410001 sync=0 async=0 focus=2e5f80\r\nevent seq=15 tick=26768a mode=1 target=A msg=101 w=78 l=c0410001 sync=0 async=0 focus=2e5f80\r\n"
+    },
+    {
+      "name": "dpad-up",
+      "scan_code": 72,
+      "policy": "hold",
+      "mapping_rgb": [
+        255,
+        255,
+        0
+      ],
+      "bbox": [
+        155,
+        452,
+        207,
+        474
+      ],
+      "interior": [
+        176,
+        461
+      ],
+      "events": [
+        {
+          "seq": 22,
+          "tick": 2522111,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 7077889,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 23,
+          "tick": 2522266,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 38,
+          "l": 3228303361,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=16 tick=267bff mode=1 target=A msg=100 w=26 l=6c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=17 tick=267c9a mode=1 target=A msg=101 w=26 l=c06c0001 sync=0 async=0 focus=2e5f80\r\n"
+    },
+    {
+      "name": "dpad-down",
+      "scan_code": 80,
+      "policy": "hold",
+      "mapping_rgb": [
+        255,
+        175,
+        0
+      ],
+      "bbox": [
+        156,
+        504,
+        207,
+        523
+      ],
+      "interior": [
+        167,
+        512
+      ],
+      "events": [
+        {
+          "seq": 24,
+          "tick": 2523671,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 40,
+          "l": 6946817,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 25,
+          "tick": 2523820,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 40,
+          "l": 3228172289,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=18 tick=268217 mode=1 target=A msg=100 w=28 l=6a0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=19 tick=2682ac mode=1 target=A msg=101 w=28 l=c06a0001 sync=0 async=0 focus=2e5f80\r\n"
+    },
+    {
+      "name": "dpad-left",
+      "scan_code": 75,
+      "policy": "hold",
+      "mapping_rgb": [
+        255,
+        215,
+        0
+      ],
+      "bbox": [
+        140,
+        463,
+        165,
+        514
+      ],
+      "interior": [
+        152,
+        501
+      ],
+      "events": [
+        {
+          "seq": 26,
+          "tick": 2525233,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 37,
+          "l": 7143425,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 27,
+          "tick": 2525387,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 37,
+          "l": 3228368897,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=1a tick=268831 mode=1 target=A msg=100 w=25 l=6d0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=1b tick=2688cb mode=1 target=A msg=101 w=25 l=c06d0001 sync=0 async=0 focus=2e5f80\r\n"
+    },
+    {
+      "name": "dpad-right",
+      "scan_code": 77,
+      "policy": "hold",
+      "mapping_rgb": [
+        255,
+        135,
+        0
+      ],
+      "bbox": [
+        197,
+        463,
+        221,
+        514
+      ],
+      "interior": [
+        207,
+        473
+      ],
+      "events": [
+        {
+          "seq": 28,
+          "tick": 2526762,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 39,
+          "l": 7274497,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 29,
+          "tick": 2526904,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 39,
+          "l": 3228499969,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=1c tick=268e2a mode=1 target=A msg=100 w=27 l=6f0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=1d tick=268eb8 mode=1 target=A msg=101 w=27 l=c06f0001 sync=0 async=0 focus=2e5f80\r\n"
+    },
+    {
+      "name": "dpad-action",
+      "scan_code": 28,
+      "policy": "click",
+      "mapping_rgb": [
+        255,
+        95,
+        0
+      ],
+      "bbox": [
+        160,
+        473,
+        203,
+        503
+      ],
+      "interior": [
+        174,
+        488
+      ],
+      "events": [
+        {
+          "seq": 30,
+          "tick": 2528489,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 13,
+          "l": 5898241,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        },
+        {
+          "seq": 31,
+          "tick": 2528490,
+          "mode": 1,
+          "target": "A",
+          "msg": 258,
+          "w": 13,
+          "l": 5898241,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        },
+        {
+          "seq": 32,
+          "tick": 2528491,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 13,
+          "l": 3227123713,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=1e tick=2694e9 mode=1 target=A msg=100 w=d l=5a0001 sync=0 async=0 focus=2e5f80\r\nevent seq=1f tick=2694ea mode=1 target=A msg=102 w=d l=5a0001 sync=0 async=0 focus=2e5f80\r\nevent seq=20 tick=2694eb mode=1 target=A msg=101 w=d l=c05a0001 sync=0 async=0 focus=2e5f80\r\n"
+    }
+  ],
+  "hold": [
+    {
+      "button": "softkey 1",
+      "policy": "click",
+      "events": [
+        {
+          "seq": 33,
+          "tick": 2571081,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 112,
+          "l": 3211265,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        },
+        {
+          "seq": 34,
+          "tick": 2571082,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 112,
+          "l": 3224436737,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=21 tick=273b49 mode=1 target=A msg=100 w=70 l=310001 sync=0 async=0 focus=2e5f80\r\nevent seq=22 tick=273b4a mode=1 target=A msg=101 w=70 l=c0310001 sync=0 async=0 focus=2e5f80\r\n"
+    },
+    {
+      "button": "dpad-up",
+      "policy": "hold",
+      "events": [
+        {
+          "seq": 35,
+          "tick": 2572556,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 7077889,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 36,
+          "tick": 2572931,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 37,
+          "tick": 2573056,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 38,
+          "tick": 2573184,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 39,
+          "tick": 2573309,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 40,
+          "tick": 2573432,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 41,
+          "tick": 2573561,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 42,
+          "tick": 2573685,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 43,
+          "tick": 2573816,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 44,
+          "tick": 2573939,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 45,
+          "tick": 2574063,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 46,
+          "tick": 2574189,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 47,
+          "tick": 2574318,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 48,
+          "tick": 2574441,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 49,
+          "tick": 2574572,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 50,
+          "tick": 2574696,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 51,
+          "tick": 2574824,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 52,
+          "tick": 2574947,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 53,
+          "tick": 2575071,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 54,
+          "tick": 2575201,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 55,
+          "tick": 2575324,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 56,
+          "tick": 2575450,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 38,
+          "l": 1080819713,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 57,
+          "tick": 2575465,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 38,
+          "l": 3228303361,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=23 tick=27410c mode=1 target=A msg=100 w=26 l=6c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=24 tick=274283 mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=25 tick=274300 mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=26 tick=274380 mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=27 tick=2743fd mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=28 tick=274478 mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=29 tick=2744f9 mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=2a tick=274575 mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=2b tick=2745f8 mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=2c tick=274673 mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=2d tick=2746ef mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=2e tick=27476d mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=2f tick=2747ee mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=30 tick=274869 mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=31 tick=2748ec mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=32 tick=274968 mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=33 tick=2749e8 mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=34 tick=274a63 mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=35 tick=274adf mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=36 tick=274b61 mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=37 tick=274bdc mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=38 tick=274c5a mode=1 target=A msg=100 w=26 l=406c0001 sync=0 async=ffff focus=2e5f80\r\nevent seq=39 tick=274c69 mode=1 target=A msg=101 w=26 l=c06c0001 sync=0 async=0 focus=2e5f80\r\n"
+    },
+    {
+      "button": "dpad-action",
+      "policy": "click",
+      "events": [
+        {
+          "seq": 58,
+          "tick": 2579875,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 13,
+          "l": 5898241,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        },
+        {
+          "seq": 59,
+          "tick": 2579876,
+          "mode": 1,
+          "target": "A",
+          "msg": 258,
+          "w": 13,
+          "l": 5898241,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        },
+        {
+          "seq": 60,
+          "tick": 2579876,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 13,
+          "l": 3227123713,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=3a tick=275da3 mode=1 target=A msg=100 w=d l=5a0001 sync=0 async=0 focus=2e5f80\r\nevent seq=3b tick=275da4 mode=1 target=A msg=102 w=d l=5a0001 sync=0 async=0 focus=2e5f80\r\nevent seq=3c tick=275da4 mode=1 target=A msg=101 w=d l=c05a0001 sync=0 async=0 focus=2e5f80\r\n"
+    },
+    {
+      "button": "record",
+      "policy": "hold",
+      "events": [
+        {
+          "seq": 61,
+          "tick": 2581336,
+          "mode": 1,
+          "target": "A",
+          "msg": 256,
+          "w": 121,
+          "l": 4784129,
+          "sync": 0,
+          "async": 65535,
+          "focus": 3039104
+        },
+        {
+          "seq": 62,
+          "tick": 2584239,
+          "mode": 1,
+          "target": "A",
+          "msg": 257,
+          "w": 121,
+          "l": 3226009601,
+          "sync": 0,
+          "async": 0,
+          "focus": 3039104
+        }
+      ],
+      "raw": "event seq=3d tick=276358 mode=1 target=A msg=100 w=79 l=490001 sync=0 async=ffff focus=2e5f80\r\nevent seq=3e tick=276eaf mode=1 target=A msg=101 w=79 l=c0490001 sync=0 async=0 focus=2e5f80\r\n"
+    }
+  ]
+}

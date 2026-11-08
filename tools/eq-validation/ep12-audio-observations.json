@@ -1,0 +1,19 @@
+{
+  "ep1": {
+    "channels": 1,
+    "sample_rate": 11025,
+    "duration_seconds": 115.30448979591837,
+    "samples": 1271232,
+    "peak": 32768,
+    "nonzero_samples": 1270073
+  },
+  "ep2": {
+    "channels": 1,
+    "sample_rate": 11025,
+    "duration_seconds": 115.30448979591837,
+    "samples": 1271232,
+    "peak": 32768,
+    "nonzero_samples": 1270073
+  },
+  "scope": "Recorded PCM is non-silent; not a listening test or complete music/combat-sound acceptance. Relaunches reuse output names and can replace earlier captures."
+}

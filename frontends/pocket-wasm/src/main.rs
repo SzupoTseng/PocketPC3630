@@ -22,6 +22,7 @@ use pocket_library::{GameEntry, Library};
 const LIBRARY_ROOT: &str = "/library";
 
 struct Session {
+    paused: bool,
     emu: Emulator,
     audio: Option<AudioTap>,
     /// RGBA pixels of the last presented frame.
@@ -43,6 +44,144 @@ thread_local! {
     static LAST_ERROR: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
     static GAME_NAME: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
     static WARNING: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+    static CONTROL_JSON: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
+}
+
+#[no_mangle]
+pub extern "C" fn pocket_controls_json(index: i32) -> *const u8 {
+    let result = (|| -> anyhow::Result<String> {
+        let library = Library::open(LIBRARY_ROOT)?;
+        let (value, overridden) = if index < 0 {
+            (
+                pocket_library::controls::read(&library.controls_path(None)?)?.unwrap_or_default(),
+                false,
+            )
+        } else {
+            let game = library
+                .games()
+                .get(index as usize)
+                .ok_or_else(|| anyhow::anyhow!("unknown program"))?;
+            library.effective_controls(&game.id)?
+        };
+        Ok(serde_json::json!({"ok":true,"value":value,"overridden":overridden}).to_string())
+    })();
+    let json = result
+        .unwrap_or_else(|e| serde_json::json!({"ok":false,"error":e.to_string()}).to_string());
+    CONTROL_JSON.with(|slot| {
+        let mut b = json.into_bytes();
+        b.push(0);
+        *slot.borrow_mut() = b;
+        slot.borrow().as_ptr()
+    })
+}
+
+#[no_mangle]
+/// Write shared controls for an installed index, or global defaults (-1).
+/// # Safety
+/// `json` must point to a readable NUL-terminated UTF-8 allocation for this call.
+pub unsafe extern "C" fn pocket_controls_write(index: i32, json: *const c_char) -> i32 {
+    if json.is_null() {
+        return -1;
+    }
+    // The caller supplies a NUL-terminated UTF-8 allocation for this call.
+    let result = (|| -> anyhow::Result<()> {
+        let text = unsafe { CStr::from_ptr(json) }.to_str()?;
+        if text.len() > 128 * 1024 {
+            anyhow::bail!("controls too large");
+        }
+        let library = Library::open(LIBRARY_ROOT)?;
+        let id = if index < 0 {
+            None
+        } else {
+            Some(
+                library
+                    .games()
+                    .get(index as usize)
+                    .ok_or_else(|| anyhow::anyhow!("unknown program"))?
+                    .id
+                    .as_str(),
+            )
+        };
+        if text == "null" {
+            let path = library.controls_path(id)?;
+            if path.exists() {
+                std::fs::remove_file(&path)?;
+            }
+            if id.is_some() {
+                let old = path.with_file_name("web-controls.json");
+                if old.exists() {
+                    std::fs::remove_file(old)?;
+                }
+            }
+        } else {
+            library.write_controls(id, &serde_json::from_str(text)?)?;
+        }
+        Ok(())
+    })();
+    match result {
+        Ok(()) => 0,
+        Err(e) => {
+            set_error(e.to_string());
+            -1
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn pocket_set_paused(paused: i32) {
+    let paused = paused != 0;
+    pocket_core::kernel::guest_clock::set_paused(paused);
+    SESSION.with(|slot| {
+        if let Some(s) = slot.borrow_mut().as_mut() {
+            s.paused = paused;
+            if let Some(p) = s.emu.process() {
+                p.state.audio.set_transport_paused(paused);
+            }
+        }
+    });
+}
+
+#[no_mangle]
+pub extern "C" fn pocket_guest_time() -> u32 {
+    pocket_core::kernel::guest_clock::milliseconds() as u32
+}
+
+#[no_mangle]
+/// Queue committed text independently of guest action bindings.
+/// # Safety
+/// `text` must point to a readable NUL-terminated UTF-8 allocation for this call.
+pub unsafe extern "C" fn pocket_text(text: *const c_char) -> i32 {
+    if text.is_null() {
+        return -1;
+    }
+    let Ok(value) = (unsafe { CStr::from_ptr(text) }).to_str() else {
+        return -1;
+    };
+    if value.len() > 16384 {
+        return -1;
+    }
+    SESSION.with(|slot| {
+        if let Some(s) = slot.borrow_mut().as_mut() {
+            s.input
+                .extend(value.encode_utf16().map(|unit| InputEvent::Text { unit }));
+            0
+        } else {
+            -1
+        }
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn pocket_set_volume(volume: u32) {
+    SESSION.with(|slot| {
+        if let Some(s) = slot.borrow().as_ref() {
+            if let Some(p) = s.emu.process() {
+                p.state
+                    .audio
+                    .set_master_volume(volume.min(1000) as f32 / 1000.0);
+            }
+        }
+    });
 }
 
 /// Warnings go to the console, where the page's developer tools and the Node
@@ -400,7 +539,9 @@ pub extern "C" fn pocket_boot(index: i32) -> i32 {
             });
             let audio = emu.audio_tap();
             SESSION.with(|slot| {
+                pocket_core::kernel::guest_clock::set_paused(false);
                 *slot.borrow_mut() = Some(Session {
+                    paused: false,
                     emu,
                     audio,
                     frame: vec![0; width as usize * height as usize * 4],
@@ -427,6 +568,9 @@ pub extern "C" fn pocket_boot(index: i32) -> i32 {
 /// call, or -1 once the game has ended or failed.
 #[no_mangle]
 pub extern "C" fn pocket_tick() -> i32 {
+    if SESSION.with(|slot| slot.borrow().as_ref().is_some_and(|s| s.paused)) {
+        return 16;
+    }
     SESSION.with(|slot| {
         let mut guard = slot.borrow_mut();
         let Some(session) = guard.as_mut() else {

@@ -16,6 +16,11 @@ data class GameEntry(
     val importedAt: Long,
     val icon: String?,
     val settings: GameSettings,
+    val alias: String = "",
+    val favorite: Boolean = false,
+    val lastPlayed: Long = 0,
+    val controlsLabel: String = "",
+    val controlsOverridden: Boolean = false,
 ) {
     companion object {
         fun fromJson(obj: JSONObject): GameEntry {
@@ -29,6 +34,11 @@ data class GameEntry(
                 importedAt = obj.optLong("imported_at"),
                 icon = obj.optString("icon").takeIf { !obj.isNull("icon") && it.isNotEmpty() },
                 settings = GameSettings.fromJson(settingsObj),
+                alias = obj.optJSONObject("presentation")?.optString("alias").orEmpty(),
+                favorite = obj.optJSONObject("presentation")?.optBoolean("favorite") ?: false,
+                lastPlayed = obj.optJSONObject("presentation")?.optLong("last_played") ?: 0,
+                controlsLabel = obj.optString("controls_label"),
+                controlsOverridden = obj.optBoolean("controls_overridden"),
             )
         }
 
@@ -90,6 +100,7 @@ data class GameSettings(
 }
 
 data class LauncherConfig(
+    val applyRunLimits: Boolean,
     val schemaVersion: Int,
     val defaultCpuBackend: String,
     val verbosity: Int,
@@ -118,6 +129,7 @@ data class LauncherConfig(
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("schema_version", schemaVersion)
+        put("apply_run_limits", applyRunLimits)
         put("default_cpu_backend", defaultCpuBackend)
         put("verbosity", verbosity)
         if (lastImportDir != null) put("last_import_dir", lastImportDir) else put("last_import_dir", JSONObject.NULL)
@@ -134,29 +146,31 @@ data class LauncherConfig(
 
     companion object {
         fun default(): LauncherConfig = LauncherConfig(
+            applyRunLimits = false,
             schemaVersion = 1,
             defaultCpuBackend = "stub",
             verbosity = 1,
             lastImportDir = null,
-            showFps = true,
+            showFps = false,
             fullscreen = false,
             fullscreenMode = "with_controls",
             orientation = "auto",
-            showBackendLog = true,
+            showBackendLog = false,
             controlsOpacity = 1.0f,
             keybindingsJson = null,
         )
 
         fun fromJson(obj: JSONObject): LauncherConfig = LauncherConfig(
+            applyRunLimits = obj.optBoolean("apply_run_limits", false),
             schemaVersion = obj.optInt("schema_version", 1),
             defaultCpuBackend = obj.optString("default_cpu_backend", "stub"),
             verbosity = obj.optInt("verbosity", 1),
             lastImportDir = obj.optString("last_import_dir").takeIf { !obj.isNull("last_import_dir") && it.isNotEmpty() },
-            showFps = obj.optBoolean("show_fps", true),
+            showFps = obj.optBoolean("show_fps", false),
             fullscreen = obj.optBoolean("fullscreen", false),
             fullscreenMode = obj.optString("fullscreen_mode", "with_controls"),
             orientation = obj.optString("orientation", "auto"),
-            showBackendLog = obj.optBoolean("show_backend_log", true),
+            showBackendLog = obj.optBoolean("show_backend_log", false),
             controlsOpacity = obj.optDouble("controls_opacity", 1.0).toFloat()
                 .coerceIn(0.1f, 1.0f),
             keybindingsJson = obj.optJSONArray("keybindings")?.toString(),

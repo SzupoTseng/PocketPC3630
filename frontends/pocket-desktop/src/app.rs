@@ -13,6 +13,9 @@ use pocket_library::{
 };
 
 use crate::runner::{FrameSnapshot, InputCommand, RunOutcome, Runner};
+use pocket_library::controls::{
+    Binding, ButtonPosition, Controls as ControlConfig, Presentation, Profile,
+};
 
 // Virtual button layout for the Run screen — modelled after the
 // j2me-loader gamepad: a D-pad on the left and three action buttons
@@ -29,6 +32,7 @@ use crate::runner::{FrameSnapshot, InputCommand, RunOutcome, Runner};
 pub struct PocketLauncher {
     icon_cache: std::collections::HashMap<String, egui::TextureHandle>,
     library: Library,
+    catalog_view: crate::catalog_ui::CatalogView,
     selected_game: Option<String>,
     screen: Screen,
     game_only_fullscreen: bool,
@@ -46,6 +50,10 @@ pub struct PocketLauncher {
     /// Which guest buttons are held right now, and by which input
     /// source, so we can fire the matching `WM_KEYUP` on release.
     held: HeldButtons,
+    host_keys: std::collections::HashMap<egui::Key, u16>,
+    activation_releases: Vec<(u16, Instant)>,
+    gamepad_connected: usize,
+    gamepad_menu_held: bool,
     /// `Some` while a stylus drag is in progress — carries the last
     /// reported game-space coordinates so we don't spam the guest
     /// with redundant events.
@@ -59,6 +67,7 @@ pub struct PocketLauncher {
     last_frame_texture: Option<egui::TextureHandle>,
     last_frame_status: Option<String>,
     frame_stats: FrameStats,
+    screenshot_path: Option<std::path::PathBuf>,
     /// How far the presented frame is turned. Initialised from the
     /// running game's persisted [`RotationPref`] and editable live on
     /// the Run screen, where a change is written straight back to the
@@ -71,6 +80,58 @@ pub struct PocketLauncher {
     /// should drive it, while the keybinding editor is in "press a
     /// key" mode.
     binding_capture: Option<GuestButton>,
+    controls: ControlConfig,
+    controls_draft: Option<(String, ControlConfig, Presentation)>,
+    controls_error: Option<String>,
+    menu_open: bool,
+    pause_requested: bool,
+    library_query: String,
+    recent_first: bool,
+    guest_text: String,
+}
+
+fn control_label(vk: u16) -> String {
+    match vk {
+        38 => "Up".into(),
+        40 => "Down".into(),
+        37 => "Left".into(),
+        39 => "Right".into(),
+        13 => "Enter".into(),
+        9 => "Tab".into(),
+        27 => "Esc".into(),
+        17 => "A/Ctrl".into(),
+        32 => "B/Space".into(),
+        16 => "C/Shift".into(),
+        33 => "PgUp".into(),
+        34 => "PgDn".into(),
+        112 | 113 | 119 | 120 => format!("F{}", vk - 111),
+        121 => "Rec/F10".into(),
+        0x86 => "Action".into(),
+        0xc1..=0xc6 => format!("App {}", vk - 0xc0),
+        _ => format!("VK {vk}"),
+    }
+}
+
+/// Use an installed Windows CJK font at runtime; never redistribute OS fonts.
+fn configure_system_fonts(ctx: &egui::Context) {
+    #[cfg(windows)]
+    {
+        if let Some(directory) = std::env::var_os("WINDIR") {
+            let path = std::path::PathBuf::from(directory).join("Fonts/msyh.ttc");
+            if let Ok(bytes) = std::fs::read(path) {
+                let mut fonts = egui::FontDefinitions::default();
+                fonts
+                    .font_data
+                    .insert("system-cjk".into(), egui::FontData::from_owned(bytes));
+                for family in fonts.families.values_mut() {
+                    family.push("system-cjk".into());
+                }
+                ctx.set_fonts(fonts);
+            }
+        }
+    }
+    #[cfg(not(windows))]
+    let _ = ctx;
 }
 
 /// The same quiet palette as the browser version: near-black surfaces, one
@@ -78,13 +139,13 @@ pub struct PocketLauncher {
 fn apply_theme(ctx: &egui::Context) {
     let accent = Color32::from_rgb(125, 183, 224);
     let mut visuals = egui::Visuals::dark();
-    visuals.panel_fill = Color32::from_rgb(17, 18, 20);
-    visuals.window_fill = Color32::from_rgb(26, 27, 30);
+    visuals.panel_fill = Color32::from_rgb(16, 25, 35);
+    visuals.window_fill = Color32::from_rgb(25, 39, 52);
     visuals.extreme_bg_color = Color32::from_rgb(13, 14, 16);
     visuals.selection.bg_fill = accent.linear_multiply(0.35);
     visuals.selection.stroke = egui::Stroke::new(1.0_f32, accent);
     visuals.hyperlink_color = accent;
-    visuals.window_rounding = 14.0.into();
+    visuals.window_rounding = 6.0.into();
     visuals.menu_rounding = 10.0.into();
     for widgets in [
         &mut visuals.widgets.inactive,
@@ -92,7 +153,7 @@ fn apply_theme(ctx: &egui::Context) {
         &mut visuals.widgets.active,
         &mut visuals.widgets.noninteractive,
     ] {
-        widgets.rounding = 8.0.into();
+        widgets.rounding = 5.0.into();
     }
     visuals.widgets.inactive.weak_bg_fill = Color32::from_rgb(34, 35, 39);
     visuals.widgets.hovered.weak_bg_fill = Color32::from_rgb(44, 46, 51);
@@ -153,6 +214,7 @@ fn fullscreen_frame_rect(bounds: Rect, size: Vec2, rotation: RotationPref) -> Re
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Screen {
     Library,
+    Catalog,
     Settings,
     GameSettings,
     Run,
@@ -164,6 +226,8 @@ enum Screen {
 /// the same time, so [`HeldButtons`] keeps one set per source.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum InputSource {
+    Modifiers,
+    Activation,
     Keyboard,
     Pointer,
 }
@@ -171,7 +235,7 @@ enum InputSource {
 /// Which guest buttons are down, tracked per input source.
 ///
 /// Both sources used to share a single `HashSet<u16>`, and that quietly
-/// broke holding a key: [`PocketLauncher::vbutton`] runs every frame and
+/// broke holding a key: [`PocketLauncher::ui_virtual_pad`] runs every frame and
 /// released whatever it found in the set whenever the pointer was not on
 /// its own rect, so a keyboard arrow the user was still holding was
 /// cancelled with a `WM_KEYUP` in the very next frame. JumpyBall steers
@@ -182,13 +246,18 @@ enum InputSource {
 /// either one last as long as the user holds it.
 #[derive(Debug, Default)]
 struct HeldButtons {
+    modifiers: std::collections::HashSet<u16>,
+    activation: std::collections::HashSet<u16>,
     keyboard: std::collections::HashSet<u16>,
     pointer: std::collections::HashSet<u16>,
+    gamepad: std::collections::HashMap<(u8, &'static str), u16>,
 }
 
 impl HeldButtons {
     fn set(&mut self, source: InputSource) -> &mut std::collections::HashSet<u16> {
         match source {
+            InputSource::Modifiers => &mut self.modifiers,
+            InputSource::Activation => &mut self.activation,
             InputSource::Keyboard => &mut self.keyboard,
             InputSource::Pointer => &mut self.pointer,
         }
@@ -213,11 +282,17 @@ impl HeldButtons {
     }
 
     fn is_held(&self, vk: u16) -> bool {
-        self.keyboard.contains(&vk) || self.pointer.contains(&vk)
+        self.modifiers.contains(&vk)
+            || self.activation.contains(&vk)
+            || self.keyboard.contains(&vk)
+            || self.pointer.contains(&vk)
+            || self.gamepad.values().any(|value| *value == vk)
     }
 
     fn is_held_by(&self, source: InputSource, vk: u16) -> bool {
         match source {
+            InputSource::Modifiers => self.modifiers.contains(&vk),
+            InputSource::Activation => self.activation.contains(&vk),
             InputSource::Keyboard => self.keyboard.contains(&vk),
             InputSource::Pointer => self.pointer.contains(&vk),
         }
@@ -228,7 +303,10 @@ impl HeldButtons {
     fn drain_all(&mut self) -> Vec<u16> {
         self.keyboard
             .drain()
+            .chain(self.modifiers.drain())
+            .chain(self.activation.drain())
             .chain(self.pointer.drain())
+            .chain(self.gamepad.drain().map(|(_, vk)| vk))
             // A VK held on both at once must only be released once.
             .collect::<std::collections::BTreeSet<_>>()
             .into_iter()
@@ -313,9 +391,11 @@ impl FrameStats {
 impl PocketLauncher {
     pub fn new(cc: &eframe::CreationContext<'_>, library: Library) -> Self {
         apply_theme(&cc.egui_ctx);
+        configure_system_fonts(&cc.egui_ctx);
         let (tx, rx) = mpsc::channel();
         Self {
             library,
+            catalog_view: crate::catalog_ui::CatalogView::default(),
             icon_cache: std::collections::HashMap::new(),
             selected_game: None,
             screen: Screen::Library,
@@ -327,6 +407,10 @@ impl PocketLauncher {
             frame_rx: None,
             input_tx: None,
             held: HeldButtons::default(),
+            host_keys: std::collections::HashMap::new(),
+            activation_releases: Vec::new(),
+            gamepad_connected: 0,
+            gamepad_menu_held: false,
             pointer_down_at: None,
             running_game: None,
             status: String::new(),
@@ -335,9 +419,305 @@ impl PocketLauncher {
             last_frame_texture: None,
             last_frame_status: None,
             frame_stats: FrameStats::default(),
+            screenshot_path: None,
             game_rotation: RotationPref::None,
             running_game_id: None,
             binding_capture: None,
+            controls: ControlConfig::default(),
+            controls_draft: None,
+            controls_error: None,
+            menu_open: false,
+            pause_requested: false,
+            library_query: String::new(),
+            recent_first: false,
+            guest_text: String::new(),
+        }
+    }
+
+    fn send_command(&self, command: InputCommand) {
+        if let Some(tx) = &self.input_tx {
+            let _ = tx.send(command);
+        }
+    }
+
+    fn open_controls(&mut self, id: &str) {
+        self.controls_error = None;
+        let value = if id.is_empty() {
+            self.library.controls_path(None).and_then(|p| {
+                pocket_library::controls::read(&p)
+                    .map(|v| v.unwrap_or_default())
+                    .map_err(Into::into)
+            })
+        } else {
+            self.library.effective_controls(id).map(|v| v.0)
+        };
+        match value {
+            Ok(value) => {
+                self.release_all_keys();
+                self.controls_draft = Some((
+                    id.to_string(),
+                    value,
+                    self.library.presentation(id).unwrap_or_default(),
+                ));
+            }
+            Err(e) => {
+                self.controls_error = Some(e.to_string());
+                self.controls_draft = Some((
+                    id.into(),
+                    ControlConfig::default(),
+                    self.library.presentation(id).unwrap_or_default(),
+                ));
+            }
+        }
+    }
+
+    fn ui_controls_editor(&mut self, ctx: &egui::Context) {
+        let Some((id, mut controls, mut meta)) = self.controls_draft.take() else {
+            return;
+        };
+        let mut open = true;
+        let mut save = false;
+        let mut reset = false;
+        egui::Window::new(if id.is_empty(){"Default controls".to_string()}else{format!("Controls: {}",self.library.get(&id).map(|g|g.display_name.as_str()).unwrap_or(&id))})
+            .open(&mut open).vscroll(true).default_width(500.0).show(ctx,|ui| {
+                if let Some(error)=&self.controls_error{ui.label(format!("Cannot read controls: {error}. Original file retained. Explicitly Restore inherited/default before editing."));}
+                ui.label("Program controls are independent of saved progress. Save inside the program before exporting a progress backup.");
+                let before=controls.profile;
+                egui::ComboBox::from_id_source("control_profile").selected_text(controls.profile.label()).show_ui(ui,|ui| {
+                    for p in Profile::ALL { ui.selectable_value(&mut controls.profile,p,p.label()); }
+                });
+                if controls.profile!=before && controls.profile!=Profile::Custom { let profile=controls.profile; controls.keys=profile.keys(); controls.keyboard=profile==Profile::Text; }
+                if controls.profile==Profile::Ppc2003 { ui.label("PPC2003 reference keys. Shortcuts and Enter click once; directions and Rec hold. Power / Reset unavailable."); }
+                if controls.profile==Profile::Device { ui.label("Generic CE App1–6 / Action. Device Emulator skin and shell behavior require separate reference testing."); }
+                ui.checkbox(&mut controls.keyboard,"Text / keyboard input");
+                ui.horizontal(|ui|{ui.label("Menu shortcut");ui.text_edit_singleline(&mut controls.menu_key);});
+                ui.checkbox(&mut controls.auto_hide_gamepad,"Hide touch controls with a controller");
+                ui.label("Windows: XInput controllers; click left stick for Menu / Resume unless rebound. Linux controller integration is unavailable.");
+                ui.add(egui::Slider::new(&mut controls.opacity,0.1..=1.0).text("Button opacity"));
+                ui.add(egui::Slider::new(&mut controls.volume,0.0..=1.0).text("Volume"));
+                ui.add(egui::Slider::new(&mut controls.zoom,1.0..=4.0).text("Zoom"));
+                ui.add(egui::Slider::new(&mut controls.zoom_x,0.0..=1.0).text("Guest focus X"));
+                ui.add(egui::Slider::new(&mut controls.zoom_y,0.0..=1.0).text("Guest focus Y"));
+                ui.label("Pointer uses absolute stylus coordinates. Relative mouse is pending.");
+                ui.collapsing("Visible buttons",|ui| {
+                    for vk in [38,40,37,39,13,9,27,17,32,16,33,34,0x86,0xc1,0xc2,0xc3,0xc4,0xc5,0xc6] {
+                        let mut checked=controls.keys.contains(&vk);
+                        if ui.checkbox(&mut checked,control_label(vk)).changed() { controls.profile=Profile::Custom; if checked {controls.keys.push(vk)} else {controls.keys.retain(|k|*k!=vk)} }
+                    }
+                });
+                ui.collapsing("Keyboard / controller remapping",|ui| {
+                    ui.label("Host key names: Up, Enter, A, PadA…; choose a separate menu shortcut above.");
+                    let mut remove=None;
+                    for (i,b) in controls.bindings.iter_mut().enumerate() {
+                        ui.horizontal(|ui| { ui.text_edit_singleline(&mut b.input);
+                            egui::ComboBox::from_id_source(("target",i)).selected_text(control_label(b.vk)).show_ui(ui,|ui| {for k in [38,40,37,39,13,9,27,17,32,16,33,34,0x86,0xc1,0xc2,0xc3,0xc4,0xc5,0xc6] {ui.selectable_value(&mut b.vk,k,control_label(k));}});
+                            if ui.button("Remove").clicked(){remove=Some(i);}
+                        });
+                    }
+                    if let Some(i)=remove {controls.bindings.remove(i);}
+                    if ui.button("Add mapping").clicked(){controls.bindings.push(Binding{input:String::new(),vk:13});}
+                });
+                for (name,layout) in [("Portrait layout",&mut controls.portrait),("Landscape layout",&mut controls.landscape)] {
+                    ui.collapsing(name,|ui| {
+                        if ui.button("Create layout for visible buttons").clicked() {
+                            *layout=controls.keys.iter().enumerate().map(|(i,vk)|ButtonPosition{vk:*vk,x:0.12+(i%5)as f32*0.19,y:0.16+(i/5)as f32*0.22,size:0.15}).collect();
+                        }
+                        for b in layout.iter_mut(){ui.horizontal(|ui|{ui.label(control_label(b.vk));ui.add(egui::DragValue::new(&mut b.x).speed(0.01).clamp_range(0.0..=1.0).prefix("x "));ui.add(egui::DragValue::new(&mut b.y).speed(0.01).clamp_range(0.0..=1.0).prefix("y "));ui.add(egui::DragValue::new(&mut b.size).speed(0.01).clamp_range(0.03..=0.4).prefix("size "));});}
+                    });
+                }
+                if !id.is_empty(){ui.separator();ui.label("Display alias");ui.text_edit_singleline(&mut meta.alias);ui.checkbox(&mut meta.favorite,"Favorite");}
+                ui.horizontal(|ui| {save=ui.add_enabled(self.controls_error.is_none(),egui::Button::new("Save controls")).clicked();reset=ui.button("Restore inherited / default").clicked();});
+            });
+        if save {
+            let id_option = (!id.is_empty()).then_some(id.as_str());
+            let result = self
+                .library
+                .write_controls(id_option, &controls)
+                .and_then(|_| {
+                    if id.is_empty() {
+                        Ok(())
+                    } else {
+                        self.library.write_presentation(&id, &meta)
+                    }
+                });
+            match result {
+                Ok(()) => {
+                    self.status = "Controls saved.".into();
+                    if self.running_game_id.as_ref().is_some_and(|active| {
+                        active == &id
+                            || (id.is_empty()
+                                && self
+                                    .library
+                                    .effective_controls(active)
+                                    .is_ok_and(|(_, overridden)| !overridden))
+                    }) {
+                        self.controls = controls.clone();
+                        self.send_command(InputCommand::SetVolume(
+                            (controls.volume * 1000.0) as u16,
+                        ));
+                    }
+                    open = false;
+                }
+                Err(e) => self.status = e.to_string(),
+            }
+        }
+        if reset {
+            let result = (|| -> Result<(), pocket_library::LibraryError> {
+                let path = self
+                    .library
+                    .controls_path((!id.is_empty()).then_some(id.as_str()))?;
+                if path.exists() {
+                    std::fs::remove_file(&path)?;
+                }
+                if !id.is_empty() {
+                    let legacy = path.with_file_name("web-controls.json");
+                    if legacy.exists() {
+                        std::fs::remove_file(legacy)?;
+                    }
+                }
+                Ok(())
+            })();
+            match result {
+                Ok(()) => {
+                    if let Some(active) = self.running_game_id.as_deref() {
+                        if let Ok((value, overridden)) = self.library.effective_controls(active) {
+                            if active == id || (id.is_empty() && !overridden) {
+                                self.controls = value;
+                                self.send_command(InputCommand::SetVolume(
+                                    (self.controls.volume * 1000.0) as u16,
+                                ));
+                            }
+                        }
+                    }
+                    open = false;
+                    self.status = "Inherited controls restored.".into();
+                }
+                Err(e) => self.status = e.to_string(),
+            }
+        }
+        if open {
+            self.controls_draft = Some((id, controls, meta));
+        }
+    }
+
+    fn request_screenshot(&mut self, ctx: &egui::Context) {
+        // F12 captures EQ now; a modal save picker would keep the guest
+        // running until the user chose a path and capture the wrong moment.
+        let path = std::env::var_os("POCKETHLE_SCREENSHOT_PATH")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                let stamp = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis();
+                self.library
+                    .root()
+                    .join("screenshots")
+                    .join(format!("pockethle-{stamp}.png"))
+            });
+        if let Some(parent) = path.parent() {
+            if let Err(error) = std::fs::create_dir_all(parent) {
+                self.status = format!("Could not save screenshot: {error}");
+                return;
+            }
+        }
+        self.screenshot_path = Some(path);
+        ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot);
+    }
+
+    fn ui_game_menu(&mut self, ctx: &egui::Context) {
+        if !self.menu_open || self.input_tx.is_none() {
+            return;
+        }
+        let mut open = true;
+        let before = self.controls.clone();
+        egui::Window::new(if self.runner.is_paused() {
+            "Paused"
+        } else {
+            "Pausing…"
+        })
+        .id(egui::Id::new("in_game_menu"))
+        .anchor(egui::Align2::CENTER_CENTER, Vec2::ZERO)
+        .default_width(440.0)
+        .default_height(640.0)
+        .max_height((ctx.screen_rect().height() - 80.0).max(100.0))
+        .collapsible(false)
+        .vscroll(true)
+        .open(&mut open)
+        .show(ctx, |ui| {
+            ui.set_enabled(self.runner.is_paused());
+            if ui.button("Resume").clicked() {
+                self.menu_open = false;
+            }
+            if ui.button("Controls / program settings").clicked() {
+                if let Some(id) = self.running_game_id.clone() {
+                    self.open_controls(&id);
+                }
+            }
+            ui.horizontal(|ui| {
+                ui.label("Volume");
+                if ui
+                    .add(egui::Slider::new(&mut self.controls.volume, 0.0..=1.0))
+                    .changed()
+                {
+                    self.send_command(InputCommand::SetVolume(
+                        (self.controls.volume * 1000.0) as u16,
+                    ));
+                }
+            });
+            ui.add(egui::Slider::new(&mut self.controls.zoom, 1.0..=4.0).text("Zoom"));
+            ui.add(egui::Slider::new(&mut self.controls.zoom_x, 0.0..=1.0).text("Guest focus X"));
+            ui.add(egui::Slider::new(&mut self.controls.zoom_y, 0.0..=1.0).text("Guest focus Y"));
+            if ui.button("Save screenshot (F12)").clicked() {
+                self.request_screenshot(ctx);
+            }
+            if ui.button("Rotate display").clicked() {
+                self.game_rotation = match self.game_rotation {
+                    RotationPref::None => RotationPref::Cw90,
+                    RotationPref::Cw90 => RotationPref::Half,
+                    RotationPref::Half => RotationPref::Ccw90,
+                    RotationPref::Ccw90 => RotationPref::None,
+                };
+                self.persist_rotation(self.game_rotation);
+            }
+            ui.label("Committed text (separate from game shortcuts)");
+            ui.text_edit_multiline(&mut self.guest_text);
+            if ui.button("Queue text for Resume").clicked() {
+                for unit in self.guest_text.encode_utf16() {
+                    self.send_input(InputEvent::Text { unit });
+                }
+                self.guest_text.clear();
+            }
+            if ui.button("Queue guest Backspace").clicked() {
+                self.send_input(InputEvent::Text { unit: 8 });
+            }
+            ui.label("Save inside the program before backing up; this is not a save-state.");
+            if ui.button("Export written progress…").clicked() {
+                if let Some(game) = self
+                    .running_game_id
+                    .as_ref()
+                    .and_then(|id| self.library.get(id))
+                    .cloned()
+                {
+                    self.spawn_save_action(&game, "export");
+                }
+            }
+            if ui.button("Return to library").clicked() {
+                self.send_command(InputCommand::Stop);
+                self.release_all_keys();
+                self.screen = Screen::Library;
+                self.menu_open = false;
+            }
+        });
+        if self.controls != before {
+            if let Some(id) = self.running_game_id.as_deref() {
+                if let Err(error) = self.library.write_controls(Some(id), &self.controls) {
+                    self.status = format!("Could not save display/volume: {error}");
+                }
+            }
+        }
+        if !open {
+            self.menu_open = false;
         }
     }
 
@@ -362,7 +742,8 @@ impl PocketLauncher {
                     if let Some(frame) = outcome.framebuffer {
                         self.upload_frame_texture(ctx, &frame);
                     }
-                    self.status = outcome.summary;
+                    self.status = outcome.ui_message;
+                    self.menu_open = false;
                     self.frame_rx = None;
                     self.input_tx = None;
                     self.release_all_keys();
@@ -385,6 +766,12 @@ impl PocketLauncher {
     }
 
     fn upload_frame_texture(&mut self, ctx: &egui::Context, frame: &FrameSnapshot) {
+        if self.input_tx.is_some() && self.status == "Starting emulator..." {
+            self.status = format!(
+                "Playing {}",
+                self.running_game.as_deref().unwrap_or("program")
+            );
+        }
         let size = [frame.width as usize, frame.height as usize];
         let img = egui::ColorImage::from_rgba_unmultiplied(size, &frame.rgba);
         if let Some(tex) = self.last_frame_texture.as_mut() {
@@ -411,7 +798,18 @@ impl PocketLauncher {
                 .selectable_label(self.screen == Screen::Library, "Library")
                 .clicked()
             {
+                if self.input_tx.is_some() {
+                    self.release_all_keys();
+                    self.send_command(InputCommand::Stop);
+                }
                 self.screen = Screen::Library;
+            }
+            if self.input_tx.is_some()
+                && ui
+                    .selectable_label(self.screen == Screen::Run, "Playing")
+                    .clicked()
+            {
+                self.screen = Screen::Run;
             }
             if ui
                 .selectable_label(self.screen == Screen::Settings, "Settings")
@@ -419,6 +817,12 @@ impl PocketLauncher {
             {
                 self.config_draft = Some(self.library.config().clone());
                 self.screen = Screen::Settings;
+            }
+            if ui
+                .selectable_label(self.screen == Screen::Catalog, "Catalog")
+                .clicked()
+            {
+                self.screen = Screen::Catalog;
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if ui.button(RichText::new("Import game").strong()).clicked() {
@@ -430,14 +834,48 @@ impl PocketLauncher {
     }
 
     fn ui_library(&mut self, ui: &mut egui::Ui) {
-        let games: Vec<GameEntry> = self.library.games().to_vec();
+        ui.horizontal(|ui| {
+            ui.label("Search");
+            ui.text_edit_singleline(&mut self.library_query);
+            ui.checkbox(&mut self.recent_first, "Recently played");
+            if ui.button("Default controls").clicked() {
+                self.open_controls("");
+            }
+        });
+        let query = self.library_query.to_lowercase();
+        let mut games: Vec<GameEntry> = self
+            .library
+            .games()
+            .iter()
+            .filter(|g| {
+                let meta = self.library.presentation(&g.id).unwrap_or_default();
+                format!("{} {}", g.display_name, meta.alias)
+                    .to_lowercase()
+                    .contains(&query)
+            })
+            .cloned()
+            .collect();
+        if self.recent_first {
+            games.sort_by_key(|g| {
+                std::cmp::Reverse(
+                    self.library
+                        .presentation(&g.id)
+                        .unwrap_or_default()
+                        .last_played,
+                )
+            });
+        }
         if games.is_empty() {
             ui.add_space(80.0);
             ui.vertical_centered(|ui| {
                 ui.label(
-                    RichText::new("No games yet")
-                        .heading()
-                        .color(Color32::from_gray(160)),
+                    RichText::new(if self.library.games().is_empty() {
+                        "No games yet"
+                    } else {
+                        "No matching programs"
+                    })
+                    .heading()
+                    .color(Color32::from_gray(160)),
                 );
                 ui.add_space(8.0);
                 ui.label(
@@ -455,7 +893,7 @@ impl PocketLauncher {
         }
         ScrollArea::vertical().show(ui, |ui| {
             let gap = 16.0;
-            let card_size = Vec2::splat(224.0);
+            let card_size = Vec2::new(224.0, 304.0);
             let columns = ((ui.available_width() + gap) / (card_size.x + gap))
                 .floor()
                 .max(1.0) as usize;
@@ -489,14 +927,15 @@ impl PocketLauncher {
         ui.painter().add(frame.paint(card_rect));
 
         let menu_rect = Rect::from_min_size(
-            Pos2::new(card_rect.right() - 40.0, card_rect.top() + 4.0),
-            Vec2::splat(32.0),
+            Pos2::new(card_rect.right() - 52.0, card_rect.top() + 4.0),
+            Vec2::splat(44.0),
         );
         let mut menu_ui = ui.child_ui(menu_rect, egui::Layout::right_to_left(egui::Align::Center));
+        menu_ui.spacing_mut().interact_size = Vec2::splat(44.0);
         let menu_response = menu_ui.menu_button(RichText::new("···").size(20.0), |ui| {
             for (label, action) in [
-                ("Export save…", "export"),
-                ("Import save…", "import"),
+                ("Back up written progress ZIP…", "export"),
+                ("Restore progress…", "import"),
                 ("Reset save…", "reset"),
             ] {
                 if ui.button(label).clicked() {
@@ -505,6 +944,10 @@ impl PocketLauncher {
                 }
             }
             ui.separator();
+            if ui.button("About / controls").clicked() {
+                self.open_controls(&game.id);
+                ui.close_menu();
+            }
             if ui.button("Settings").clicked() {
                 self.selected_game = Some(game.id.clone());
                 self.game_settings_draft = Some((game.id.clone(), game.settings.clone()));
@@ -550,12 +993,12 @@ impl PocketLauncher {
             }
         }
         if !drew_icon {
-            icon_ui.label(RichText::new("📱").size(64.0));
+            icon_ui.label(RichText::new("CE").size(48.0));
         }
 
         let label_rect = Rect::from_min_size(
-            Pos2::new(card_rect.left(), card_rect.bottom() - 76.0),
-            Vec2::new(size.x, 76.0),
+            Pos2::new(card_rect.left(), card_rect.bottom() - 140.0),
+            Vec2::new(size.x, 140.0),
         );
         ui.painter().rect_filled(
             label_rect,
@@ -569,18 +1012,30 @@ impl PocketLauncher {
         );
         let text_rect = Rect::from_min_size(
             Pos2::new(label_rect.left() + 12.0, label_rect.top() + 8.0),
-            Vec2::new(size.x - 24.0, 58.0),
+            Vec2::new(size.x - 24.0, 124.0),
         );
         let mut text_ui = ui.child_ui(text_rect, egui::Layout::top_down(egui::Align::Min));
         text_ui.set_width(size.x - 24.0);
-        text_ui.set_height(58.0);
+        text_ui.set_height(124.0);
         let publisher = game
             .provider
             .as_deref()
             .filter(|value| !value.trim().is_empty())
             .unwrap_or("Unknown");
         text_ui.add(
-            egui::Label::new(RichText::new(&game.display_name).strong().size(17.0)).truncate(true),
+            egui::Label::new(
+                RichText::new({
+                    let m = self.library.presentation(&game.id).unwrap_or_default();
+                    if m.alias.is_empty() {
+                        game.display_name.clone()
+                    } else {
+                        m.alias
+                    }
+                })
+                .strong()
+                .size(17.0),
+            )
+            .wrap(true),
         );
         text_ui.add(
             egui::Label::new(
@@ -591,7 +1046,29 @@ impl PocketLauncher {
             .truncate(true),
         );
 
+        match self.library.effective_controls(&game.id) {
+            Ok((controls, overridden)) => {
+                text_ui.label(
+                    RichText::new(format!(
+                        "{} · {}",
+                        controls.profile.label(),
+                        if overridden {
+                            "Program override"
+                        } else {
+                            "Inherited defaults"
+                        }
+                    ))
+                    .size(12.0),
+                );
+            }
+            Err(error) => {
+                text_ui.label(RichText::new(format!("Controls error: {error}")).size(12.0));
+            }
+        }
         if card_response.clicked() && !menu_response.response.clicked() {
+            if let Some(id) = ui.ctx().memory(|memory| memory.focused()) {
+                ui.ctx().memory_mut(|memory| memory.surrender_focus(id));
+            }
             self.spawn_run(game);
         }
     }
@@ -605,51 +1082,68 @@ impl PocketLauncher {
         ui.heading("Launcher settings");
         ui.add_space(8.0);
         let library_root = self.library.root().display().to_string();
-        egui::Grid::new("settings_grid")
-            .num_columns(2)
-            .spacing(Vec2::new(12.0, 8.0))
-            .show(ui, |ui| {
-                ui.label("Default CPU backend");
-                egui::ComboBox::from_id_source("cpu_backend")
-                    .selected_text(draft.default_cpu_backend.label())
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(
-                            &mut draft.default_cpu_backend,
-                            CpuBackendPref::Stub,
-                            CpuBackendPref::Stub.label(),
-                        );
-                        if cfg!(feature = "unicorn") {
+        if ui
+            .button("Default controls / touch layout / volume")
+            .clicked()
+        {
+            self.open_controls("");
+        }
+        ui.collapsing("Advanced diagnostics and window preferences", |ui| {
+            egui::Grid::new("settings_grid")
+                .num_columns(2)
+                .spacing(Vec2::new(12.0, 8.0))
+                .show(ui, |ui| {
+                    ui.label("Default CPU backend");
+                    egui::ComboBox::from_id_source("cpu_backend")
+                        .selected_text(draft.default_cpu_backend.label())
+                        .show_ui(ui, |ui| {
                             ui.selectable_value(
                                 &mut draft.default_cpu_backend,
-                                CpuBackendPref::Unicorn,
-                                CpuBackendPref::Unicorn.label(),
+                                CpuBackendPref::Stub,
+                                CpuBackendPref::Stub.label(),
                             );
-                        }
-                    });
-                ui.end_row();
+                            if cfg!(feature = "unicorn") {
+                                ui.selectable_value(
+                                    &mut draft.default_cpu_backend,
+                                    CpuBackendPref::Unicorn,
+                                    CpuBackendPref::Unicorn.label(),
+                                );
+                            }
+                        });
+                    ui.end_row();
 
-                ui.label("Verbosity (0..3)");
-                ui.add(egui::Slider::new(&mut draft.verbosity, 0..=3));
-                ui.end_row();
+                    ui.label("Verbosity (0..3)");
+                    ui.add(egui::Slider::new(&mut draft.verbosity, 0..=3));
+                    ui.end_row();
 
-                ui.label("Show FPS overlay");
-                ui.checkbox(&mut draft.show_fps, "");
-                ui.end_row();
+                    ui.label("Apply diagnostic run limits");
+                    ui.checkbox(&mut draft.apply_run_limits, "").on_hover_text("Apply each program’s slice limit and stop on unimplemented calls. Disabled for normal play; takes effect on next launch.");
+                    ui.end_row();
 
-                ui.label("Borderless fullscreen");
-                if ui.checkbox(&mut draft.fullscreen, "").changed() {
-                    ui.ctx()
-                        .send_viewport_cmd(egui::ViewportCommand::Fullscreen(draft.fullscreen));
-                }
-                ui.end_row();
+                    ui.label("Show FPS overlay");
+                    ui.checkbox(&mut draft.show_fps, "");
+                    ui.end_row();
 
-                ui.label("Library root");
-                ui.label(library_root);
-                ui.end_row();
-            });
+                    ui.label("Show backend status");
+                    ui.checkbox(&mut draft.show_backend_log, "");
+                    ui.end_row();
+                    ui.label("Borderless fullscreen");
+                    if ui.checkbox(&mut draft.fullscreen, "").changed() {
+                        ui.ctx()
+                            .send_viewport_cmd(egui::ViewportCommand::Fullscreen(draft.fullscreen));
+                    }
+                    ui.end_row();
+
+                    ui.label("Library root");
+                    ui.label(library_root);
+                    ui.end_row();
+                });
+        });
 
         ui.add_space(12.0);
-        self.ui_keybindings(ui, &mut draft);
+        ui.collapsing("Legacy keyboard defaults", |ui| {
+            self.ui_keybindings(ui, &mut draft)
+        });
 
         ui.add_space(12.0);
         ui.horizontal(|ui| {
@@ -901,7 +1395,21 @@ impl PocketLauncher {
     }
 
     fn ui_run(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Run output");
+        ui.heading(if self.input_tx.is_some() {
+            "Playing"
+        } else {
+            "Program ended"
+        });
+        if ui
+            .add_enabled(
+                self.input_tx.is_some(),
+                egui::Button::new(format!("Menu / Pause ({})", self.controls.menu_key)),
+            )
+            .clicked()
+        {
+            self.menu_open = true;
+            self.release_all_keys();
+        }
         ui.add_space(8.0);
         if let Some(name) = self.running_game.as_ref() {
             ui.label(format!("Running {name}…"));
@@ -936,7 +1444,7 @@ impl PocketLauncher {
                 self.set_game_only_fullscreen(ui.ctx(), true);
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button("Back to library").clicked() {
+                if ui.button("Return to library").clicked() {
                     // Best-effort — if the runner thread already
                     // exited the channel will just drop the message.
                     if let Some(tx) = self.input_tx.as_ref() {
@@ -955,7 +1463,13 @@ impl PocketLauncher {
         });
         ui.add_space(8.0);
         if let Some(s) = self.last_frame_status.as_ref() {
-            ui.label(RichText::new(s).small().color(Color32::from_gray(170)));
+            ui.collapsing("Diagnostic details", |ui| {
+                egui::ScrollArea::vertical()
+                    .max_height(140.0)
+                    .show(ui, |ui| {
+                        ui.label(RichText::new(s).small().color(Color32::from_gray(170)));
+                    });
+            });
         }
     }
 
@@ -968,7 +1482,11 @@ impl PocketLauncher {
             ui.allocate_ui(
                 Vec2::new(FB_WIDTH as f32 * 2.0, FB_HEIGHT as f32 * 2.0),
                 |ui| {
-                    ui.label("(no framebuffer captured yet — try Run again)");
+                    ui.label(if self.frame_rx.is_some() {
+                        "Loading program display..."
+                    } else {
+                        "No captured frame. Open the library to try again."
+                    });
                 },
             );
             return;
@@ -994,15 +1512,18 @@ impl PocketLauncher {
     }
 
     fn ui_game_only(&mut self, ctx: &egui::Context) {
-        let bounds = ctx.screen_rect();
-        let painter = ctx.layer_painter(egui::LayerId::background());
-        painter.rect_filled(bounds, 0.0, Color32::BLACK);
-        let Some(tex) = self.last_frame_texture.clone() else {
-            return;
-        };
-        let size = tex.size_vec2();
-        let rect = fullscreen_frame_rect(bounds, size, self.game_rotation);
-        self.paint_game_texture(&painter, ctx, &tex, rect, size, false);
+        // Keep EQ's framebuffer geometry anchored to a root panel, including
+        // when the guest is paused and stops producing new frames.
+        egui::CentralPanel::default()
+            .frame(egui::Frame::none().fill(Color32::BLACK))
+            .show(ctx, |ui| {
+                let Some(tex) = self.last_frame_texture.clone() else {
+                    return;
+                };
+                let size = tex.size_vec2();
+                let rect = fullscreen_frame_rect(ui.max_rect(), size, self.game_rotation);
+                self.paint_game_texture(ui.painter(), ctx, &tex, rect, size, false);
+            });
     }
 
     fn paint_game_texture(
@@ -1014,7 +1535,12 @@ impl PocketLauncher {
         size: Vec2,
         show_fps: bool,
     ) {
-        let uv = rotation_uv(self.game_rotation);
+        let mut uv = rotation_uv(self.game_rotation);
+        let (cx, cy) = self.controls.zoom_center();
+        for p in &mut uv {
+            p.x = cx + (p.x - 0.5) / self.controls.zoom;
+            p.y = cy + (p.y - 0.5) / self.controls.zoom;
+        }
         let mut mesh = Mesh::with_texture(tex.id());
         let idx = mesh.vertices.len() as u32;
         for (pos, uv) in [
@@ -1056,7 +1582,17 @@ impl PocketLauncher {
     /// game is told "keep going", and egui's click timeout would have
     /// let go for the user.
     fn handle_pointer(&mut self, ctx: &egui::Context, rect: &Rect, size: Vec2) {
-        let held = pointer_held_in(ctx, rect);
+        let host_menu_press = self.game_only_fullscreen
+            && ctx.input(|input| {
+                input
+                    .pointer
+                    .press_origin()
+                    .is_some_and(|point| fullscreen_menu_rect().contains(point))
+            });
+        let held = !host_menu_press
+            && !self.menu_open
+            && self.controls_draft.is_none()
+            && pointer_held_in(ctx, rect);
         let pos = ctx.input(|input| input.pointer.latest_pos());
         let coords = pos.map(|pos| {
             // Map UI-space coords to guest framebuffer pixels. The panel
@@ -1064,10 +1600,21 @@ impl PocketLauncher {
             // factors have to come from the live texture rather than the
             // compile-time constants — otherwise a 480×320 game would see
             // taps land on the wrong pixels.
-            rotated_pointer_to_game(pos - rect.min, rect.size(), size, self.game_rotation)
+            let (x, y) =
+                rotated_pointer_to_game(pos - rect.min, rect.size(), size, self.game_rotation);
+            let (cx, cy) = self.controls.zoom_center();
+            (
+                ((x as f32 - size.x / 2.0) / self.controls.zoom + size.x * cx)
+                    .clamp(0.0, size.x - 1.0) as u16,
+                ((y as f32 - size.y / 2.0) / self.controls.zoom + size.y * cy)
+                    .clamp(0.0, size.y - 1.0) as u16,
+            )
         });
         match (self.pointer_down_at, held) {
             (None, true) => {
+                if let Some(id) = ctx.memory(|memory| memory.focused()) {
+                    ctx.memory_mut(|memory| memory.surrender_focus(id));
+                }
                 if let Some((x, y)) = coords {
                     self.send_input(InputEvent::PointerDown { x, y });
                     self.pointer_down_at = Some((x, y));
@@ -1097,77 +1644,113 @@ impl PocketLauncher {
     /// the right. Each button drives a `WM_KEYDOWN`/`WM_KEYUP` pair
     /// while held.
     fn ui_virtual_pad(&mut self, ui: &mut egui::Ui) {
+        if (self.controls.auto_hide_gamepad && self.gamepad_connected > 0)
+            || (self.controls.keys.is_empty() && !self.controls.keyboard)
+        {
+            return;
+        }
         ui.vertical(|ui| {
-            ui.label(RichText::new("Controls").strong());
-            ui.add_space(4.0);
-            // ----- D-pad: 3x3 grid with cardinal arrows -----
-            egui::Grid::new("vpad_dpad")
-                .spacing(Vec2::new(2.0, 2.0))
-                .show(ui, |ui| {
-                    ui.label("");
-                    self.vbutton(ui, "▲", GuestButton::DpadUp, 44.0);
-                    ui.label("");
-                    ui.end_row();
-                    self.vbutton(ui, "◀", GuestButton::DpadLeft, 44.0);
-                    ui.label("");
-                    self.vbutton(ui, "▶", GuestButton::DpadRight, 44.0);
-                    ui.end_row();
-                    ui.label("");
-                    self.vbutton(ui, "▼", GuestButton::DpadDown, 44.0);
-                    ui.label("");
-                    ui.end_row();
+            let panel_mode = self.controls.profile == Profile::Ppc2003;
+            if panel_mode {
+                ui.colored_label(Color32::from_rgb(137, 185, 210), "POCKET PC 2003");
+                ui.separator();
+            } else {
+                ui.label(self.controls.profile.label());
+            }
+            let keys = self.controls.keys.clone();
+            let area = ui
+                .allocate_exact_size(Vec2::new(240.0, 260.0), Sense::hover())
+                .0;
+            let layout = if self.game_rotation.is_quarter_turn() {
+                self.controls.landscape.clone()
+            } else {
+                self.controls.portrait.clone()
+            };
+            for (i, vk) in keys.iter().enumerate() {
+                let panel_button = self.controls.panel_button(*vk);
+                let pulse = panel_button.is_some_and(|b| b.mode == "click");
+                let default_position = panel_button.map(|b| ButtonPosition {
+                    vk: *vk, x: b.x, y: b.y, size: b.size,
+                }).unwrap_or(ButtonPosition {
+                    vk: *vk, x: 0.1 + (i % 5) as f32 * 0.2,
+                    y: 0.14 + (i / 5) as f32 * 0.22, size: 0.15,
                 });
-            ui.add_space(8.0);
-            ui.horizontal(|ui| {
-                self.vbutton(ui, "Action", GuestButton::Action, 52.0);
-                self.vbutton(ui, "A", GuestButton::ButtonA, 52.0);
-                self.vbutton(ui, "B", GuestButton::ButtonB, 52.0);
-            });
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                self.vbutton(ui, "C", GuestButton::ButtonC, 52.0);
-                self.vbutton(ui, "1", GuestButton::Soft1, 52.0);
-                self.vbutton(ui, "2", GuestButton::Soft2, 52.0);
-            });
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                self.vbutton(ui, "Turbo", GuestButton::Turbo, 60.0);
-            });
+                let position =
+                    layout
+                        .iter()
+                        .find(|p| p.vk == *vk)
+                        .cloned()
+                        .unwrap_or(default_position);
+                let side = (position.size * area.width().min(area.height())).max(44.0);
+                let center = Pos2::new(
+                    (area.left() + position.x * area.width())
+                        .clamp(area.left() + side / 2.0, area.right() - side / 2.0),
+                    (area.top() + position.y * area.height())
+                        .clamp(area.top() + side / 2.0, area.bottom() - side / 2.0),
+                );
+                let rect = Rect::from_center_size(center, Vec2::splat(side));
+                let response = ui
+                    .scope(|ui| {
+                        ui.spacing_mut().button_padding = Vec2::splat(2.0);
+                        ui.put(
+                            rect,
+                            egui::Button::new(RichText::new(panel_button.map(|b| b.label.clone()).unwrap_or_else(|| control_label(*vk))).size(13.0))
+                                .wrap(false)
+                                .fill(Color32::from_rgba_unmultiplied(
+                                    60,
+                                    75,
+                                    95,
+                                    (self.controls.opacity * 255.0) as u8,
+                                )),
+                        )
+                    })
+                    .inner;
+                if pulse {
+                    if response.clicked() && !self.menu_open && self.controls_draft.is_none() {
+                        // The PPC2003 skin emits one down/up for Enter/F keys,
+                        // even after a long hold. Keep other input sources held.
+                        if self.held.press(InputSource::Activation, *vk) {
+                            self.send_input(InputEvent::KeyDown { vk: *vk });
+                        }
+                        if self.held.release(InputSource::Activation, *vk) {
+                            self.send_input(InputEvent::KeyUp { vk: *vk });
+                        }
+                    }
+                    continue;
+                }
+                if response.clicked()
+                    && !response.clicked_by(egui::PointerButton::Primary)
+                    && !self.menu_open
+                    && self.controls_draft.is_none()
+                {
+                    if self.held.press(InputSource::Activation, *vk) {
+                        self.send_input(InputEvent::KeyDown { vk: *vk });
+                    }
+                    self.activation_releases.retain(|(key, _)| key != vk);
+                    self.activation_releases
+                        .push((*vk, Instant::now() + Duration::from_millis(64)));
+                }
+                let held = !self.menu_open
+                    && self.controls_draft.is_none()
+                    && pointer_held_in(ui.ctx(), &response.rect);
+                let old = self.held.is_held_by(InputSource::Pointer, *vk);
+                if held && !old && self.held.press(InputSource::Pointer, *vk) {
+                    self.send_input(InputEvent::KeyDown { vk: *vk });
+                }
+                if !held && old && self.held.release(InputSource::Pointer, *vk) {
+                    self.send_input(InputEvent::KeyUp { vk: *vk });
+                }
+            }
+            if self.controls.keyboard {
+                ui.text_edit_multiline(&mut self.guest_text);
+                if ui.button("Send text").clicked() {
+                    for unit in self.guest_text.encode_utf16() {
+                        self.send_input(InputEvent::Text { unit });
+                    }
+                    self.guest_text.clear();
+                }
+            }
         });
-    }
-
-    /// Render one virtual button. Pressed-while-pointer-is-down
-    /// generates `WM_KEYDOWN` once; releasing fires `WM_KEYUP`.
-    ///
-    /// The held state comes from [`pointer_held_in`] rather than from
-    /// the `Response`, because egui stops calling a still-held press a
-    /// click after 0.8 s — see that function.
-    fn vbutton(&mut self, ui: &mut egui::Ui, label: &str, guest: GuestButton, size: f32) {
-        let vk = guest.vk();
-        let was_pressed = self.held.is_held_by(InputSource::Pointer, vk);
-        let mut button = egui::Button::new(RichText::new(label).size(16.0).strong())
-            .min_size(Vec2::new(size, size));
-        if self.held.is_held(vk) {
-            button = button.fill(Color32::from_rgb(80, 130, 255));
-        }
-        let keys = self.library.config().keybindings.keys_for(guest).join(", ");
-        let response = ui.add_sized(Vec2::new(size, size), button);
-        // Naming the keyboard shortcut on the button is how a user
-        // discovers what their own bindings ended up as.
-        let response = if keys.is_empty() {
-            response.on_hover_text(format!("{} (no key bound)", guest.label()))
-        } else {
-            response.on_hover_text(format!("{} — {keys}", guest.label()))
-        };
-        let now_pressed = pointer_held_in(ui.ctx(), &response.rect);
-        // Only the edges matter, and `HeldButtons` has the last word on
-        // whether the guest hears about them: the keyboard may be
-        // holding this same button.
-        if now_pressed && !was_pressed && self.held.press(InputSource::Pointer, vk) {
-            self.send_input(InputEvent::KeyDown { vk });
-        } else if was_pressed && !now_pressed && self.held.release(InputSource::Pointer, vk) {
-            self.send_input(InputEvent::KeyUp { vk });
-        }
     }
 
     /// Write a rotation picked on the Run screen back to the game's
@@ -1192,6 +1775,8 @@ impl PocketLauncher {
     }
 
     fn release_all_keys(&mut self) {
+        self.activation_releases.clear();
+        self.host_keys.clear();
         for vk in self.held.drain_all() {
             self.send_input(InputEvent::KeyUp { vk });
         }
@@ -1212,12 +1797,207 @@ impl PocketLauncher {
         }
     }
 
-    fn handle_physical_keyboard(&mut self, ctx: &egui::Context) {
-        if self.screen != Screen::Run {
+    fn handle_gamepads(&mut self, ctx: &egui::Context) {
+        if self.input_tx.is_none() {
             return;
         }
-        let events = ctx.input(|input| input.events.clone());
+        let pads = crate::gamepad::poll();
+        self.gamepad_connected = pads.len();
+        let menu_held = pads.iter().any(|p| p.pressed.contains(&"PadL3"))
+            && self.controls.mapped_key("PadL3").is_none();
+        if menu_held && !self.gamepad_menu_held && self.screen == Screen::Run {
+            self.menu_open = !self.menu_open;
+            self.release_all_keys();
+        }
+        self.gamepad_menu_held = menu_held;
+        let mut next = std::collections::HashMap::new();
+        if self.screen == Screen::Run
+            && !self.menu_open
+            && self.controls_draft.is_none()
+            && ctx.input(|i| i.viewport().focused.unwrap_or(true))
+        {
+            for pad in pads {
+                for name in pad.pressed {
+                    if name == "PadL3" && self.controls.mapped_key(name).is_none() {
+                        continue;
+                    }
+                    if let Some(vk) = self
+                        .controls
+                        .mapped_key(name)
+                        .or_else(|| pocket_library::controls::gamepad_default(name))
+                    {
+                        if vk != 0 {
+                            next.insert((pad.index, name), vk);
+                        }
+                    }
+                }
+            }
+        }
+        let old: std::collections::HashSet<_> = self.held.gamepad.values().copied().collect();
+        self.held.gamepad = next;
+        let new: std::collections::HashSet<_> = self.held.gamepad.values().copied().collect();
+        for vk in old.difference(&new) {
+            if !self.held.is_held(*vk) {
+                self.send_input(InputEvent::KeyUp { vk: *vk });
+            }
+        }
+        for vk in new.difference(&old) {
+            if !self.held.keyboard.contains(vk)
+                && !self.held.pointer.contains(vk)
+                && !self.held.modifiers.contains(vk)
+                && !self.held.activation.contains(vk)
+            {
+                self.send_input(InputEvent::KeyDown { vk: *vk });
+            }
+        }
+    }
+
+    fn release_host_keyboard(&mut self) {
+        self.host_keys.clear();
+        let keys: std::collections::HashSet<_> = self
+            .held
+            .keyboard
+            .union(&self.held.modifiers)
+            .copied()
+            .collect();
+        self.held.keyboard.clear();
+        self.held.modifiers.clear();
+        for vk in keys {
+            if !self.held.is_held(vk) {
+                self.send_input(InputEvent::KeyUp { vk });
+            }
+        }
+    }
+
+    fn route_raw_keyboard(&mut self, ctx: &egui::Context, raw: &mut egui::RawInput) {
+        if self.screen != Screen::Run || self.input_tx.is_none() {
+            return;
+        }
+        let function_shortcut = self
+            .controls
+            .menu_key
+            .strip_prefix('F')
+            .is_some_and(|s| s.parse::<u8>().is_ok_and(|n| (1..=12).contains(&n)));
+        if (function_shortcut || !ctx.wants_keyboard_input()) && raw.events.iter().any(|event|matches!(event,egui::Event::Key{key,pressed:true,repeat:false,..} if pocket_library::keybindings::keys_match(key.name(), &self.controls.menu_key))) {
+            self.menu_open = !self.menu_open;
+            log::debug!("Host menu shortcut: open={}, game_only={}", self.menu_open, self.game_only_fullscreen);
+            self.release_all_keys();
+            raw.events.retain(|event|!matches!(event,egui::Event::Key{key,..} if pocket_library::keybindings::keys_match(key.name(), &self.controls.menu_key)));
+            return;
+        }
+        if raw.events.iter().any(|event| {
+            matches!(
+                event,
+                egui::Event::Key {
+                    key: egui::Key::F12,
+                    pressed: true,
+                    repeat: false,
+                    ..
+                }
+            )
+        }) {
+            self.request_screenshot(ctx);
+            raw.events.retain(|event| {
+                !matches!(
+                    event,
+                    egui::Event::Key {
+                        key: egui::Key::F12,
+                        ..
+                    }
+                )
+            });
+            return;
+        }
+        // The host fullscreen exit must work while a pause menu or text
+        // field owns focus as well as while EQ owns the keyboard.
+        if raw.events.iter().any(|event| {
+            matches!(
+                event,
+                egui::Event::Key {
+                    key: egui::Key::F11,
+                    pressed: true,
+                    repeat: false,
+                    ..
+                }
+            )
+        }) {
+            if self.game_only_fullscreen {
+                self.set_game_only_fullscreen(ctx, false);
+            } else {
+                let fullscreen = ctx.input(|input| input.viewport().fullscreen.unwrap_or(false));
+                ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
+            }
+            raw.events.retain(|event| {
+                !matches!(
+                    event,
+                    egui::Event::Key {
+                        key: egui::Key::F11,
+                        ..
+                    }
+                )
+            });
+            return;
+        }
+        if self.menu_open
+            || self.controls_draft.is_some()
+            || !raw.focused
+            || ctx.wants_keyboard_input()
+        {
+            self.release_host_keyboard();
+            return;
+        }
+        self.handle_physical_keyboard(ctx, raw.events.clone(), raw.modifiers);
+        // Guest Tab/Escape/Space must not also navigate or activate host UI.
+        // A focused host field/button takes the other branch before filtering.
+        raw.events.retain(|event| {
+            !matches!(
+                event,
+                egui::Event::Key { .. } | egui::Event::Text(_) | egui::Event::Paste(_)
+            )
+        });
+    }
+
+    fn handle_physical_keyboard(
+        &mut self,
+        ctx: &egui::Context,
+        events: Vec<egui::Event>,
+        modifiers: egui::Modifiers,
+    ) {
+        let mut targets = std::collections::HashSet::new();
+        for (name, pressed, fallback) in
+            [("Ctrl", modifiers.ctrl, 17), ("Shift", modifiers.shift, 16)]
+        {
+            if pressed && self.controls.profile != Profile::Text {
+                let vk = self
+                    .controls
+                    .mapped_key(name)
+                    .or_else(|| self.library.config().keybindings.vk_for_key(name))
+                    .unwrap_or(fallback);
+                if vk != 0 {
+                    targets.insert(vk);
+                }
+            }
+        }
+        let old = self.held.modifiers.clone();
+        for vk in old.difference(&targets) {
+            if self.held.release(InputSource::Modifiers, *vk) {
+                self.send_input(InputEvent::KeyUp { vk: *vk });
+            }
+        }
+        for vk in targets.difference(&old) {
+            if self.held.press(InputSource::Modifiers, *vk) {
+                self.send_input(InputEvent::KeyDown { vk: *vk });
+            }
+        }
         for event in events {
+            if self.controls.profile == Profile::Text {
+                if let egui::Event::Text(ref text) | egui::Event::Paste(ref text) = event {
+                    for unit in text.encode_utf16() {
+                        self.send_input(InputEvent::Text { unit });
+                    }
+                    continue;
+                }
+            }
             let egui::Event::Key {
                 key,
                 pressed,
@@ -1237,15 +2017,44 @@ impl PocketLauncher {
                 }
                 continue;
             }
-            let Some(vk) = self.library.config().keybindings.vk_for_key(key.name()) else {
+            let mapped = self.controls.mapped_key(key.name());
+            let fallback = if self.controls.profile == Profile::Text {
+                match key {
+                    egui::Key::Backspace => Some(8),
+                    egui::Key::Tab => Some(9),
+                    egui::Key::Enter => Some(13),
+                    egui::Key::ArrowLeft => Some(37),
+                    egui::Key::ArrowRight => Some(39),
+                    _ => None,
+                }
+            } else {
+                self.library.config().keybindings.vk_for_key(key.name())
+            };
+            let Some(vk) = mapped.or(fallback) else {
                 continue;
             };
+            if vk == 0 {
+                continue;
+            }
             if pressed {
-                if !repeat && self.held.press(InputSource::Keyboard, vk) {
+                if !repeat
+                    && self.host_keys.insert(key, vk).is_none()
+                    && self
+                        .host_keys
+                        .values()
+                        .filter(|value| **value == vk)
+                        .count()
+                        == 1
+                    && self.held.press(InputSource::Keyboard, vk)
+                {
                     self.send_input(InputEvent::KeyDown { vk });
                 }
-            } else if self.held.release(InputSource::Keyboard, vk) {
-                self.send_input(InputEvent::KeyUp { vk });
+            } else if let Some(released) = self.host_keys.remove(&key) {
+                if !self.host_keys.values().any(|value| *value == released)
+                    && self.held.release(InputSource::Keyboard, released)
+                {
+                    self.send_input(InputEvent::KeyUp { vk: released });
+                }
             }
         }
         if ctx.input(|input| input.viewport().close_requested()) {
@@ -1389,6 +2198,28 @@ impl PocketLauncher {
     }
 
     fn spawn_run(&mut self, game: &GameEntry) {
+        if self.frame_rx.is_some() {
+            self.status = "The previous program is still stopping.".into();
+            return;
+        }
+        self.controls = match self.library.effective_controls(&game.id) {
+            Ok((value, _)) => value,
+            Err(e) => {
+                self.status = e.to_string();
+                return;
+            }
+        };
+        self.menu_open = false;
+        self.pause_requested = false;
+        let mut presentation = self.library.presentation(&game.id).unwrap_or_default();
+        presentation.last_played = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|v| v.as_secs())
+            .unwrap_or(0);
+        if let Err(e) = self.library.write_presentation(&game.id, &presentation) {
+            self.status = e.to_string();
+            return;
+        }
         self.last_frame_texture = None;
         self.last_frame_status = None;
         self.frame_stats.reset();
@@ -1402,8 +2233,12 @@ impl PocketLauncher {
         let (frame_tx, frame_rx) = mpsc::channel();
         let (input_tx, input_rx) = mpsc::channel();
         self.frame_rx = Some(frame_rx);
+        let _ = input_tx.send(InputCommand::SetVolume(
+            (self.controls.volume * 1000.0) as u16,
+        ));
         self.input_tx = Some(input_tx);
         self.held = HeldButtons::default();
+        self.host_keys.clear();
         self.pointer_down_at = None;
         let library_root = self.library.root().to_path_buf();
         let game = game.clone();
@@ -1415,6 +2250,11 @@ impl PocketLauncher {
         });
         self.status = "Starting emulator...".to_string();
     }
+}
+
+/// The visible host target and the stylus exclusion must have identical bounds.
+fn fullscreen_menu_rect() -> Rect {
+    Rect::from_min_size(Pos2::new(8.0, 8.0), Vec2::new(168.0, 44.0))
 }
 
 /// Is the primary pointer button held down, with the press having
@@ -1467,11 +2307,82 @@ fn rotated_pointer_to_game(
 }
 
 impl eframe::App for PocketLauncher {
+    fn raw_input_hook(&mut self, ctx: &egui::Context, input: &mut egui::RawInput) {
+        self.route_raw_keyboard(ctx, input);
+    }
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.handle_physical_keyboard(ctx);
+        if let Some(captured) = ctx.input(|input| {
+            input.events.iter().find_map(|event| {
+                if let egui::Event::Screenshot { image, .. } = event {
+                    Some(image.clone())
+                } else {
+                    None
+                }
+            })
+        }) {
+            if let Some(path) = self.screenshot_path.take() {
+                let rgba: Vec<u8> = captured
+                    .pixels
+                    .iter()
+                    .flat_map(|pixel| pixel.to_array())
+                    .collect();
+                self.status = match image::save_buffer(
+                    &path,
+                    &rgba,
+                    captured.size[0] as u32,
+                    captured.size[1] as u32,
+                    image::ColorType::Rgba8,
+                ) {
+                    Ok(()) => format!("Screenshot saved: {}", path.display()),
+                    Err(error) => format!("Could not save screenshot: {error}"),
+                };
+            }
+        }
+        let now = Instant::now();
+        let expired: Vec<_> = self
+            .activation_releases
+            .iter()
+            .filter(|(_, deadline)| *deadline <= now)
+            .map(|(vk, _)| *vk)
+            .collect();
+        self.activation_releases
+            .retain(|(_, deadline)| *deadline > now);
+        for vk in expired {
+            if self.held.release(InputSource::Activation, vk) {
+                self.send_input(InputEvent::KeyUp { vk });
+            }
+        }
         self.drain_events(ctx);
+        self.handle_gamepads(ctx);
+        if self.input_tx.is_some() {
+            let paused = self.screen != Screen::Run
+                || self.menu_open
+                || self.controls_draft.is_some()
+                || !ctx.input(|i| i.viewport().focused.unwrap_or(true));
+            if paused != self.pause_requested {
+                self.release_all_keys();
+                self.pause_requested = paused;
+                self.send_command(InputCommand::SetPaused(paused));
+            }
+        }
         if self.game_only_fullscreen && self.screen == Screen::Run {
             self.ui_game_only(ctx);
+            egui::Area::new("fullscreen_menu".into())
+                .order(egui::Order::Foreground)
+                .fixed_pos(Pos2::new(8.0, 8.0))
+                .show(ctx, |ui| {
+                    if ui
+                        .add_sized(
+                            fullscreen_menu_rect().size(),
+                            egui::Button::new(format!("Menu ({})", self.controls.menu_key)),
+                        )
+                        .clicked()
+                    {
+                        self.menu_open = true;
+                        log::debug!("Fullscreen host menu button opened");
+                        self.release_all_keys();
+                    }
+                });
         } else {
             egui::TopBottomPanel::top("top").show(ctx, |ui| self.ui_top_bar(ui));
             egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
@@ -1488,11 +2399,23 @@ impl eframe::App for PocketLauncher {
             });
             egui::CentralPanel::default().show(ctx, |ui| match self.screen {
                 Screen::Library => self.ui_library(ui),
+                Screen::Catalog => {
+                    if let Some((id, profile)) = self.catalog_view.ui(ui, &self.library) {
+                        self.open_controls(&id);
+                        if let Some((_, controls, _)) = self.controls_draft.as_mut() {
+                            controls.profile = profile;
+                            controls.keys = profile.keys();
+                            controls.keyboard = profile == Profile::Text;
+                        }
+                    }
+                }
                 Screen::Settings => self.ui_settings(ui),
                 Screen::GameSettings => self.ui_game_settings(ui),
                 Screen::Run => self.ui_run(ui),
             });
         }
+        self.ui_game_menu(ctx);
+        self.ui_controls_editor(ctx);
         // While a game is running we want to drain the live frame
         // channel as fast as the runner produces frames; the original
         // 250 ms cadence capped the launcher at 4 fps, which is most
@@ -1516,7 +2439,7 @@ mod tests {
     use pocket_library::KeyBindings;
 
     /// Drawing the on-screen pad must not cancel a key the user is
-    /// holding on the keyboard. `vbutton` runs every frame and releases
+    /// holding on the keyboard. `ui_virtual_pad` runs every frame and releases
     /// its button as soon as the pointer is not on it, which — while
     /// both sources shared one set — sent a `WM_KEYUP` for a keyboard
     /// arrow that was still down, so JumpyBall's ball stopped steering
@@ -1654,5 +2577,22 @@ mod tests {
         assert_eq!(portrait.size(), Vec2::new(810.0, 1080.0));
         assert_eq!(landscape.center(), bounds.center());
         assert_eq!(landscape.size(), Vec2::new(1440.0, 1080.0));
+    }
+    #[test]
+    fn semantic_activation_and_modifiers_cannot_release_another_source() {
+        let mut held = HeldButtons::default();
+        let vk = 17;
+        assert!(held.press(InputSource::Modifiers, vk));
+        assert!(!held.press(InputSource::Activation, vk));
+        assert!(!held.press(InputSource::Keyboard, vk));
+        held.gamepad.insert((0, "PadY"), vk);
+        held.gamepad.insert((1, "PadY"), vk);
+        assert!(!held.release(InputSource::Activation, vk));
+        assert!(!held.release(InputSource::Modifiers, vk));
+        assert!(!held.release(InputSource::Keyboard, vk));
+        held.gamepad.remove(&(0, "PadY"));
+        assert!(held.is_held(vk));
+        assert_eq!(held.drain_all(), vec![vk]);
+        assert!(!held.is_held(vk));
     }
 }

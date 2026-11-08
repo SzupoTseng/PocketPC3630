@@ -40,7 +40,7 @@ use jni::JNIEnv;
 
 use pocket_core::kernel::InputEvent;
 use pocket_core::Emulator;
-use pocket_library::{CpuBackendPref, GameEntry, GameSettings, Library};
+use pocket_library::{CpuBackendPref, GameSettings, Library};
 use serde::Serialize;
 
 use crate::runner::{InputCommand, Session};
@@ -97,7 +97,25 @@ pub extern "system" fn Java_com_pockethle_app_NativeBridge_listGames<'local>(
     };
     let result = (|| -> anyhow::Result<String> {
         let lib = Library::open(&root)?;
-        let games: Vec<&GameEntry> = lib.games().iter().collect();
+        let games: Vec<serde_json::Value> = lib
+            .games()
+            .iter()
+            .map(|game| {
+                let mut row = serde_json::to_value(game).expect("serializable game");
+                row["presentation"] =
+                    serde_json::to_value(lib.presentation(&game.id).unwrap_or_default()).unwrap();
+                match lib.effective_controls(&game.id) {
+                    Ok((controls, overridden)) => {
+                        row["controls_label"] = serde_json::json!(controls.profile.label());
+                        row["controls_overridden"] = serde_json::json!(overridden);
+                    }
+                    Err(e) => {
+                        row["controls_label"] = serde_json::json!(format!("Controls error: {e}"))
+                    }
+                }
+                row
+            })
+            .collect();
         Ok(serde_json::to_string(&games)?)
     })();
     match result {
@@ -626,6 +644,108 @@ const INPUT_KIND_KEY_UP: jint = 1;
 const INPUT_KIND_POINTER_DOWN: jint = 2;
 const INPUT_KIND_POINTER_UP: jint = 3;
 const INPUT_KIND_POINTER_MOVE: jint = 4;
+const INPUT_KIND_TEXT: jint = 5;
+
+#[no_mangle]
+pub extern "system" fn Java_com_pockethle_app_NativeBridge_nativeSetPaused(
+    _env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+    paused: jint,
+) {
+    if let Some(session) = session_from_handle(handle) {
+        session.send_input(InputCommand::SetPaused(paused != 0));
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_pockethle_app_NativeBridge_nativeIsPaused(
+    _env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) -> jint {
+    session_from_handle(handle).is_some_and(|s| s.is_paused()) as jint
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_pockethle_app_NativeBridge_nativeSetVolume(
+    _env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+    volume: jint,
+) {
+    if let Some(session) = session_from_handle(handle) {
+        session.send_input(InputCommand::SetVolume(volume.clamp(0, 1000) as u16));
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_pockethle_app_NativeBridge_readControls<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    root: JString<'local>,
+    id: JString<'local>,
+) -> jstring {
+    let result = (|| -> anyhow::Result<String> {
+        let root =
+            jstring_to_path(&mut env, root).ok_or_else(|| anyhow::anyhow!("missing root"))?;
+        let id = jstring_to_string(&mut env, id).unwrap_or_default();
+        let library = Library::open(root)?;
+        let (value, overridden) = if id.is_empty() {
+            (
+                pocket_library::controls::read(&library.controls_path(None)?)?.unwrap_or_default(),
+                false,
+            )
+        } else {
+            library.effective_controls(&id)?
+        };
+        Ok(serde_json::json!({"ok":true,"value":value,"overridden":overridden}).to_string())
+    })();
+    new_jstring(&env, result.unwrap_or_else(|e| error_json(&e.to_string())))
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_pockethle_app_NativeBridge_writeControls<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    root: JString<'local>,
+    id: JString<'local>,
+    json: JString<'local>,
+) -> jstring {
+    let result = (|| -> anyhow::Result<()> {
+        let root =
+            jstring_to_path(&mut env, root).ok_or_else(|| anyhow::anyhow!("missing root"))?;
+        let id = jstring_to_string(&mut env, id).unwrap_or_default();
+        let json =
+            jstring_to_string(&mut env, json).ok_or_else(|| anyhow::anyhow!("missing controls"))?;
+        let library = Library::open(root)?;
+        let id = (!id.is_empty()).then_some(id.as_str());
+        if json == "null" {
+            let path = library.controls_path(id)?;
+            if path.exists() {
+                std::fs::remove_file(path)?;
+            }
+            if id.is_some() {
+                let legacy = library
+                    .controls_path(id)?
+                    .with_file_name("web-controls.json");
+                if legacy.exists() {
+                    std::fs::remove_file(legacy)?;
+                }
+            }
+        } else {
+            let value = serde_json::from_str(&json)?;
+            library.write_controls(id, &value)?;
+        }
+        Ok(())
+    })();
+    new_jstring(
+        &env,
+        result
+            .map(|_| "{\"ok\":true}".to_string())
+            .unwrap_or_else(|e| error_json(&e.to_string())),
+    )
+}
 
 #[no_mangle]
 pub extern "system" fn Java_com_pockethle_app_NativeBridge_nativeStartGame<'local>(
@@ -770,6 +890,7 @@ pub extern "system" fn Java_com_pockethle_app_NativeBridge_nativeSendInput<'loca
         return 0;
     };
     let event = match kind {
+        INPUT_KIND_TEXT => InputEvent::Text { unit: clamp_u16(a) },
         INPUT_KIND_KEY_DOWN => InputEvent::KeyDown { vk: a as u16 },
         INPUT_KIND_KEY_UP => InputEvent::KeyUp { vk: a as u16 },
         INPUT_KIND_POINTER_DOWN => InputEvent::PointerDown {
@@ -834,6 +955,15 @@ fn session_from_handle<'a>(handle: jlong) -> Option<&'a Session> {
 
 fn clamp_u16(v: jint) -> u16 {
     v.clamp(0, u16::MAX as jint) as u16
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_pockethle_app_NativeBridge_catalog(
+    env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    chinese: jint,
+) -> jstring {
+    new_jstring(&env, pocket_library::catalog::json(chinese != 0))
 }
 
 #[cfg(test)]

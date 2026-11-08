@@ -1,0 +1,97 @@
+{
+  "date": "2026-11-08",
+  "scope": "Web catalog introductions and per-install visible-button/keyboard preferences; native frontends and device hardware routing pending",
+  "artifacts": {
+    "index.html": "9b18c6b1eeabde2de90394004e76a019609933abfdd3d90e58c26ce1865df6aa",
+    "library-ui.js": "1c1ecec033c1cf579b9defbab835cad68e46c9f6b3aaee33c771ca4d75a6544e",
+    "pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+    "pockethle.wasm": "8c4bbef470db1bf740bdc10fb0a791b8ce83cee13acbfa5703c42af1c37fbc89"
+  },
+  "node_tests": {
+    "passed": 10,
+    "failed": 0
+  },
+  "browser": {
+    "passed": true,
+    "checks": [
+      "LIB-01 search lists the EQ episodes",
+      "LIB-02 version-specific introduction and saving guidance",
+      "LIB-03 catalog preview cannot apply stylus",
+      "LIB-03 catalog preview cannot apply direction",
+      "LIB-03 catalog preview cannot apply full",
+      "LIB-03 catalog preview cannot apply text",
+      "LIB-03 catalog preview cannot apply desktop",
+      "LIB-03 catalog preview cannot apply custom",
+      "LIB-03 catalog preview cannot apply device",
+      "LIB-03 previews send zero guest keys",
+      "LIB-01 close restores focus and search",
+      "LIB-01 input needs filter stays independent",
+      "LIB-04 independent per-program persisted profiles",
+      "LIB-07 unverified hardware panel cannot be applied",
+      "LIB-04 custom visible keys persist",
+      "LIB-04 reset changes only one program",
+      "LIB-09 failed persistence restores previous controls",
+      "LIB-10 progress and game manifest hashes unchanged",
+      "LIB-04 profiles survive page reload",
+      "LIB-04 running game uses saved direction layout",
+      "CT-10 ten real session restarts produce ten key pairs",
+      "CT-10 session cleanup releases keys and save timer",
+      "LIB-08 mobile dialog has no horizontal overflow",
+      "LIB-08 native Escape closes the dialog",
+      "LIB-02 English guidance and controls",
+      "LIB-09 catalog failure keeps local programs available",
+      "LIB-09 catalog retry recovers"
+    ],
+    "runtime_errors": 0,
+    "saved_progress_and_manifest_files_checked": 7,
+    "progress_preserved": true,
+    "session_restarts": 10,
+    "input_pairs": 10,
+    "screenshot_sha256": {
+      "desktop-library.png": "e0b33d6d87d8192526f62b777a853d62c2a13422aeaa4caaaab5929c8878698b",
+      "desktop-introduction.png": "6cd636da8c5262061ca549947cb941a3a921c8ad727eec0147917da7767c6882",
+      "device-panel-preview.png": "409db98393caafc6c8c09839cf5d84b04379a35708682ca5e615dbefe650e38c",
+      "mobile-controls.png": "8c50d867c370546d7258444647ad8b392881814400d1368532ef4d54dca51484",
+      "landscape-controls.png": "96fd552d1f82b6afa4e0dc8de9be9ad191b3a6733ce7470e2258b221650a5aaf"
+    }
+  },
+  "eq2_regression": {
+    "passed": true,
+    "world_and_reloaded_world_visually_reviewed": true,
+    "runtime_errors": 0,
+    "missing_audio": [],
+    "audio": {
+      "world": {
+        "scope": "Real Web Audio output callback; WAV contains up to ten seconds of audible excerpts, not a continuous listening test",
+        "capturedSamples": 958464,
+        "rate": 48000,
+        "channels": 2,
+        "buffers": 332,
+        "samples": 2719744,
+        "nonzero": 1269120,
+        "peak": 0.501960813999176,
+        "rms": 0.08892448951551563
+      },
+      "reloaded-world": {
+        "scope": "Real Web Audio output callback; WAV contains up to ten seconds of audible excerpts, not a continuous listening test",
+        "capturedSamples": 958464,
+        "rate": 48000,
+        "channels": 2,
+        "buffers": 326,
+        "samples": 2670592,
+        "nonzero": 1195400,
+        "peak": 0.501960813999176,
+        "rms": 0.0865678572065054
+      }
+    }
+  },
+  "limits": [
+    "Device Emulator panel is informational only, Apply disabled",
+    "Custom means visible keys, not arbitrary key rebinding",
+    "Control preferences are Web-only and outside progress ZIPs",
+    "No relative mouse, gamepad, IME or true pause",
+    "Mobile viewport emulation, not physical touch or screen reader acceptance",
+    "Windows and Android native UI unchanged",
+    "No complete APP-01 through APP-12 gameplay/control acceptance"
+  ]
+}

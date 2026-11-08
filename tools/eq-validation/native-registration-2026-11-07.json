@@ -1,0 +1,25 @@
+{
+  "backend": "Windows CLI Unicorn",
+  "termination": "Intentional max_slices=50000, not a gameplay completion",
+  "episodes": {
+    "ep1": {
+      "frames_captured": 2,
+      "screen_size": [
+        240,
+        320
+      ],
+      "matches_current_wasm": true,
+      "rgb_sha256": "f8577351d2c69dd53b7c46c93b4ce2f80b55a639b66a902845eff61b9e936f6f"
+    },
+    "ep3": {
+      "frames_captured": 2,
+      "screen_size": [
+        240,
+        320
+      ],
+      "matches_current_wasm": true,
+      "rgb_sha256": "3f83154b0547aa855d341de12ecdb0b8f6e51e6d9e0d1cfb78e0e85e6dcc1f0b"
+    }
+  },
+  "cli_sha256": "9cb56a7001482b5f8a47ac02162ae1bab90598d5454f6f2a9685e789f0460eef"
+}

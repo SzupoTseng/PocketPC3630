@@ -8,15 +8,15 @@
 <link rel="icon" href="data:,">
 <style>
 :root {
-  /* Palette from zjmud: 宣紙日 (rice paper) by day, 竹簡夜 (bamboo slips) by night. */
-  --bg: #efe9dd; --surface: #fffbf2; --ink: #2b2620; --dim: #5e564a; --line: #d3c8b4;
-  --accent: #9c6d1e; --accent-ink: #fffbf2; --bad: #b03a3a; --shadow: 0 6px 20px rgb(90 70 40 / 18%);
+  /* PPC chrome: blue title bars, quiet gray surfaces, compact command rows. */
+  --bg: #e9eef2; --surface: #fafcfd; --ink: #203447; --dim: #5c7080; --line: #c6d2dc;
+  --accent: #235f8c; --accent-ink: #ffffff; --bad: #b03a3a; --shadow: 0 6px 20px rgb(90 70 40 / 18%);
   --stage: #12100e; --pad: rgb(255 255 255 / 9%); --pad-press: rgb(255 255 255 / 22%); --pad-ink: rgb(255 255 255 / 70%);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #12100e; --surface: #1a1714; --ink: #e8e0d4; --dim: #a89e90; --line: #3a322a;
-    --accent: #d9a441; --accent-ink: #12100e; --bad: #e07a7a; --shadow: 0 8px 28px rgb(0 0 0 / 45%);
+    --bg: #101923; --surface: #192734; --ink: #e1ebf2; --dim: #a4b7c7; --line: #344a5c;
+    --accent: #8abddd; --accent-ink: #102535; --bad: #e07a7a; --shadow: 0 8px 28px rgb(0 0 0 / 45%);
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -127,6 +127,9 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; backgro
 .screen { overflow: hidden; position: relative; align-self: stretch; }
 .bar-right { display: flex; gap: 8px; flex-wrap: wrap; }
 
+dialog button, .bar button, .more summary { min-height:44px; }
+.software-dialog textarea { display:block; width:100%; min-height:90px; color:var(--ink); background:var(--bg); }
+.pad[hidden], #hud[hidden] { display:none; }
 /* Touch controls, the same keys as the Android version's pad. */
 /* Shown on every screen, like the buttons under a Pocket PC's display in
    Device Emulator: a navigation disc with the action key in its centre,
@@ -156,7 +159,7 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; backgro
 @media (orientation: landscape) and (max-height: 520px) {
   body.touch #stage { flex-direction: row; flex-wrap: wrap; }
   body.touch .bar { order: 0; max-width: none; }
-  body.touch .screen { order: 2; flex: 1; height: calc(100% - 44px); }
+  body.touch .screen { order: 2; flex: 1; height: calc(100% - var(--play-chrome-height, 44px)); }
   body.touch .pad { display: contents; }
   body.touch .dpad { order: 1; align-self: center; margin-left: 16px; }
   body.touch .buttons { order: 3; align-self: center; margin-right: 16px; }
@@ -340,6 +343,43 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
 .app-dl span { display: flex; flex-direction: column; line-height: 1.25; }
 .app-dl small { color: var(--dim); font-size: 12px; }
 .app-ver { color: var(--dim); font-size: 13px; }
+/* Software introductions share the page palette; previews never send input. */
+.software-dialog { width: min(48rem, calc(100vw - 24px)); max-width: none; max-height: calc(100dvh - 24px); overflow: hidden; }
+.software-dialog.game-menu { overflow-y: auto; padding: 16px; gap: 8px; }
+.software-dialog.game-menu > * { flex-shrink: 0; }
+.software-dialog[open] { display: flex; flex-direction: column; }
+.software-dialog article { max-height: 78dvh; min-height: 0; padding: 20px; overflow: auto; overscroll-behavior: contain; }
+.software-header { flex: none; background: var(--surface); padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.software-header h2 { overflow-wrap: anywhere; }
+.software-dialog button, .software-dialog select { min-height: 44px; border: 1px solid var(--line); padding: 8px 12px; border-radius: 10px; font: inherit; }
+.software-dialog button:disabled { opacity: .55; cursor: not-allowed; }
+.software-dialog section { border-top: 1px solid var(--line); margin-top: 14px; }
+.software-dialog p, .software-dialog li { line-height: 1.6; overflow-wrap: anywhere; }
+.software-dialog select { max-width: 100%; color: var(--ink); background: var(--bg); }
+.software-dialog .muted, .game-controls { color: var(--dim); font-size: 12px; }
+.software-shot { max-width: min(240px, 100%); max-height: 320px; object-fit: contain; image-rendering: pixelated; border-radius: 8px; }
+.software-state { display: grid; grid-template-columns: minmax(5rem, 1fr) 3fr; gap: 8px; }
+.software-state dd { margin: 0; overflow-wrap: anywhere; }
+.control-preview { margin-top: 12px; max-width: 24rem; padding: 14px; border: 2px solid var(--line); border-radius: 20px; background: var(--bg); display: flex; flex-wrap: wrap; gap: 8px; }
+.control-preview .preview-screen { width: 100%; min-height: 140px; background: var(--surface); border: 1px dashed var(--dim); border-radius: 8px; display: grid; place-items: center; }
+.control-preview.landscape .preview-screen { min-height: 80px; }
+.control-preview button:focus, .control-preview button:active { background: var(--accent); color: var(--accent-ink); }
+.control-custom { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; border: 1px solid var(--line); }
+.control-custom label { display: flex; align-items: center; gap: 6px; min-height: 44px; }
+.software-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.control-custom[hidden], .pad [hidden], .pad[hidden] { display: none !important; }
+.game .name { display: flex; flex-direction: column; gap: 4px; }
+.game .name > span { overflow: hidden; text-overflow: ellipsis; }
+.game-controls { white-space: normal; }
+.lib-controls { display: block; min-height: 44px; text-align: left; color: var(--accent); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.lib-input-filter { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.lib-input-filter select { min-height: 44px; max-width: 100%; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; }
+@media (max-width: 480px) { .software-state { grid-template-columns: 1fr; } .software-state dt { font-weight: 600; } .software-dialog article { padding: 14px; } }
+/* Functional PPC command strip; no borrowed device artwork. */
+.ppc-panel { max-width: 380px; margin-inline: auto; border-top: 1px solid #536b7e; background: linear-gradient(#273e50,#1b2c3a); border-radius: 4px 4px 12px 12px; }
+.ppc-panel .key { color: #e3edf5; background: #344e62; border: 1px solid #7890a2; border-radius: 6px; font-size: 13px; box-shadow: 0 2px 0 #10202e; }
+.ppc-panel .key[data-vk="13"] { border-radius: 50%; background: #235f8c; }
+.ppc-panel .key:active, .ppc-panel .key.down { background: #668ba6; box-shadow: none; }
 </style>
 </head>
 <body>
@@ -417,6 +457,7 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
         </label>
       </div>
     </div>
+    <label class="lib-input-filter" id="lib-input-label"><span id="lib-input-caption">操作需求</span><select id="lib-input"></select></label>
     <p class="lib-count" id="lib-count" role="status"></p>
     <div class="cards" id="lib-cards"></div>
     <p class="empty" id="lib-empty" hidden data-i18n="lib.none">沒有符合的程式，換個關鍵字或篩選試試。</p>
@@ -511,6 +552,7 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
       <button type="button" id="kbd-toggle" aria-controls="vkbd" aria-pressed="false"><span class="ico" aria-hidden="true">⌨</span><span data-i18n="play.keyboard">鍵盤</span></button>
       <button type="button" id="help-toggle" aria-controls="controls-help"><span class="ico" aria-hidden="true">?</span><span data-i18n="h.036">操作方式對照</span></button>
       <button type="button" id="rotate" title="遊戲畫面是躺著的？轉過來" data-i18n-attr="title=h.078"><span class="ico" aria-hidden="true">⟳</span><span data-i18n="h.079">旋轉畫面</span></button>
+      <button type="button" id="software-controls">操作方式</button>
       <button type="button" id="save-now"><span class="ico" aria-hidden="true">⇩</span><span data-i18n="h.080">下載存檔</span></button>
     </span>
   </div>
@@ -582,6 +624,7 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
 <div id="drop-overlay" aria-hidden="true"><div data-i18n="h.101">放開即可匯入<small>.zip、.cab、.exe，可一次多個檔案</small></div></div>
 <input type="file" id="save-file" accept=".zip" hidden>
 <script src="pockethle.js"></script>
+<script src="library-ui.js"></script>
 <script>
 // The page pumps everything, as with FluffOS's WebAssembly driver: a tab cannot
 // block, so pocket_tick runs until the guest sleeps and says how long to wait.
@@ -632,6 +675,8 @@ async function setLang(lang, chosen = false) {
   if (chosen) { try { localStorage.setItem('langChosen', lang); } catch {} }
   $('lang').value = lang;
   applyI18n();
+  softwareUI.refresh();
+  $('software-controls').textContent = uiText('操作方式', 'Controls');
   if (M) listGames();
   if (APP_VERSION) $('app-ver').textContent = t('lib.dl.version', { version: APP_VERSION });
   if (LIB.items.length) { await loadLibraryText(); buildLibraryFilters(); renderLibrary(true); }
@@ -644,7 +689,8 @@ const AUDIO_FRAMES = 4096;
 const SAVE_EVERY_MS = 10000;
 const FRAMES_PER_PRESS = 3;
 const MAX_PRESS_MS = 1000;
-let M, running = false, syncing = false, syncAgain = false, frameMs = 33;
+let M, running = false, frameMs = 33;
+let runningIndex = null;
 
 function say(text, bad = false) {
   $('status').textContent = text;
@@ -654,17 +700,7 @@ function say(text, bad = false) {
 const lastError = () => M.UTF8ToString(M._pocket_last_error());
 
 // IndexedDB is the only thing that survives a reload; MEMFS is rebuilt from it.
-function syncFs(populate) {
-  return new Promise((resolve, reject) => {
-    if (syncing && !populate) { syncAgain = true; resolve(); return; }
-    syncing = true;
-    M.FS.syncfs(populate, (error) => {
-      syncing = false;
-      if (syncAgain) { syncAgain = false; syncFs(false); }
-      error ? reject(error) : resolve();
-    });
-  });
-}
+const syncFs = PocketLibraryUI.createSyncQueue((populate, done) => M.FS.syncfs(populate, done));
 
 function withPath(path, action) {
   const text = M.stringToNewUTF8(path);
@@ -672,6 +708,123 @@ function withPath(path, action) {
 }
 
 function gameId(index) { return M.UTF8ToString(M._pocket_game_id(index)); }
+
+const uiText = (zh, en) => I18N.lang.startsWith('zh') ? zh : en;
+let activeControls = PocketLibraryUI.defaultConfig();
+const pauseReasons = new Set();
+function setPaused(reason, value) {
+  if (value) { releaseAllInput(); pauseReasons.add(reason); } else pauseReasons.delete(reason);
+  if (running) M._pocket_set_paused(pauseReasons.size ? 1 : 0);
+}
+function controlIndex(id) {
+  if (id === '') return -1;
+  const index = Array.from({length: M._pocket_game_count()}, (_,i) => i).find(i => gameId(i) === id);
+  if (index === undefined) throw new Error('Unknown installed program');
+  return index;
+}
+function controlsPath(id) {
+  controlIndex(id);
+  return id === '' ? '/library/controls-default.json' : `/library/games/${id}/controls.json`;
+}
+function controlsRecord(id) {
+  const result = JSON.parse(M.UTF8ToString(M._pocket_controls_json(controlIndex(id))));
+  if (!result.ok) throw new Error(result.error || 'Invalid controls');
+  return result;
+}
+function readControls(id) { return PocketLibraryUI.normalize(controlsRecord(id).value); }
+function hasControls(id) { return controlsRecord(id).overridden; }
+let preferenceWrites = Promise.resolve();
+function serializePreference(write) {
+  const current = preferenceWrites.catch(() => {}).then(write);
+  preferenceWrites = current;
+  return current;
+}
+function writeControls(id, value) { return serializePreference(async () => {
+  const path = controlsPath(id);
+  const paths = [path, ...(id ? [path.replace('/controls.json','/web-controls.json')] : [])];
+  const before = paths.map(p => M.FS.analyzePath(p).exists ? M.FS.readFile(p) : null);
+  const result = withPath(value === null ? 'null' : JSON.stringify(value), p => M._pocket_controls_write(controlIndex(id), p));
+  if (result < 0) throw new Error(lastError());
+  try { await syncFs(false); }
+  catch (error) {
+    paths.forEach((p,i) => { if (before[i]) M.FS.writeFile(p,before[i]); else if(M.FS.analyzePath(p).exists) M.FS.unlink(p); });
+    throw error;
+  }
+  listGames();
+  if (running && (id === '' || gameId(runningIndex) === id)) applyControls(readControls(gameId(runningIndex)));
+}); }
+const softwareUI = PocketLibraryUI.mount({
+  lang: () => I18N.lang, t, describe: entry => LIB.desc[entry.id] || '',
+  onOpen: () => setPaused('controls',true), onClose: () => setPaused('controls',false),
+  apply: writeControls, reset: async id => { await writeControls(id,null); return readControls(id); },
+});
+function openLocalControls(index) {
+  releaseAllInput();
+  const id = gameId(index), name = M.UTF8ToString(M._pocket_game_name(index));
+  // Family hints provide reading material only. The dialog explicitly keeps
+  // local version verification separate; no catalog result/config is copied.
+  const hints = { pocketeq_e1: 'everquest', eq_e2: 'everquest-e2', eq_e3: 'everquest-e3' };
+  const reference = LIB.items.find(entry => entry.id === hints[id]);
+  let config,invalid=false;try{config=readControls(id);}catch{config=PocketLibraryUI.defaultConfig();invalid=true;}
+  softwareUI.open({ ...(reference || { id: `local:${id}` }), name }, { id, config, invalid });
+}
+function applyControls(config) {
+  releaseAllInput();
+  activeControls = PocketLibraryUI.normalize(config);
+  const value = activeControls, pad = document.querySelector('.pad');
+  pad.replaceChildren(); pad.style.position = 'relative'; pad.style.height = value.keys.length ? '210px' : '0';
+  pad.style.opacity = value.opacity; pad.style.width = '100%';
+  const layout = rotation ? value.landscape : value.portrait;
+  pad.classList.toggle('ppc-panel', value.profile === 'ppc2003');
+  value.keys.forEach((vk,i) => {
+    const key = document.createElement('button'); key.type = 'button'; key.className = 'key'; key.dataset.vk = vk;
+    const record = PocketLibraryUI.keys.find(k => k[0] === vk);
+    key.textContent = record?.[1] || `VK ${vk}`; key.title = record ? uiText(record[2],record[3]) : `CE VK ${vk}`;
+    key.setAttribute('aria-label',key.title);
+    const panelButton = value.profile === 'ppc2003' ? PocketLibraryUI.ppc2003.buttons.find(b => b.vk === vk) : null;
+    if(panelButton) { key.dataset.mode = panelButton.mode; key.textContent = panelButton.label; }
+    const p = layout.find(p => p.vk === vk) || panelButton || {x:.1+(i%5)*.19,y:.14+Math.floor(i/5)*.28,size:.12};
+    Object.assign(key.style, {position:'absolute',left:`clamp(0px, calc(${p.x*100}% - 24px), calc(100% - 48px))`,top:`clamp(0px, calc(${p.y*100}% - 24px), calc(100% - 48px))`,width:`max(44px, ${p.size*100}%)`,height:'44px',minWidth:'44px'});
+    pad.append(key);
+  });
+  pad.hidden = value.keys.length === 0; pad.removeAttribute('aria-hidden');
+  $('vkbd').hidden = !value.keyboard; $('kbd-toggle').setAttribute('aria-pressed', String(value.keyboard));
+  menuButton.textContent=uiText('選單 ','Menu ')+value.menu_key;
+  if (running) M._pocket_set_volume(Math.round(value.volume*1000));
+  fitCanvas();
+}
+const gameMenu = document.createElement('dialog'); gameMenu.className = 'software-dialog game-menu'; gameMenu.setAttribute('aria-label',uiText('遊戲中選單','Game menu')); document.body.append(gameMenu);
+function openGameMenu() {
+  if(!running || gameMenu.open) return;
+  setPaused('menu',true); gameMenu.replaceChildren();
+  const heading = document.createElement('h2'); heading.textContent = uiText('已暫停','Paused'); gameMenu.append(heading);
+  const action = (zh,en,fn) => {const button=document.createElement('button');button.textContent=uiText(zh,en);button.onclick=fn;gameMenu.append(button);};
+  action('繼續遊戲','Resume',()=>gameMenu.close());
+  action('操作方式','Controls',()=>openLocalControls(runningIndex));
+  action('FPS 診斷','FPS diagnostics',()=>{const shown=$('hud').hidden;$('hud').hidden=!shown;localStorage.setItem('show-fps',String(shown));});
+  action('旋轉畫面','Rotate',()=>$('rotate').click());
+  action('全螢幕','Fullscreen',()=>{if(document.fullscreenElement)document.exitFullscreen();else $('stage').requestFullscreen().catch(e=>toast(String(e)));});
+  const volume=document.createElement('input');volume.type='range';volume.min=0;volume.max=1000;volume.value=activeControls.volume*1000;volume.setAttribute('aria-label',uiText('音量','Volume'));
+  volume.oninput=()=>{activeControls.volume=Number(volume.value)/1000;M._pocket_set_volume(Number(volume.value));};volume.onchange=()=>writeControls(gameId(runningIndex),activeControls).catch(e=>toast(String(e)));gameMenu.append(volume);
+  const zoom=document.createElement('input');zoom.type='range';zoom.min=1;zoom.max=4;zoom.step=.25;zoom.value=activeControls.zoom;zoom.setAttribute('aria-label',uiText('畫面放大','Zoom'));zoom.oninput=()=>{activeControls.zoom=Number(zoom.value);fitCanvas();};zoom.onchange=()=>writeControls(gameId(runningIndex),activeControls).catch(e=>toast(String(e)));gameMenu.append(zoom);
+  for(const name of ['zoom_x','zoom_y']) {
+    const row=document.createElement('label');row.textContent=name==='zoom_x'?uiText('客體焦點 X','Guest focus X'):uiText('客體焦點 Y','Guest focus Y');
+    const input=document.createElement('input');input.type='range';input.min=0;input.max=1;input.step=.05;input.value=activeControls[name];
+    input.oninput=()=>{activeControls[name]=Number(input.value);fitCanvas();};input.onchange=()=>writeControls(gameId(runningIndex),activeControls).catch(e=>toast(String(e)));row.append(input);gameMenu.append(row);
+  }
+  const text=document.createElement('textarea');text.placeholder=uiText('送入客體的文字（可使用 IME）','Text for guest (IME supported)');text.setAttribute('aria-label',text.placeholder);gameMenu.append(text);
+  action('排入客體退格','Queue guest backspace',()=>withPath('\b',p=>M._pocket_text(p)));
+  action('送入文字並繼續','Send text and resume',()=>{if(withPath(text.value,p=>M._pocket_text(p))<0){toast(lastError());return;}gameMenu.close();});
+  action('備份進度 ZIP','Back up progress ZIP',()=>$('save-now').click());
+  action('返回遊戲庫','Return to library',()=>$('leave').click());
+  const note=document.createElement('p');note.textContent=uiText('備份僅包含遊戲已寫出的進度，請先在遊戲內存檔。','A backup contains written progress. Save inside the game first.');gameMenu.append(note);
+  const errorStatus=document.createElement('p');errorStatus.id='game-menu-error';errorStatus.setAttribute('role','alert');gameMenu.append(errorStatus);
+  gameMenu.showModal();gameMenu.querySelector('button').focus();
+}
+gameMenu.addEventListener('close',()=>{if(!gameMenu.open)setPaused('menu',false);});
+const menuButton=document.createElement('button');menuButton.textContent=uiText('選單 F1','Menu F1');menuButton.onclick=openGameMenu;document.querySelector('.bar').prepend(menuButton);
+const defaultButton=document.createElement('button');defaultButton.textContent=uiText('預設操作方式','Default controls');defaultButton.onclick=()=>{let config,invalid=false;try{config=readControls('');}catch{config=PocketLibraryUI.defaultConfig();invalid=true;}softwareUI.open({id:'defaults',name:uiText('全域操作設定','Default controls')},{id:'',config,invalid});};$('games').before(defaultButton);
+$('software-controls').onclick = () => { if (running && runningIndex !== null) openLocalControls(runningIndex); };
 
 function download(bytes, name) {
   const link = document.createElement('a');
@@ -740,6 +893,19 @@ function menuItem(label, action, danger = false) {
 
 let saveTarget = null;
 
+function readPresentation(id) {
+  controlIndex(id);
+  try {return JSON.parse(M.FS.readFile(`/library/games/${id}/presentation.json`,{encoding:'utf8'}));} catch {return {};}
+}
+function writePresentation(id,value) { return serializePreference(async () => {
+  controlIndex(id); const path=`/library/games/${id}/presentation.json`;
+  const previous=M.FS.analyzePath(path).exists ? M.FS.readFile(path) : null;
+  M.FS.writeFile(path,JSON.stringify(value));
+  try {await syncFs(false);} catch(error) {if(previous)M.FS.writeFile(path,previous);else M.FS.unlink(path);throw error;}
+}); }
+const librarySearch=document.createElement('input');librarySearch.type='search';librarySearch.placeholder=uiText('搜尋名稱／別名','Search name / alias');librarySearch.setAttribute('aria-label',librarySearch.placeholder);librarySearch.oninput=()=>listGames();$('games').before(librarySearch);
+const recentSort=document.createElement('select');recentSort.setAttribute('aria-label',uiText('遊戲庫排序','Library order'));
+for(const [value,zh,en] of [['recent','最近遊玩','Recently played'],['name','名稱','Name']]){const option=document.createElement('option');option.value=value;option.textContent=uiText(zh,en);recentSort.append(option);}recentSort.onchange=()=>listGames();$('games').before(recentSort);
 function listGames() {
   const list = $('games');
   list.replaceChildren();
@@ -755,16 +921,25 @@ function listGames() {
     list.append(empty);
     return;
   }
-  for (let i = 0; i < count; i++) {
-    const name = M.UTF8ToString(M._pocket_game_name(i));
+  const items = Array.from({length:count},(_,i)=>({i,name:M.UTF8ToString(M._pocket_game_name(i)),meta:readPresentation(gameId(i))}));
+  const query=librarySearch.value.toLocaleLowerCase();
+  const visible=items.filter(item=>(item.name+' '+(item.meta.alias||'')).toLocaleLowerCase().includes(query));
+  visible.sort((a,b)=>Number(!!b.meta.favorite)-Number(!!a.meta.favorite) || (recentSort.value==='recent' ? (b.meta.last_played||0)-(a.meta.last_played||0) : (a.meta.alias||a.name).localeCompare(b.meta.alias||b.name)));
+  if(!visible.length){const empty=document.createElement('p');empty.textContent=uiText('沒有符合的軟體','No matching programs');list.append(empty);}
+  for (const {i,name,meta} of visible) {
     const row = document.createElement('div');
     row.className = 'game';
+    row.dataset.gameId = gameId(i);
     const play = document.createElement('button');
     play.type = 'button';
     play.className = 'play';
     const label = document.createElement('span');
     label.className = 'name';
-    label.textContent = name;
+    const title = document.createElement('span'); title.textContent = `${meta.favorite ? "★ " : ""}${meta.alias || name}`; title.title = name;
+    const mode = document.createElement('small'); mode.className = 'game-controls';
+    try{mode.textContent = `${softwareUI.name(readControls(gameId(i)))} · ${hasControls(gameId(i)) ? uiText('此軟體自訂', 'Program override') : uiText('繼承全域', 'Global default')}`;}
+    catch{mode.textContent=uiText('操作設定無法讀取：可從操作方式恢復','Controls unreadable: open Controls to restore');}
+    label.append(title, mode);
     play.append(iconFor(i, name), label);
     play.addEventListener('click', () => start(i));
     const more = document.createElement('details');
@@ -789,6 +964,13 @@ function listGames() {
         await syncFs(false);
         location.reload();
       }, true),
+      menuItem(uiText('名稱與收藏', 'Name and favorite'), async () => {
+        const alias=prompt(uiText('顯示別名（空白使用正式名稱）','Display alias (empty uses original name)'),meta.alias||'');
+        if(alias===null)return;
+        await writePresentation(gameId(i),{...meta,alias:alias.slice(0,256)});listGames();
+      }),
+      menuItem(meta.favorite ? uiText('取消收藏','Unfavorite') : uiText('收藏','Favorite'),async()=>{await writePresentation(gameId(i),{...meta,favorite:!meta.favorite});listGames();}),
+      menuItem(uiText('介紹與操作方式', 'About and controls'), () => openLocalControls(i)),
     );
     more.append(summary, menu);
     row.append(play, more);
@@ -817,7 +999,9 @@ async function importFile(file) {
   say(note ? t('js.importedNote', { note }) : t('js.imported'));
 }
 
+let stopAudio = () => {};
 function startAudio() {
+  stopAudio();
   const Context = window.AudioContext || window.webkitAudioContext;
   if (!Context) return;
   const audio = new Context();
@@ -831,30 +1015,68 @@ function startAudio() {
     for (let i = 0; i < AUDIO_FRAMES; i++) { left[i] = mix[i * 2]; right[i] = mix[i * 2 + 1]; }
   };
   node.connect(audio.destination);
-  audio.resume();
+  audio.resume().catch(console.error);
+  // EverQuest may exit and start again without reloading this page. Only one
+  // output callback may drain the shared mixer, or music runs too quickly.
+  stopAudio = () => {
+    node.onaudioprocess = null;
+    node.disconnect();
+    audio.close().catch(console.error);
+    M._free(buffer);
+    stopAudio = () => {};
+  };
 }
 
 // A press shorter than a frame or two never registers: Pocket Quake samples its
 // keys once per frame, and a quick tap can start and end between samples. Slower
 // machines have longer frames, so the shortest press follows the frame rate.
-const pressedAt = new Map(), pendingUp = new Map();
+const pressedAt = new Map(), pendingUp = new Map(), keySources = new Map();
+let detachInput = () => {}, releasePointer = () => {}, saveTimer = null, sessionNumber = 0;
 function keyUp(vk) {
   clearTimeout(pendingUp.get(vk));
   pendingUp.delete(vk);
   pressedAt.delete(vk);
+  keySources.delete(vk);
   M._pocket_key(0, vk);
 }
-function press(vk) {
-  if (pendingUp.has(vk)) keyUp(vk);
+function press(vk, source = 'keyboard') {
+  if (!running) return;
+  const sources = keySources.get(vk) || new Set();
+  if (sources.has(source)) return;
+  sources.add(source); keySources.set(vk, sources);
+  clearTimeout(pendingUp.get(vk)); pendingUp.delete(vk);
+  if (pressedAt.has(vk)) return;
   pressedAt.set(vk, performance.now());
   M._pocket_key(1, vk);
 }
-function release(vk) {
+function release(vk, source = 'keyboard') {
+  const sources = keySources.get(vk);
+  if (!sources?.delete(source)) return;
+  if (sources.size) return;
   if (!pressedAt.has(vk)) return;
   const held = performance.now() - pressedAt.get(vk);
   const shortest = Math.min(MAX_PRESS_MS, frameMs * FRAMES_PER_PRESS);
   if (held >= shortest) keyUp(vk);
   else pendingUp.set(vk, setTimeout(() => keyUp(vk), shortest - held));
+}
+function pulseKey(vk, source = 'activation') {
+  press(vk, source);
+  const sources = keySources.get(vk);
+  if (sources?.delete(source) && !sources.size) keyUp(vk);
+}
+function releaseAllInput() {
+  for (const vk of [...pressedAt.keys()]) keyUp(vk);
+  releasePointer();
+  for (const key of document.querySelectorAll('.pad .key.down')) key.classList.remove('down');
+}
+function finishWebSession() {
+  sessionNumber++;
+  detachInput(); detachInput = () => {};
+  releaseAllInput();
+  clearInterval(saveTimer); saveTimer = null;
+  stopAudio(); running = false; runningIndex = null;
+  if(gameMenu.open)gameMenu.close(); softwareUI.refresh(); pauseReasons.clear();
+  document.body.classList.remove('playing');
 }
 
 // Landscape games of the time drew sideways on the portrait screen and the
@@ -863,17 +1085,27 @@ function release(vk) {
 let rotation = 0;
 function fitCanvas() {
   const canvas = $('screen');
+  const chromeHeight = document.querySelector('.bar').getBoundingClientRect().height
+    + ($('vkbd').hidden ? 0 : $('vkbd').getBoundingClientRect().height);
+  $('stage').style.setProperty('--play-chrome-height', `${Math.ceil(chromeHeight)}px`);
   const area = canvas.parentElement.getBoundingClientRect();
   const [w, h] = [canvas.width, canvas.height];
   const turned = rotation !== 0;
-  const scale = 0.98 * Math.max(0.1, Math.min(area.width / (turned ? h : w), area.height / (turned ? w : h)));
+  const scale = 0.98 * Math.max(0.1, Math.min(area.width / (turned ? h : w), area.height / (turned ? w : h))) * activeControls.zoom;
   canvas.style.width = `${w * scale}px`;
   canvas.style.height = `${h * scale}px`;
+  const half=.5/activeControls.zoom;
+  const cx=Math.max(half,Math.min(1-half,activeControls.zoom_x)), cy=Math.max(half,Math.min(1-half,activeControls.zoom_y));
+  const dx=(.5-cx)*w*scale,dy=(.5-cy)*h*scale;
+  const [sx,sy]=rotation===90?[-dy,dx]:rotation===270?[dy,-dx]:[dx,dy];
+  canvas.style.left=`calc(50% + ${sx}px)`; canvas.style.top=`calc(50% + ${sy}px)`;
   canvas.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
 }
 window.addEventListener('resize', () => { if (running) fitCanvas(); });
 
 function attachInput(canvas, width, height) {
+  const controller = new AbortController();
+  const on = (node, event, action) => node.addEventListener(event, action, { signal: controller.signal });
   const at = (event) => {
     const box = canvas.getBoundingClientRect();
     const u = (event.clientX - box.left) / box.width, v = (event.clientY - box.top) / box.height;
@@ -883,56 +1115,97 @@ function attachInput(canvas, width, height) {
       Math.min(height - 1, Math.max(0, Math.floor(y * height))),
     ];
   };
-  let stylus = false;
-  canvas.addEventListener('pointerdown', (event) => {
+  let stylus = null, lastPoint = [0, 0];
+  releasePointer = () => { if (stylus !== null) { M._pocket_pointer(2, ...lastPoint); stylus = null; } };
+  on(canvas, 'pointerdown', (event) => {
+    if (!running || pauseReasons.size || stylus !== null) return;
     event.preventDefault();
     canvas.focus();
     canvas.setPointerCapture(event.pointerId);
-    stylus = true;
-    M._pocket_pointer(1, ...at(event));
+    stylus = event.pointerId; lastPoint = at(event);
+    M._pocket_pointer(1, ...lastPoint);
   });
-  canvas.addEventListener('pointermove', (event) => { if (stylus) M._pocket_pointer(0, ...at(event)); });
-  const lift = (event) => { if (!stylus) return; stylus = false; M._pocket_pointer(2, ...at(event)); };
-  canvas.addEventListener('pointerup', lift);
-  canvas.addEventListener('pointercancel', lift);
+  on(canvas, 'pointermove', (event) => { if (stylus === event.pointerId) { lastPoint = at(event); M._pocket_pointer(0, ...lastPoint); } });
+  const lift = event => { if (stylus === event.pointerId) { lastPoint = at(event); releasePointer(); } };
+  on(canvas, 'pointerup', lift); on(canvas, 'pointercancel', lift);
 
-  const ignored = (event) => event.ctrlKey || event.metaKey || event.altKey || event.keyCode >= 112;
-  window.addEventListener('keydown', (event) => {
-    if (ignored(event)) return;
+  const hostName = event => ({ArrowUp:'Up',ArrowDown:'Down',ArrowLeft:'Left',ArrowRight:'Right',' ':'Space',Control:'Ctrl',Escape:'Esc'})[event.key] || (event.key.length === 1 ? event.key.toUpperCase() : event.key);
+  const keyboardHeld = new Map();
+  const binding = (name, fallback) => activeControls.bindings.find(b => PocketLibraryUI.canonicalName(b.input) === PocketLibraryUI.canonicalName(name))?.vk ?? fallback;
+  on(window, 'keydown', event => {
+    if ((event.code.toLowerCase() === activeControls.menu_key.toLowerCase() || hostName(event).toLowerCase()===activeControls.menu_key.toLowerCase()) && !event.repeat && !event.target.closest?.('input,textarea,[contenteditable=true]')) { event.preventDefault(); openGameMenu(); return; }
+    if (!running || pauseReasons.size || document.querySelector('dialog[open]') || event.metaKey || event.altKey || event.keyCode >= 112
+      || event.target.closest?.('input,select,textarea,button,[role=button],[contenteditable=true]')) return;
     event.preventDefault();
-    if (!event.repeat) press(event.keyCode);
+    if (!event.repeat) { const vk = binding(hostName(event),event.keyCode); keyboardHeld.set(event.code,vk); if(vk) press(vk,`keyboard:${event.code}`); }
   });
-  window.addEventListener('keyup', (event) => {
-    if (ignored(event)) return;
-    event.preventDefault();
-    release(event.keyCode);
+  on(window, 'keyup', event => {
+    const vk = keyboardHeld.get(event.code); if (vk !== undefined) { event.preventDefault(); release(vk,`keyboard:${event.code}`); keyboardHeld.delete(event.code); }
   });
-
-  for (const key of document.querySelectorAll('.pad .key')) {
-    const vk = Number(key.dataset.vk);
-    key.addEventListener('pointerdown', (event) => {
-      event.preventDefault();
-      key.setPointerCapture(event.pointerId);
-      key.classList.add('down');
-      navigator.vibrate?.(8);
-      press(vk);
-    });
-    const up = () => { if (!key.classList.contains('down')) return; key.classList.remove('down'); release(vk); };
-    key.addEventListener('pointerup', up);
-    key.addEventListener('pointercancel', up);
-  }
+  on(window, 'blur', () => { keyboardHeld.clear(); setPaused('focus',true); });
+  on(window, 'focus', () => setPaused('focus',false));
+  on(document, 'visibilitychange', () => setPaused('background',document.hidden));
+  const pad = document.querySelector('.pad');
+  const pointers = new Map();
+  on(pad,'pointerdown',event => {
+    const key = event.target.closest('.key'); if(!key || pauseReasons.size || !running) return;
+    if(key.dataset.mode === 'click') return;
+    event.preventDefault(); key.setPointerCapture(event.pointerId); key.classList.add('down');
+    const vk = Number(key.dataset.vk); pointers.set(event.pointerId,vk); press(vk,`pad:${event.pointerId}`);
+  });
+  const up = event => { const vk = pointers.get(event.pointerId); if(vk !== undefined) { release(vk,`pad:${event.pointerId}`); pointers.delete(event.pointerId); event.target.classList.remove('down'); } };
+  on(pad,'pointerup',up); on(pad,'pointercancel',up); on(pad,'lostpointercapture',up);
+  on(pad,'click',event => {const key=event.target.closest('.key');if(key?.dataset.mode==='click' && running && !pauseReasons.size)pulseKey(Number(key.dataset.vk));});
+  on(pad,'keydown',event => { const key = event.target.closest('.key'); if(key && key.dataset.mode !== 'click' && !pauseReasons.size && ['Space','Enter'].includes(event.code)) {event.preventDefault(); if(!event.repeat)press(Number(key.dataset.vk),`focus:${key.dataset.vk}`);} });
+  on(pad,'keyup',event => { const key = event.target.closest('.key'); if(key && key.dataset.mode !== 'click' && ['Space','Enter'].includes(event.code)) {event.preventDefault();release(Number(key.dataset.vk),`focus:${key.dataset.vk}`);} });
+  on(pad,'focusout',event => {const key=event.target.closest('.key');if(key)release(Number(key.dataset.vk),`focus:${key.dataset.vk}`);});
+  let poll, menuChord = false;
+  const padsHeld = new Map();
+  const padNames = ['PadA','PadB','PadX','PadY','PadL1','PadR1','PadL2','PadR2','PadSelect','PadStart','PadL3','PadR3','PadUp','PadDown','PadLeft','PadRight'];
+  const padVks = [13,32,16,17,9,27,9,27,9,27,0,0,38,40,37,39];
+  const pollPads = () => {
+    const devices = [...(navigator.getGamepads?.() || [])].filter(Boolean);
+    const chord = devices.some(p => (p.buttons[8]?.pressed && p.buttons[9]?.pressed) || (p.buttons[10]?.pressed && !activeControls.bindings.some(b=>b.input.toLowerCase()==='padl3')));
+    if(chord && !menuChord){if(gameMenu.open)gameMenu.close();else openGameMenu();} menuChord = chord;
+    const next = new Map();
+    if(!pauseReasons.size && !chord)for(const device of devices) {
+      const buttons = device.buttons.map(b => b.pressed);
+      buttons[14] ||= device.axes[0] < -.5; buttons[15] ||= device.axes[0] > .5;
+      buttons[12] ||= device.axes[1] < -.5; buttons[13] ||= device.axes[1] > .5;
+      buttons.forEach((held,i) => {const vk = binding(padNames[i] || `Pad${i}`,padVks[i] || 0);if(held && vk)next.set(`gamepad:${device.index}:${i}`,vk);});
+    }
+    for(const [source,vk] of padsHeld)if(next.get(source)!==vk)release(vk,source);
+    for(const [source,vk] of next)if(padsHeld.get(source)!==vk || !keySources.get(vk)?.has(source))press(vk,source);
+    padsHeld.clear();for(const pair of next)padsHeld.set(...pair);
+    pad.hidden = activeControls.keys.length === 0 || (activeControls.auto_hide_gamepad && devices.length > 0);
+    poll = requestAnimationFrame(pollPads);
+  }; poll = requestAnimationFrame(pollPads);
+  return () => { cancelAnimationFrame(poll); controller.abort(); releaseAllInput(); releasePointer = () => {}; };
 }
 
-function start(index) {
-  if (running) return;
+let starting = false;
+async function start(index) {
+  if (running || starting) return;
+  starting = true;
+  let config;
+  try {config=readControls(gameId(index));} catch(error){starting=false;say(String(error),true);return;}
+  say(uiText('正在啟動…','Starting…'));
+  await new Promise(resolve=>setTimeout(resolve,30));
+  starting = false;
   if (M._pocket_boot(index) !== 0) { say(lastError(), true); return; }
   running = true;
+  runningIndex = index;
+  const id = gameId(index);
+  writePresentation(id,{...readPresentation(id),last_played:Math.floor(Date.now()/1000)}).catch(error=>toast(String(error)));
+  pauseReasons.clear();
+  const session = ++sessionNumber;
   const canvas = $('screen');
   const [width, height] = [M._pocket_width(), M._pocket_height()];
   canvas.width = width;
   canvas.height = height;
   document.body.classList.add('playing');
   $('play-title').textContent = M.UTF8ToString(M._pocket_game_name(index));
+  $('hud').hidden=localStorage.getItem('show-fps')!=='true';
   initHelp();
   try { rotation = Number(localStorage.getItem(`rotate:${gameId(index)}`)) || 0; } catch { rotation = 0; }
   fitCanvas();
@@ -941,10 +1214,11 @@ function start(index) {
     // need the anticlockwise turn, so that comes first.
     rotation = rotation === 0 ? 270 : rotation === 270 ? 90 : 0;
     try { localStorage.setItem(`rotate:${gameId(index)}`, String(rotation)); } catch {}
-    fitCanvas();
+    applyControls(activeControls);
   };
   canvas.focus();
-  attachInput(canvas, width, height);
+  detachInput(); detachInput = attachInput(canvas, width, height);
+  applyControls(config);
   startAudio();
   const warning = M.UTF8ToString(M._pocket_boot_warning());
   if (/mfcce|olece/i.test(warning)) {
@@ -953,12 +1227,13 @@ function start(index) {
     $('fix-go').onclick = () => fixMfc(index);
     fixMfc(index);
   } else if (warning) toast(warning);
-  $('save-now').onclick = () => { syncFs(false).catch(console.error); exportSave(index); };
+  $('save-now').onclick = async () => { try { await syncFs(false); exportSave(index); } catch(error) {toast(String(error));} };
 
   const context = canvas.getContext('2d');
   const channel = new MessageChannel();
   let serial = 0, frames = 0, shownAt = performance.now(), lastFrameAt = shownAt;
   const pump = () => {
+    if (!running || session !== sessionNumber) { channel.port1.close(); channel.port2.close(); return; }
     const delay = M._pocket_tick();
     const current = M._pocket_frame_serial();
     if (current !== serial) {
@@ -979,8 +1254,7 @@ function start(index) {
       shownAt = now;
     }
     if (delay < 0) {
-      running = false;
-      document.body.classList.remove('playing');
+      finishWebSession(); channel.port1.close(); channel.port2.close();
       syncFs(false);
       const error = lastError();
       say(error || t('js.ended'), Boolean(error));
@@ -997,7 +1271,7 @@ function start(index) {
   };
   channel.port1.onmessage = pump;
   pump();
-  setInterval(() => { if (running) syncFs(false).catch(console.error); }, SAVE_EVERY_MS);
+  if (running) saveTimer = setInterval(() => { if (running) syncFs(false).catch(console.error); }, SAVE_EVERY_MS);
 }
 
 
@@ -1253,7 +1527,7 @@ async function getFree(entry, button) {
 // ---- Pocket PC software library: every program we know of, one page, filters instead of tabs ----
 // library/index.json holds the facts (status, CPUs, platforms, images);
 // library/desc.<lang>.json holds the descriptions in each language.
-const LIB = { items: [], desc: {}, shown: 0, filter: { status: 'all', cat: 'all', cpu: 'all' }, q: '', pic: false, pick: false, sort: 'default' };
+const LIB = { items: [], desc: {}, shown: 0, filter: { status: 'all', cat: 'all', cpu: 'all' }, input: 'all', q: '', pic: false, pick: false, sort: 'default' };
 const LIB_PAGE = 48;
 const STATUS_ORDER = ['play', 'runs', 'partial', 'untested', 'nostart', 'notppc'];
 const CATS = ['game', 'tool', 'office', 'media', 'net', 'dev', 'system', 'emu', 'book', 'edu', 'other'];
@@ -1262,8 +1536,19 @@ const CPUS = ['ARM', 'MIPS', 'SH3', 'SH4', 'x86'];
 async function loadLibrary() {
   try {
     const response = await fetch('library/index.json');
+    if (!response.ok) throw new Error('Catalog unavailable');
     LIB.items = await response.json();
-  } catch (error) { console.error(error); return; }
+    const controls = await fetch('library/control-guides.json');
+    if(!controls.ok)throw new Error('Control guides unavailable');
+    PocketLibraryUI.setGuides(await controls.json());
+    if (!Array.isArray(LIB.items)) throw new Error('Invalid catalog');
+  } catch (error) {
+    console.error(error);
+    const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'ghost-btn';
+    retry.textContent = uiText('無法載入圖書館，重試', 'Library unavailable — retry');
+    retry.onclick = () => { retry.disabled = true; loadLibrary(); };
+    $('lib-cards').replaceChildren(retry); return;
+  }
   await loadLibraryText();
   buildLibraryFilters();
   renderLibrary(true);
@@ -1284,15 +1569,22 @@ function libMatches(entry, skip) {
   if (skip !== 'cpu' && f.cpu !== 'all' && !entry.cpus.includes(f.cpu)) return false;
   if (LIB.pic && !libHasPicture(entry)) return false;
   if (LIB.pick && !entry.pick) return false;
+  if (LIB.input !== 'all' && (LIB.input === 'unknown' ? softwareUI.needs(entry).length > 0 : !softwareUI.needs(entry).includes(LIB.input))) return false;
   if (LIB.q) {
     // The collection folder and the Mobile01 thread are searchable too.
-    const hay = `${entry.name} ${entry.kw} ${(LIB.desc[entry.id] || '')} ${entry.platforms.join(' ')} ${entry.devices.join(' ')} ${entry.cpus.join(' ')} ${entry.coll || ''} ${entry.m01 ? 'mobile01 ' + entry.m01 + ' ' + (entry.m01note || '') : ''}`.toLowerCase();
+    const hay = `${entry.name} ${entry.kw} ${softwareUI.summary(entry)} ${(LIB.desc[entry.id] || '')} ${entry.platforms.join(' ')} ${entry.devices.join(' ')} ${entry.cpus.join(' ')} ${entry.coll || ''} ${entry.m01 ? 'mobile01 ' + entry.m01 + ' ' + (entry.m01note || '') : ''}`.toLowerCase();
     const squashed = hay.replace(/\s+/g, '');
     if (!LIB.q.split(/\s+/).every((word) => hay.includes(word) || squashed.includes(word))) return false;
   }
   return true;
 }
 function buildLibraryFilters() {
+  $('lib-input-caption').textContent = uiText('操作需求', 'Input needs');
+  $('lib-input').replaceChildren();
+  for (const [value, zh, en] of [['all', '全部操作', 'All inputs'], ['stylus', '觸控筆', 'Stylus'], ['direction', '方向鍵', 'Direction'], ['text', '文字輸入', 'Text'], ['hardware', '硬體按鈕', 'Hardware keys'], ['mouse', '滑鼠', 'Mouse'], ['keyboard', '鍵盤', 'Keyboard'], ['unknown', '操作資料待補', 'Guide pending']]) {
+    const option = document.createElement('option'); option.value = value; option.textContent = uiText(zh, en); $('lib-input').append(option);
+  }
+  $('lib-input').value = LIB.input;
   const groups = [['status', STATUS_ORDER, (v) => t(`lib.status.${v}`)], ['cat', CATS, (v) => t(`lib.cat.${v}`)], ['cpu', CPUS, (v) => v]];
   for (const [group, values, label] of groups) {
     const box = $(`lib-${group}`);
@@ -1451,7 +1743,12 @@ function libraryCard(entry) {
   const more = document.createElement('details'); more.className = 'lib-info';
   const summary = document.createElement('summary'); summary.textContent = t('lib.details');
   more.append(summary, facts, kw);
-  body.append(h, tags, desc, more);
+  const controls = document.createElement('button'); controls.type = 'button'; controls.className = 'lib-controls';
+  controls.textContent = `${uiText('介紹與操作方式', 'About and controls')} · ${softwareUI.summary(entry)}`;
+  controls.addEventListener('click', () => softwareUI.open(entry));
+  const verification = document.createElement('small'); verification.className = 'game-controls';
+  verification.textContent = uiText('目錄啟動紀錄；操作／進度尚未逐項驗證', 'Catalog startup record; controls / progress not individually verified');
+  body.append(h, tags, verification, desc, controls, more);
   if (entry.guide) {
     const a = document.createElement('a'); a.className = 'guide'; a.href = entry.guide; a.textContent = t('lib.guideCard');
     body.append(a);
@@ -1504,9 +1801,9 @@ function initHelp() {
         navigator.vibrate?.(6);
         if (vk === 16) { shift = !shift; b.classList.toggle('on', shift); return; }
         const upper = shift && vk >= 65 && vk <= 90;
-        if (upper) press(16);
-        press(vk); release(vk);
-        if (upper) { release(16); shift = false; row.parentNode.querySelector('.wide.on')?.classList.remove('on'); }
+        if (upper) press(16, 'sip');
+        press(vk, 'sip'); release(vk, 'sip');
+        if (upper) { release(16, 'sip'); shift = false; row.parentNode.querySelector('.wide.on')?.classList.remove('on'); }
       });
       row.append(b);
     }
@@ -1533,6 +1830,7 @@ $('lib-more').addEventListener('click', () => renderLibrary(false));
 $('lib-pic').addEventListener('click', () => { LIB.pic = !LIB.pic; renderLibrary(true); });
 $('lib-pick').addEventListener('click', () => { LIB.pick = !LIB.pick; renderLibrary(true); });
 $('lib-sort').addEventListener('change', () => { LIB.sort = $('lib-sort').value; renderLibrary(true); });
+$('lib-input').addEventListener('change', () => { LIB.input = $('lib-input').value; renderLibrary(true); });
 // More cards arrive on their own as the list scrolls into view; the button
 // stays for browsers without IntersectionObserver.
 if ('IntersectionObserver' in window) {
@@ -1625,8 +1923,9 @@ $('save-file').addEventListener('change', (event) => {
   if (file && saveTarget !== null) importSave(saveTarget, file).catch((error) => say(String(error), true));
 });
 $('leave').addEventListener('click', async () => {
-  await syncFs(false).catch(console.error);
-  location.reload();
+  setPaused('leaving',true);
+  try { await preferenceWrites.catch(() => {}); await syncFs(false); finishWebSession(); location.reload(); }
+  catch { setPaused('leaving',false); say(uiText('進度寫入失敗，請重試返回或先備份。', 'Could not write progress. Retry leaving or export a backup first.'), true); toast($('status').textContent); const menuError=$('game-menu-error'); if(gameMenu.open && menuError)menuError.textContent=$('status').textContent; }
 });
 // A closing tab gets no second chance, so save as soon as it is hidden.
 window.addEventListener('pagehide', () => { if (M) syncFs(false).catch(() => {}); });

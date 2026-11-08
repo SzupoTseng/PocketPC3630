@@ -36,14 +36,17 @@ use pocket_pe::{machine, ImportBinding, ImportSymbol, LoadedImage, ResourceEntry
 pub mod audio;
 pub mod cedb;
 pub mod controls;
+pub mod fmod;
 pub mod font;
 pub mod framebuffer;
 pub mod gapi;
 pub mod gdi;
+pub mod guest_clock;
 pub mod gz;
 pub mod itemview;
 pub mod msgbox;
 pub mod native_thunks;
+pub mod presentation;
 pub mod profile;
 pub mod registry;
 pub mod tracker;
@@ -320,6 +323,10 @@ pub enum KernelError {
 /// back to its synthetic timer / paint loop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputEvent {
+    /// Committed UTF-16 text, independent of physical/game key bindings.
+    Text {
+        unit: u16,
+    },
     /// Stylus down at game-space `(x, y)` (0..240, 0..320). Translated
     /// into `WM_LBUTTONDOWN` with the standard `lParam = (y << 16) | x`.
     PointerDown {
@@ -1355,6 +1362,8 @@ pub struct KernelState {
     /// [`Self::wave_out`]: HSS games talk to the library's C++ classes
     /// and never touch `waveOut` themselves.
     pub hss: HssState,
+    /// EverQuest FMOD clips/channels belong to this guest, not to the host process.
+    pub fmod: fmod::FmodState,
     /// Host-side gzip file table backing the `alib.dll` HLE
     /// (`gzopen` / `gzread` / `gzseek` / `gzclose`). Rayman Ultimate
     /// loads every map asset through these imports.
@@ -1418,6 +1427,10 @@ impl KernelState {
         if self.controls.is_empty() && self.modal.is_none() {
             return;
         }
+        // EverQuest's idle registration dialog is composited on every poll.
+        // Surface::fill_rect marks a screen dirty even here: keep its drawing,
+        // but do not let presentation itself request another presentation.
+        let frame_counter = self.framebuffer.frame_counter;
         let controls = self.controls.clone();
         let modal = self.modal.clone();
         let mut surf = gdi::Surface::Screen(&mut self.framebuffer);
@@ -1427,6 +1440,7 @@ impl KernelState {
         if let Some(modal) = modal {
             modal.render(&mut surf);
         }
+        self.framebuffer.frame_counter = frame_counter;
     }
 
     /// Look up an already-loaded runtime module by its `HMODULE`.
@@ -2593,6 +2607,7 @@ impl Process {
                 wave_out_format: GuestFormat::default(),
                 wave_out: Default::default(),
                 hss: Default::default(),
+                fmod: Default::default(),
                 gz_files: Default::default(),
                 posted_messages: Default::default(),
                 main_window_destroyed: false,
@@ -3628,6 +3643,70 @@ mod tests {
         // The alias window is present and readable.
         cpu.read_mem(SLOT_ALIAS_BASE + 0x1000, 4)
             .expect("slot alias window must be mapped for a high-based image");
+    }
+
+    #[test]
+    fn compositing_controls_draws_without_requesting_another_frame() {
+        let mut cpu = StubCpu::new();
+        let mut process = Process::map_into(
+            image_based_at(0x10000, 0x1000),
+            &mut cpu,
+            &|_, _| None,
+            &NullDispatcher,
+        )
+        .unwrap();
+        let state = &mut process.state;
+        state.controls.create(
+            0x1000,
+            controls::ControlClass::Button,
+            1,
+            "OK".into(),
+            0x1000_0000, // WS_VISIBLE
+            10,
+            10,
+            80,
+            24,
+        );
+        state.framebuffer.frame_counter = 17;
+        let blank = state.framebuffer.pixels.clone();
+        state.composite_controls();
+        assert_ne!(state.framebuffer.pixels, blank);
+        assert_eq!(state.framebuffer.frame_counter, 17);
+        let shown = state.framebuffer.pixels.clone();
+        state.composite_controls();
+        assert_eq!(state.framebuffer.pixels, shown);
+        assert_eq!(state.framebuffer.frame_counter, 17);
+        // A real new guest frame remains observable through composition.
+        state.framebuffer.mark_dirty();
+        state.composite_controls();
+        assert_eq!(state.framebuffer.frame_counter, 18);
+    }
+
+    #[test]
+    fn compositing_a_modal_draws_without_requesting_another_frame() {
+        let mut cpu = StubCpu::new();
+        let mut process = Process::map_into(
+            image_based_at(0x10000, 0x1000),
+            &mut cpu,
+            &|_, _| None,
+            &NullDispatcher,
+        )
+        .unwrap();
+        let state = &mut process.state;
+        state.modal = Some(msgbox::MessageBox::new(
+            "Invalid code",
+            "EverQuest",
+            0,
+            240,
+            320,
+        ));
+        state.framebuffer.frame_counter = 17;
+        let blank = state.framebuffer.pixels.clone();
+        state.composite_controls();
+        assert_ne!(state.framebuffer.pixels, blank);
+        assert_eq!(state.framebuffer.frame_counter, 17);
+        state.composite_controls();
+        assert_eq!(state.framebuffer.frame_counter, 17);
     }
 
     #[test]

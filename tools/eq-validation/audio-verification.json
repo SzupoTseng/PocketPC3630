@@ -1,0 +1,583 @@
+{
+  "scope": "EQ audio completion; actual output-path evidence, not acoustic/full-game acceptance",
+  "workspace": {
+    "passed": 598,
+    "failed": 0,
+    "ignored": 12
+  },
+  "local_audio_files_mixed": 199,
+  "node_tests_passed": 6,
+  "web": {
+    "1": {
+      "report": "target/eq-validation/ep1-browser-audio-current/browser-report.json",
+      "ok": true,
+      "world_and_reloaded_world_visually_reviewed": true,
+      "audio": {
+        "world": {
+          "scope": "Real Web Audio output callback; WAV contains up to ten seconds of audible excerpts, not a continuous listening test",
+          "capturedSamples": 958464,
+          "rate": 48000,
+          "channels": 2,
+          "buffers": 505,
+          "samples": 4136960,
+          "nonzero": 2596114,
+          "peak": 1,
+          "rms": 0.23962154337597738
+        },
+        "reloaded-world": {
+          "scope": "Real Web Audio output callback; WAV contains up to ten seconds of audible excerpts, not a continuous listening test",
+          "capturedSamples": 958464,
+          "rate": 48000,
+          "channels": 2,
+          "buffers": 334,
+          "samples": 2736128,
+          "nonzero": 1244544,
+          "peak": 1,
+          "rms": 0.1737245155694928
+        }
+      },
+      "progress_preserved": null,
+      "artifacts": {
+        "index.html": "400b0874bf9bb1aefe4f4987f8d7c189a2b6619e84b74cbdda7ad5c72704a3bb",
+        "pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+        "pockethle.wasm": "8c4bbef470db1bf740bdc10fb0a791b8ce83cee13acbfa5703c42af1c37fbc89"
+      }
+    },
+    "2": {
+      "report": "target/eq-validation/ep2-browser-audio-current/browser-report.json",
+      "ok": true,
+      "world_and_reloaded_world_visually_reviewed": true,
+      "audio": {
+        "world": {
+          "scope": "Real Web Audio output callback; WAV contains up to ten seconds of audible excerpts, not a continuous listening test",
+          "capturedSamples": 958464,
+          "rate": 48000,
+          "channels": 2,
+          "buffers": 473,
+          "samples": 3874816,
+          "nonzero": 2211106,
+          "peak": 0.501960813999176,
+          "rms": 0.10684571390146226
+        },
+        "reloaded-world": {
+          "scope": "Real Web Audio output callback; WAV contains up to ten seconds of audible excerpts, not a continuous listening test",
+          "capturedSamples": 958464,
+          "rate": 48000,
+          "channels": 2,
+          "buffers": 331,
+          "samples": 2711552,
+          "nonzero": 1260928,
+          "peak": 0.501960813999176,
+          "rms": 0.08862111871744885
+        }
+      },
+      "progress_preserved": true,
+      "artifacts": {
+        "index.html": "400b0874bf9bb1aefe4f4987f8d7c189a2b6619e84b74cbdda7ad5c72704a3bb",
+        "pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+        "pockethle.wasm": "8c4bbef470db1bf740bdc10fb0a791b8ce83cee13acbfa5703c42af1c37fbc89"
+      }
+    },
+    "3": {
+      "report": "target/eq-validation/ep3-browser-audio-current/browser-report.json",
+      "ok": true,
+      "world_and_reloaded_world_visually_reviewed": true,
+      "audio": {
+        "world": {
+          "scope": "Real Web Audio output callback; WAV contains up to ten seconds of audible excerpts, not a continuous listening test",
+          "capturedSamples": 958464,
+          "rate": 48000,
+          "channels": 2,
+          "buffers": 338,
+          "samples": 2768896,
+          "nonzero": 1391982,
+          "peak": 0.501960813999176,
+          "rms": 0.09309402992960458
+        },
+        "reloaded-world": {
+          "scope": "Real Web Audio output callback; WAV contains up to ten seconds of audible excerpts, not a continuous listening test",
+          "capturedSamples": 958464,
+          "rate": 48000,
+          "channels": 2,
+          "buffers": 331,
+          "samples": 2711552,
+          "nonzero": 1277312,
+          "peak": 0.501960813999176,
+          "rms": 0.08944552539303778
+        }
+      },
+      "progress_preserved": true,
+      "artifacts": {
+        "index.html": "400b0874bf9bb1aefe4f4987f8d7c189a2b6619e84b74cbdda7ad5c72704a3bb",
+        "pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+        "pockethle.wasm": "8c4bbef470db1bf740bdc10fb0a791b8ce83cee13acbfa5703c42af1c37fbc89"
+      }
+    }
+  },
+  "windows": {
+    "1": {
+      "episode": 1,
+      "exe_sha256": "b4aea59498040ab23f1f5ed8503a25d37fdca24794429e7228789a0d2cf34b1e",
+      "scope": "Native cpal device and non-silent mixer output; not an acoustic listening test",
+      "world": true,
+      "selection_attempts": 1,
+      "cpal_opened": true,
+      "non_silent_output": true,
+      "decoded_clips": 44,
+      "missing_audio": [],
+      "ok": true,
+      "report": "target/eq-validation/ep1-native-audio-final/report.json",
+      "world_visually_reviewed": true
+    },
+    "2": {
+      "episode": 2,
+      "exe_sha256": "b4aea59498040ab23f1f5ed8503a25d37fdca24794429e7228789a0d2cf34b1e",
+      "scope": "Native cpal device and non-silent mixer output; not an acoustic listening test",
+      "world": true,
+      "selection_attempts": 1,
+      "cpal_opened": true,
+      "non_silent_output": true,
+      "decoded_clips": 61,
+      "missing_audio": [],
+      "ok": true,
+      "report": "target/eq-validation/ep2-native-audio-final/report.json",
+      "world_visually_reviewed": true
+    },
+    "3": {
+      "episode": 3,
+      "exe_sha256": "b4aea59498040ab23f1f5ed8503a25d37fdca24794429e7228789a0d2cf34b1e",
+      "scope": "Native cpal device and non-silent mixer output; not an acoustic listening test",
+      "world": true,
+      "selection_attempts": 1,
+      "cpal_opened": true,
+      "non_silent_output": true,
+      "decoded_clips": 67,
+      "missing_audio": [],
+      "ok": true,
+      "report": "target/eq-validation/ep3-native-audio-final/report.json",
+      "world_visually_reviewed": true
+    }
+  },
+  "native_audio_patch": {
+    "2": {
+      "preserved": true,
+      "repeated_import": true,
+      "before": {
+        "library.json": "59a9559ab01918a8f4e31641bc7631c9bf56caa2f430529dc49e9eb0fc4a4863",
+        "games/eq_e2/game.json": "a32f17f1f12feeda3392d8695669ee961c7eaed62b1f504b29364cc9366e442e",
+        "games/eq_e2/saves/eqppce2.css": "42fa1dbbe2dd37a91d5ecbcc8448262e93a5d04dd516d22e4e35b9aafb1c39b8",
+        "games/eq_e2/saves/pocketeqe2_0.nam": "a3f6c5c9ec68cd5c13ae56df5ab5299fdcdc03917b6ed407601ab8cf360d4e17",
+        "games/eq_e2/saves/pocketeqe2_2.nam": "29378c9921dd8cd93f2235db5f9fd29b5c555ff25963ecedd7c8e9155ece47ea",
+        "games/eq_e2/saves/pocketeqe2_2.sav": "b828f38d23e8ff652d0a61ea092454a71723c26d2f6850aa343246239a73f552",
+        "games/eq_e2/saves/pockethle-registry.dat": "f1977df071854b1bb095030103f038f7475bd281c5b0731f85b15cbc55e8766f"
+      },
+      "after": {
+        "library.json": "59a9559ab01918a8f4e31641bc7631c9bf56caa2f430529dc49e9eb0fc4a4863",
+        "games/eq_e2/game.json": "a32f17f1f12feeda3392d8695669ee961c7eaed62b1f504b29364cc9366e442e",
+        "games/eq_e2/saves/eqppce2.css": "42fa1dbbe2dd37a91d5ecbcc8448262e93a5d04dd516d22e4e35b9aafb1c39b8",
+        "games/eq_e2/saves/pocketeqe2_0.nam": "a3f6c5c9ec68cd5c13ae56df5ab5299fdcdc03917b6ed407601ab8cf360d4e17",
+        "games/eq_e2/saves/pocketeqe2_2.nam": "29378c9921dd8cd93f2235db5f9fd29b5c555ff25963ecedd7c8e9155ece47ea",
+        "games/eq_e2/saves/pocketeqe2_2.sav": "b828f38d23e8ff652d0a61ea092454a71723c26d2f6850aa343246239a73f552",
+        "games/eq_e2/saves/pockethle-registry.dat": "f1977df071854b1bb095030103f038f7475bd281c5b0731f85b15cbc55e8766f"
+      },
+      "files": 6
+    },
+    "3": {
+      "preserved": true,
+      "repeated_import": true,
+      "before": {
+        "library.json": "5a90e488e84e63658c66c5c1c4357436e445bbb6d5f3445e348d8caa776eb167",
+        "games/eq_e3/game.json": "9a4637682c4496d25c252a3dcc3614491c92a627b870549129ebc15ca51694b3",
+        "games/eq_e3/saves/pocketeqe3_0.nam": "29378c9921dd8cd93f2235db5f9fd29b5c555ff25963ecedd7c8e9155ece47ea",
+        "games/eq_e3/saves/pocketeqe3_0.sav": "80bca51665bdac00c3a29f2a1a248d5113f710c022aae55ca54b3c6568a5004e",
+        "games/eq_e3/saves/pockethle-registry.dat": "05fbb21ae852cee8282d7acd98ea12aa28009917d1f99c78f113e3280751eb70"
+      },
+      "after": {
+        "library.json": "5a90e488e84e63658c66c5c1c4357436e445bbb6d5f3445e348d8caa776eb167",
+        "games/eq_e3/game.json": "9a4637682c4496d25c252a3dcc3614491c92a627b870549129ebc15ca51694b3",
+        "games/eq_e3/saves/pocketeqe3_0.nam": "29378c9921dd8cd93f2235db5f9fd29b5c555ff25963ecedd7c8e9155ece47ea",
+        "games/eq_e3/saves/pocketeqe3_0.sav": "80bca51665bdac00c3a29f2a1a248d5113f710c022aae55ca54b3c6568a5004e",
+        "games/eq_e3/saves/pockethle-registry.dat": "05fbb21ae852cee8282d7acd98ea12aa28009917d1f99c78f113e3280751eb70"
+      },
+      "files": 15
+    }
+  },
+  "artifacts": {
+    "pockethle-audio-unicorn-debug.apk": {
+      "bytes": 29798325,
+      "sha256": "fdab195a5a6d8149a9639bb242be13eee5f0f46f680aad26d3032d3d97418b20"
+    },
+    "pockethle-audio-interpreter-debug.apk": {
+      "bytes": 16565309,
+      "sha256": "ffe99dd7d67ff75adb34e286debf9f2ad29f093f88ab50814b6d37238dd3526c"
+    }
+  },
+  "android_unicorn_verified": [
+    1,
+    2,
+    3
+  ],
+  "automation_notes": [
+    "Android EP1 first library tap did not start Activity; visually confirmed library then retried 250ms tap; accepted only subsequent world and AudioTrack evidence",
+    "Native final cases selected character on first attempt for all three episodes"
+  ],
+  "verified_date": "2026-11-08 Asia/Taipei",
+  "android": {
+    "unicorn": {
+      "1": {
+        "episode": 1,
+        "scope": "Owned Android x86_64 emulator; AudioTrack accepted non-silent PCM and playback-head advancement, not an acoustic listening test",
+        "apk_sha256": "fdab195a5a6d8149a9639bb242be13eee5f0f46f680aad26d3032d3d97418b20",
+        "backend": "Unicorn",
+        "audio_track_started": true,
+        "non_silent_pcm": true,
+        "playback_advancing": true,
+        "missing_audio": [],
+        "output_errors": [],
+        "track_events": [
+          "AudioTrack started: 44100Hz, 2ch, buffer=17640B",
+          "AudioTrack output advancing: 2998 frames",
+          "AudioTrack received non-silent mix: peak=1",
+          "AudioTrack finished: 3148740 frames, 0 underruns"
+        ],
+        "installed_apk_sha256": "fdab195a5a6d8149a9639bb242be13eee5f0f46f680aad26d3032d3d97418b20",
+        "installed_supplements": [],
+        "ok": true,
+        "report": "target\\eq-validation\\ep1-android-audio-patch-unicorn\\report.json",
+        "world_visually_reviewed": true
+      },
+      "2": {
+        "episode": 2,
+        "scope": "Owned Android x86_64 emulator; AudioTrack accepted non-silent PCM and playback-head advancement, not an acoustic listening test",
+        "apk_sha256": "fdab195a5a6d8149a9639bb242be13eee5f0f46f680aad26d3032d3d97418b20",
+        "backend": "Unicorn",
+        "audio_track_started": true,
+        "non_silent_pcm": true,
+        "playback_advancing": true,
+        "missing_audio": [],
+        "output_errors": [],
+        "track_events": [
+          "AudioTrack started: 44100Hz, 2ch, buffer=17640B",
+          "AudioTrack output advancing: 2998 frames",
+          "AudioTrack received non-silent mix: peak=1",
+          "AudioTrack finished: 3240703 frames, 0 underruns"
+        ],
+        "installed_apk_sha256": "fdab195a5a6d8149a9639bb242be13eee5f0f46f680aad26d3032d3d97418b20",
+        "installed_supplements": [
+          {
+            "path": "Sounds/Croc_Att.wav",
+            "sha256": "851543244436b9055a72b63119fe8fb3854b2a8a443756b2814c085ef2001f57"
+          },
+          {
+            "path": "Sounds/Croc_Die.wav",
+            "sha256": "4393cdcb618b4fd223225b2141844eb3e0d04531ff71d485ef75af43edff4549"
+          },
+          {
+            "path": "Sounds/Croc_Hit.wav",
+            "sha256": "d6d10f34502d3ac51bff928707103617538f333ca91d692a2ca238151bdac4a2"
+          },
+          {
+            "path": "Sounds/Rat_Att.wav",
+            "sha256": "ac8aac8d480082348c5da85074f759b7791fca273fc1c6bba8050de293b1edde"
+          },
+          {
+            "path": "Sounds/Rat_Die.wav",
+            "sha256": "76e2b884baa219d38ab53d61e29fa3e7b9e18f35395a5a2f66fb8cbaa7b11d4c"
+          },
+          {
+            "path": "Sounds/Rat_Hit.wav",
+            "sha256": "595be8b7a3f86778952aee6b5e7a14e7fe36542720970a43980396bc758f992b"
+          }
+        ],
+        "ok": true,
+        "report": "target\\eq-validation\\ep2-android-audio-patch-unicorn\\report.json",
+        "world_visually_reviewed": true,
+        "patch_progress_preserved": true
+      },
+      "3": {
+        "episode": 3,
+        "scope": "Owned Android x86_64 emulator; AudioTrack accepted non-silent PCM and playback-head advancement, not an acoustic listening test",
+        "apk_sha256": "fdab195a5a6d8149a9639bb242be13eee5f0f46f680aad26d3032d3d97418b20",
+        "backend": "Unicorn",
+        "audio_track_started": true,
+        "non_silent_pcm": true,
+        "playback_advancing": true,
+        "missing_audio": [],
+        "output_errors": [],
+        "track_events": [
+          "AudioTrack started: 44100Hz, 2ch, buffer=17640B",
+          "AudioTrack output advancing: 3998 frames",
+          "AudioTrack received non-silent mix: peak=1",
+          "AudioTrack finished: 3789483 frames, 0 underruns"
+        ],
+        "installed_apk_sha256": "fdab195a5a6d8149a9639bb242be13eee5f0f46f680aad26d3032d3d97418b20",
+        "installed_supplements": [
+          {
+            "path": "Sounds/AviakAtt.wav",
+            "sha256": "6874f6494ec07a862d98bf5466fbb7053965610a23800c843e03f5d636936443"
+          },
+          {
+            "path": "Sounds/AviakDie.wav",
+            "sha256": "c6fd0106e419336f65ad48f133318a7676f6f8a1d8e6ad686df7c6c512855b35"
+          },
+          {
+            "path": "Sounds/AviakHit.wav",
+            "sha256": "95bb14aa7a4ba353816125e37a135d6bfb2313204a43aaa8ffd9b6234763ad2b"
+          },
+          {
+            "path": "Sounds/AviakSAt.wav",
+            "sha256": "72fd3298bd1bdcb8069e26c466a70f9e4869ec7b01e51fcbc2cbcd81b706b784"
+          },
+          {
+            "path": "Sounds/Centaur_atk.wav",
+            "sha256": "17707aa87111436695475820ca4dcf9749f3be4da7f4be7d55ed6168140e5785"
+          },
+          {
+            "path": "Sounds/Centaur_dam.wav",
+            "sha256": "2e1e527278bfbeb32b8fdf618a92b5285148d8026259445cb71b76815d39b084"
+          },
+          {
+            "path": "Sounds/Centaur_dth.wav",
+            "sha256": "d7246ad17b78c141c31906a0760a1b6c1e0f4a0fa896ab82aca88a672aae6170"
+          },
+          {
+            "path": "Sounds/Croc_Att.wav",
+            "sha256": "851543244436b9055a72b63119fe8fb3854b2a8a443756b2814c085ef2001f57"
+          },
+          {
+            "path": "Sounds/Croc_Die.wav",
+            "sha256": "4393cdcb618b4fd223225b2141844eb3e0d04531ff71d485ef75af43edff4549"
+          },
+          {
+            "path": "Sounds/Croc_Hit.wav",
+            "sha256": "d6d10f34502d3ac51bff928707103617538f333ca91d692a2ca238151bdac4a2"
+          },
+          {
+            "path": "Sounds/GnollAtt.wav",
+            "sha256": "9beb0694fed8beff0246612d5b999856e29cde93050fa184bda0cc3d41e31ae7"
+          },
+          {
+            "path": "Sounds/GnollHit.wav",
+            "sha256": "4dace83427765c7623c5a9c9cb6b59d637cfc667816650b6e1bc8bede496e0a4"
+          },
+          {
+            "path": "Sounds/Rat_Att.wav",
+            "sha256": "ac8aac8d480082348c5da85074f759b7791fca273fc1c6bba8050de293b1edde"
+          },
+          {
+            "path": "Sounds/Rat_Die.wav",
+            "sha256": "76e2b884baa219d38ab53d61e29fa3e7b9e18f35395a5a2f66fb8cbaa7b11d4c"
+          },
+          {
+            "path": "Sounds/Rat_Hit.wav",
+            "sha256": "595be8b7a3f86778952aee6b5e7a14e7fe36542720970a43980396bc758f992b"
+          }
+        ],
+        "ok": true,
+        "report": "target\\eq-validation\\ep3-android-audio-patch-unicorn\\report.json",
+        "world_visually_reviewed": true,
+        "patch_progress_preserved": true
+      }
+    },
+    "interpreter": {
+      "1": {
+        "episode": 1,
+        "scope": "Owned Android x86_64 emulator; AudioTrack accepted non-silent PCM and playback-head advancement, not an acoustic listening test",
+        "apk_sha256": "ffe99dd7d67ff75adb34e286debf9f2ad29f093f88ab50814b6d37238dd3526c",
+        "backend": "Interpreter",
+        "audio_track_started": true,
+        "non_silent_pcm": true,
+        "playback_advancing": true,
+        "missing_audio": [],
+        "output_errors": [],
+        "track_events": [
+          "AudioTrack started: 44100Hz, 2ch, buffer=17640B",
+          "AudioTrack output advancing: 2998 frames",
+          "AudioTrack received non-silent mix: peak=1",
+          "AudioTrack finished: 0 frames, 0 underruns"
+        ],
+        "installed_apk_sha256": "ffe99dd7d67ff75adb34e286debf9f2ad29f093f88ab50814b6d37238dd3526c",
+        "installed_supplements": [],
+        "ok": true,
+        "report": "target\\eq-validation\\ep1-android-audio-patch-interpreter\\report.json",
+        "world_visually_reviewed": true
+      },
+      "2": {
+        "episode": 2,
+        "scope": "Owned Android x86_64 emulator; AudioTrack accepted non-silent PCM and playback-head advancement, not an acoustic listening test",
+        "apk_sha256": "ffe99dd7d67ff75adb34e286debf9f2ad29f093f88ab50814b6d37238dd3526c",
+        "backend": "Interpreter",
+        "audio_track_started": true,
+        "non_silent_pcm": true,
+        "playback_advancing": true,
+        "missing_audio": [],
+        "output_errors": [],
+        "track_events": [
+          "AudioTrack started: 44100Hz, 2ch, buffer=17640B",
+          "AudioTrack output advancing: 2998 frames",
+          "AudioTrack received non-silent mix: peak=1",
+          "AudioTrack finished: 3890443 frames, 0 underruns"
+        ],
+        "installed_apk_sha256": "ffe99dd7d67ff75adb34e286debf9f2ad29f093f88ab50814b6d37238dd3526c",
+        "installed_supplements": [
+          {
+            "path": "Sounds/Croc_Att.wav",
+            "sha256": "851543244436b9055a72b63119fe8fb3854b2a8a443756b2814c085ef2001f57"
+          },
+          {
+            "path": "Sounds/Croc_Die.wav",
+            "sha256": "4393cdcb618b4fd223225b2141844eb3e0d04531ff71d485ef75af43edff4549"
+          },
+          {
+            "path": "Sounds/Croc_Hit.wav",
+            "sha256": "d6d10f34502d3ac51bff928707103617538f333ca91d692a2ca238151bdac4a2"
+          },
+          {
+            "path": "Sounds/Rat_Att.wav",
+            "sha256": "ac8aac8d480082348c5da85074f759b7791fca273fc1c6bba8050de293b1edde"
+          },
+          {
+            "path": "Sounds/Rat_Die.wav",
+            "sha256": "76e2b884baa219d38ab53d61e29fa3e7b9e18f35395a5a2f66fb8cbaa7b11d4c"
+          },
+          {
+            "path": "Sounds/Rat_Hit.wav",
+            "sha256": "595be8b7a3f86778952aee6b5e7a14e7fe36542720970a43980396bc758f992b"
+          }
+        ],
+        "ok": true,
+        "report": "target\\eq-validation\\ep2-android-audio-patch-interpreter\\report.json",
+        "world_visually_reviewed": true,
+        "patch_progress_preserved": true
+      },
+      "3": {
+        "episode": 3,
+        "scope": "Owned Android x86_64 emulator; AudioTrack accepted non-silent PCM and playback-head advancement, not an acoustic listening test",
+        "apk_sha256": "ffe99dd7d67ff75adb34e286debf9f2ad29f093f88ab50814b6d37238dd3526c",
+        "backend": "Interpreter",
+        "audio_track_started": true,
+        "non_silent_pcm": true,
+        "playback_advancing": true,
+        "missing_audio": [],
+        "output_errors": [],
+        "track_events": [
+          "AudioTrack started: 44100Hz, 2ch, buffer=17640B",
+          "AudioTrack output advancing: 2998 frames",
+          "AudioTrack received non-silent mix: peak=1",
+          "AudioTrack finished: 4309275 frames, 0 underruns"
+        ],
+        "installed_apk_sha256": "ffe99dd7d67ff75adb34e286debf9f2ad29f093f88ab50814b6d37238dd3526c",
+        "installed_supplements": [
+          {
+            "path": "Sounds/AviakAtt.wav",
+            "sha256": "6874f6494ec07a862d98bf5466fbb7053965610a23800c843e03f5d636936443"
+          },
+          {
+            "path": "Sounds/AviakDie.wav",
+            "sha256": "c6fd0106e419336f65ad48f133318a7676f6f8a1d8e6ad686df7c6c512855b35"
+          },
+          {
+            "path": "Sounds/AviakHit.wav",
+            "sha256": "95bb14aa7a4ba353816125e37a135d6bfb2313204a43aaa8ffd9b6234763ad2b"
+          },
+          {
+            "path": "Sounds/AviakSAt.wav",
+            "sha256": "72fd3298bd1bdcb8069e26c466a70f9e4869ec7b01e51fcbc2cbcd81b706b784"
+          },
+          {
+            "path": "Sounds/Centaur_atk.wav",
+            "sha256": "17707aa87111436695475820ca4dcf9749f3be4da7f4be7d55ed6168140e5785"
+          },
+          {
+            "path": "Sounds/Centaur_dam.wav",
+            "sha256": "2e1e527278bfbeb32b8fdf618a92b5285148d8026259445cb71b76815d39b084"
+          },
+          {
+            "path": "Sounds/Centaur_dth.wav",
+            "sha256": "d7246ad17b78c141c31906a0760a1b6c1e0f4a0fa896ab82aca88a672aae6170"
+          },
+          {
+            "path": "Sounds/Croc_Att.wav",
+            "sha256": "851543244436b9055a72b63119fe8fb3854b2a8a443756b2814c085ef2001f57"
+          },
+          {
+            "path": "Sounds/Croc_Die.wav",
+            "sha256": "4393cdcb618b4fd223225b2141844eb3e0d04531ff71d485ef75af43edff4549"
+          },
+          {
+            "path": "Sounds/Croc_Hit.wav",
+            "sha256": "d6d10f34502d3ac51bff928707103617538f333ca91d692a2ca238151bdac4a2"
+          },
+          {
+            "path": "Sounds/GnollAtt.wav",
+            "sha256": "9beb0694fed8beff0246612d5b999856e29cde93050fa184bda0cc3d41e31ae7"
+          },
+          {
+            "path": "Sounds/GnollHit.wav",
+            "sha256": "4dace83427765c7623c5a9c9cb6b59d637cfc667816650b6e1bc8bede496e0a4"
+          },
+          {
+            "path": "Sounds/Rat_Att.wav",
+            "sha256": "ac8aac8d480082348c5da85074f759b7791fca273fc1c6bba8050de293b1edde"
+          },
+          {
+            "path": "Sounds/Rat_Die.wav",
+            "sha256": "76e2b884baa219d38ab53d61e29fa3e7b9e18f35395a5a2f66fb8cbaa7b11d4c"
+          },
+          {
+            "path": "Sounds/Rat_Hit.wav",
+            "sha256": "595be8b7a3f86778952aee6b5e7a14e7fe36542720970a43980396bc758f992b"
+          }
+        ],
+        "ok": true,
+        "report": "target\\eq-validation\\ep3-android-audio-patch-interpreter\\report.json",
+        "world_visually_reviewed": true,
+        "patch_progress_preserved": true
+      }
+    }
+  },
+  "source_sha256": {
+    "crates/pocket-kernel/src/audio.rs": "b6f7687a4e08ba6b945c26d1f10b61ec8c3c59d6f6df1e24a5eb6c7cc8a2cec7",
+    "crates/pocket-kernel/src/fmod.rs": "d3d4e5b59223f022c62d26e257d734f68a380440514e12389c5efa056d5f522e",
+    "crates/pocket-winceapi/src/fmod.rs": "0f7d6feeff21f6ef664c56f5ee7f3cf9835153e2d8ec21008aff1c0ebee51b6f",
+    "crates/pocket-library/src/audio_patch.rs": "972a0ce9ec897e0d40e2483553de728505bfab79ca14679ad398dedf24386cc9",
+    "crates/pocket-library/src/lib.rs": "3c84d3c498f5a2440965a6d57348c1d3e92115201fd58fb2a66dd1771a5ea1c4",
+    "frontends/pocket-android/app/src/main/java/com/pockethle/app/GameActivity.kt": "4ce91c0832b6f02a6c2fb91333505c08f9e0bf028430f959e3e119c2285545fe",
+    "frontends/pocket-wasm/web/index.html": "400b0874bf9bb1aefe4f4987f8d7c189a2b6619e84b74cbdda7ad5c72704a3bb"
+  },
+  "patches": {
+    "2": {
+      "game": "eq_e2",
+      "files": 6,
+      "bytes": 110914,
+      "path": "target/eq-validation/audio-packages/ep2-audio-patch.zip",
+      "sha256": "fa0f5c3457307b82915030d6d4886a95aea80441ca041923449698cf3ffd7e87"
+    },
+    "3": {
+      "game": "eq_e3",
+      "files": 15,
+      "bytes": 310116,
+      "path": "target/eq-validation/audio-packages/ep3-audio-patch.zip",
+      "sha256": "b7d670470997a4bd2b1d11c1ab830dec00b142155fcfa73ac2562101c999007e"
+    }
+  },
+  "validation_logs": {
+    "audio-final-tests.log": "901796b7acbf8d852d5ac30c1a6f4c770aff6d4cb06b58b65406d13ea89bdde9",
+    "audio-local-assets-tests.log": "69b55747bc30716baa821de8b200eb66b9e3f1f034e21dda6728f3c02520f3ff",
+    "audio-clippy.log": "c7a8b05086fa938180dc2de0bbd09dcd7655d64cff41f1882bacd6b30292a84f",
+    "audio-node-tests.log": "105740564e7965cafd991296dda87eb81f602d6a6ec4e2dd6150f6dc99cbefcc",
+    "audio-native-build.log": "8e6243686845214273c1244a4238b24dc46a33cd0a43894b1da2b1c5ba22a538",
+    "audio-wasm-build.log": "fddb9d236045a1cdd569739fb83b6556d8d55375cf42b31b8dda96b7016ae7ce",
+    "android-native-build.log": "1026c80ec2fa7d535cabe8f8f5efb734e949e582ff8f862e0ebffc1f7c623ebc",
+    "android-apk-clean-build.log": "adc07062e5511ff73e857adafc08c89bbb4358d1c2dcfadaa386a1815fd0d92f",
+    "audio-android-interpreter-native.log": "9745f68db8a955007ffecb1371d58caa21ab7e01082e7e716e6d7467dc9cc533",
+    "audio-android-interpreter-apk.log": "db553915381f55a299d111982015e6cc8a7f78f455f8b81ef9d543163f4f060d"
+  },
+  "limits": [
+    "Output path evidence, not acoustic listening",
+    "Android x86_64 emulator runtime; ARM64 compile only",
+    "Windows CLI cpal runtime; egui launcher audio UI not accepted",
+    "Full combat, quest, shop, death/revival and CE-reference visual acceptance incomplete",
+    "EP3 uses locally supplied registration seed; original registration dialog incomplete"
+  ]
+}

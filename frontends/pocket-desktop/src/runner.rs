@@ -2,6 +2,7 @@
 //! desktop GUI.
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -24,9 +25,13 @@ const FRAME_PUSH_INTERVAL: Duration = Duration::from_millis(16);
 #[derive(Debug, Clone, Default)]
 pub struct Runner {
     inner: Arc<Mutex<()>>,
+    paused: Arc<AtomicBool>,
 }
 
 impl Runner {
+    pub fn is_paused(&self) -> bool {
+        self.paused.load(Ordering::Acquire)
+    }
     pub fn new() -> Self {
         Self::default()
     }
@@ -86,8 +91,20 @@ impl Runner {
         summary_lines.push(format!("Backend: {}", effective_backend.label()));
         summary_lines.push(format!("Executable: {}", exe.display()));
 
-        emu.set_halt_on_unimplemented(game.settings.halt_on_unimplemented);
-        emu.max_slices = game.settings.max_slices;
+        let config = match pocket_library::Library::open(&library_root) {
+            Ok(library) => library.config().clone(),
+            Err(error) => {
+                return RunOutcome {
+                    ui_message: "Could not read launcher settings. Return to the library."
+                        .to_string(),
+                    summary: format!("Could not read launcher settings: {error}"),
+                    framebuffer: None,
+                }
+            }
+        };
+        let (max_slices, halt_on_unimplemented) = config.run_limits(&game.settings);
+        emu.set_halt_on_unimplemented(halt_on_unimplemented);
+        emu.max_slices = max_slices;
         emu.instruction_budget_per_slice = game.settings.instructions_per_slice;
 
         let kb = pocket_library::import_kb::KnowledgeBase::load(&library_root);
@@ -98,6 +115,8 @@ impl Runner {
         if let Err(e) = emu.load_pe(&exe) {
             summary_lines.push(explain(&format!("{e:#}"), &[]));
             return RunOutcome {
+                ui_message: "Could not load program. Open diagnostic details for the reason."
+                    .to_string(),
                 summary: summary_lines.join("\n"),
                 framebuffer: None,
             };
@@ -202,13 +221,21 @@ impl Runner {
 
         emu.start_audio();
         let run_result = {
-            let mut hook = RunHook::new(live_tx, input_rx);
+            let mut hook = RunHook::new(live_tx, input_rx, Arc::clone(&self.paused));
             emu.run_with_hook(&mut hook)
         };
+        let ui_message = if run_result.is_ok() {
+            "Program ended. Return to the library to start again."
+        } else {
+            "Program stopped with an error. Open diagnostic details for the reason."
+        }
+        .to_string();
         match run_result {
             Ok(()) => summary_lines.push("The game ended.".to_string()),
             Err(e) => summary_lines.push(explain(&format!("{e:#}"), &emu.missing_libraries())),
         }
+        pocket_core::kernel::guest_clock::set_paused(false);
+        self.paused.store(false, Ordering::Release);
         emu.stop_audio();
 
         let framebuffer = emu.process().and_then(|p| {
@@ -216,6 +243,7 @@ impl Runner {
                 .then(|| FrameSnapshot::from_framebuffer(&p.state.framebuffer))
         });
         RunOutcome {
+            ui_message,
             summary: summary_lines.join("\n"),
             framebuffer,
         }
@@ -252,6 +280,7 @@ fn build_unicorn_for_machine(_machine: u16) -> anyhow::Result<Emulator> {
 
 #[derive(Debug, Clone)]
 pub struct RunOutcome {
+    pub ui_message: String,
     pub summary: String,
     pub framebuffer: Option<FrameSnapshot>,
 }
@@ -296,6 +325,8 @@ pub enum InputCommand {
     Input(InputEvent),
     /// "Back to library" button — ask the run loop to stop cleanly.
     Stop,
+    SetPaused(bool),
+    SetVolume(u16),
 }
 
 /// Frame hook that:
@@ -304,9 +335,11 @@ pub enum InputCommand {
 ///  - drains pending [`InputCommand`]s from `input_rx` and forwards
 ///    them into the kernel's input queue / stop flag.
 struct RunHook {
+    paused: Arc<AtomicBool>,
     frame_tx: Option<Sender<FrameSnapshot>>,
     input_rx: Option<Receiver<InputCommand>>,
     last_frame: u64,
+    last_complete: u64,
     frame_send_failed: bool,
     input_disconnected: bool,
     /// Wall-clock timestamp of the last snapshot we emitted. Used to
@@ -328,11 +361,15 @@ impl RunHook {
     fn new(
         frame_tx: Option<Sender<FrameSnapshot>>,
         input_rx: Option<Receiver<InputCommand>>,
+        paused: Arc<AtomicBool>,
     ) -> Self {
+        paused.store(false, Ordering::Release);
         Self {
+            paused,
             frame_tx,
             input_rx,
             last_frame: 0,
+            last_complete: 0,
             frame_send_failed: false,
             input_disconnected: false,
             last_emit_at: None,
@@ -351,17 +388,55 @@ impl FrameHook for RunHook {
         if !self.input_disconnected {
             if let Some(rx) = self.input_rx.as_ref() {
                 loop {
-                    match rx.try_recv() {
-                        Ok(InputCommand::Input(ev)) => state.pending_input.push_back(ev),
-                        Ok(InputCommand::Stop) => stop_requested = true,
+                    let command = if self.paused.load(Ordering::Acquire) {
+                        match rx.recv_timeout(Duration::from_millis(50)) {
+                            Ok(c) => Ok(c),
+                            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
+                            Err(_) => Err(TryRecvError::Disconnected),
+                        }
+                    } else {
+                        rx.try_recv()
+                    };
+                    match command {
+                        Ok(InputCommand::Input(ev)) => {
+                            if !self.paused.load(Ordering::Acquire)
+                                || matches!(
+                                    ev,
+                                    InputEvent::Text { .. }
+                                        | InputEvent::KeyUp { .. }
+                                        | InputEvent::PointerUp { .. }
+                                )
+                            {
+                                state.pending_input.push_back(ev);
+                            }
+                        }
+                        Ok(InputCommand::SetPaused(value)) => {
+                            pocket_core::kernel::guest_clock::set_paused(value);
+                            state.audio.set_transport_paused(value);
+                            self.paused.store(value, Ordering::Release);
+                        }
+                        Ok(InputCommand::SetVolume(value)) => {
+                            state.audio.set_master_volume(value as f32 / 1000.0)
+                        }
+                        Ok(InputCommand::Stop) => {
+                            stop_requested = true;
+                            break;
+                        }
                         Err(TryRecvError::Empty) => break,
                         Err(TryRecvError::Disconnected) => {
                             self.input_disconnected = true;
+                            stop_requested = true;
                             break;
                         }
                     }
                 }
             }
+        }
+
+        if stop_requested {
+            pocket_core::kernel::guest_clock::set_paused(false);
+            self.paused.store(false, Ordering::Release);
+            state.audio.set_transport_paused(false);
         }
 
         // Stream the latest framebuffer up to the GUI, but at most
@@ -388,8 +463,18 @@ impl FrameHook for RunHook {
                         .last_emit_at
                         .map(|t| now.duration_since(t) >= FRAME_PUSH_INTERVAL)
                         .unwrap_or(true);
-                    if due {
+                    if due
+                        && pocket_core::kernel::presentation::frame_ready(
+                            state.complete_frames,
+                            self.last_complete,
+                            state.host_yield_ms.is_some(),
+                            self.last_emit_at
+                                .map(|then| now.duration_since(then))
+                                .unwrap_or(Duration::from_millis(100)),
+                        )
+                    {
                         self.last_frame = counter;
+                        self.last_complete = state.complete_frames;
                         self.last_emit_at = Some(now);
                         let snapshot = FrameSnapshot::fill_from_framebuffer(
                             &state.framebuffer,

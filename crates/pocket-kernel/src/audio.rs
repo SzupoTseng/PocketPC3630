@@ -26,11 +26,9 @@
 //!
 //! The cpal feature is optional. When the `audio-cpal` feature is
 //! disabled (e.g. on the Android JNI build, or in `--no-default-features`
-//! CI runs that have no audio devices), [`AudioEngine`] silently
-//! discards every PCM submission so the rest of the emulator works
-//! as before. The previous behaviour of `waveOut*` returning success
-//! without producing any sound is preserved bit-for-bit when the
-//! feature is off.
+//! CI runs that have no audio devices), PCM and voices remain available
+//! through [`AudioTap::render_mix`]. Android AudioTrack and Web Audio pull
+//! this same mix; disabling cpal only disables the host cpal device.
 
 use std::io::{Seek, SeekFrom, Write};
 use std::path::Path;
@@ -38,7 +36,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 /// Maximum number of i16 samples we keep buffered. At 44.1 kHz
-/// stereo this is just over a second — plenty to absorb scheduling
+/// stereo this is about twelve seconds — plenty to absorb scheduling
 /// jitter, but small enough that overflows produce dropped samples
 /// instead of unbounded memory growth.
 const RING_CAPACITY_SAMPLES: usize = 1 << 20; // 1048576
@@ -70,6 +68,7 @@ struct AudioVoice {
     looped: bool,
     volume: f32,
     group: u32,
+    paused: bool,
 }
 
 /// How a voice submitted through [`AudioEngine::play_voice_with`]
@@ -141,8 +140,12 @@ struct Shared {
     /// freezes and buffer-done notifications stop until playback
     /// resumes.
     paused: bool,
+    /// Host pause freezes all sources without changing waveOut's own pause.
+    transport_paused: bool,
+    master_volume: f32,
     /// Independent sound-effect voices mixed over the waveOut stream.
     voices: Vec<AudioVoice>,
+    reported_output: bool,
     /// Optional WAV tap so headless runs can verify that a game
     /// really produces sound on a machine with no audio hardware.
     capture: Option<WavCapture>,
@@ -166,7 +169,10 @@ impl Shared {
             virtual_cursor: 0,
             virtual_tick: None,
             paused: false,
+            transport_paused: false,
+            master_volume: 1.0,
             voices: Vec::new(),
+            reported_output: false,
             capture: None,
         }
     }
@@ -176,7 +182,7 @@ impl Shared {
     /// what the guest actually submitted, so a game that stops
     /// feeding buffers doesn't see phantom progress.
     fn cursor(&mut self) -> u64 {
-        if self.paused {
+        if self.paused || self.transport_paused {
             // Reset the wall-clock reference so a long pause doesn't
             // release a burst of buffers the moment playback resumes.
             self.virtual_tick = None;
@@ -268,10 +274,15 @@ impl Shared {
             looped: params.looped,
             volume: params.volume,
             group: params.group,
+            paused: false,
         });
     }
 
     fn render_frames(&mut self, output: &mut [f32], output_rate: u32, output_channels: u16) {
+        if self.transport_paused {
+            output.fill(0.0);
+            return;
+        }
         let channels = output_channels.max(1) as usize;
         let frames = output.len() / channels;
         for frame in 0..frames {
@@ -303,6 +314,10 @@ impl Shared {
                 let mut index = 0;
                 while index < self.voices.len() {
                     let voice = &mut self.voices[index];
+                    if voice.paused {
+                        index += 1;
+                        continue;
+                    }
                     let voice_channels = voice.format.channels.max(1) as usize;
                     let frame_count = voice.samples.len() / voice_channels;
                     let source_frame = (voice.position_q16 >> 16) as usize;
@@ -331,8 +346,12 @@ impl Shared {
                     index += 1;
                 }
             }
-            left = left.clamp(-1.0, 1.0);
-            right = right.clamp(-1.0, 1.0);
+            left = (left * self.master_volume).clamp(-1.0, 1.0);
+            right = (right * self.master_volume).clamp(-1.0, 1.0);
+            if !self.reported_output && (left.abs() > 0.00001 || right.abs() > 0.00001) {
+                self.reported_output = true;
+                log::info!("AudioEngine: first non-silent mixed output: {output_rate} Hz / {output_channels} ch");
+            }
             for channel in 0..channels {
                 output[frame * channels + channel] = if channel == 0 { left } else { right };
             }
@@ -461,6 +480,22 @@ impl std::fmt::Debug for AudioEngine {
 }
 
 impl AudioEngine {
+    pub fn set_transport_paused(&self, paused: bool) {
+        if let Ok(mut shared) = self.shared.lock() {
+            shared.transport_paused = paused;
+            shared.virtual_tick = None;
+        }
+    }
+
+    pub fn set_master_volume(&self, volume: f32) {
+        if let Ok(mut shared) = self.shared.lock() {
+            shared.master_volume = if volume.is_finite() {
+                volume.clamp(0.0, 1.0)
+            } else {
+                1.0
+            };
+        }
+    }
     pub fn new() -> Self {
         Self {
             shared: Arc::new(Mutex::new(Shared::new())),
@@ -543,6 +578,49 @@ impl AudioEngine {
     /// Convenience for unsigned 8-bit PCM (the format `PlaySound` and
     /// some old WAV resources use). Each byte is mapped to the
     /// signed 16-bit range linearly.
+    /// A paused voice still owns its channel. Finished one-shots need not wait
+    /// for the next output callback to release their FMOD channel.
+    pub fn voice_group_active(&self, group: u32) -> bool {
+        self.shared
+            .lock()
+            .map(|shared| {
+                shared.voices.iter().any(|voice| {
+                    let frames =
+                        (voice.samples.len() / voice.format.channels.max(1) as usize) as u64;
+                    voice.group == group
+                        && frames > 0
+                        && (voice.looped || (voice.position_q16 >> 16) < frames)
+                })
+            })
+            .unwrap_or(false)
+    }
+
+    /// EverQuest's FMOD options change voices already playing, not just new clips.
+    pub fn set_voice_group_volume(&self, group: u32, volume: f32) {
+        if let Ok(mut shared) = self.shared.lock() {
+            for voice in shared
+                .voices
+                .iter_mut()
+                .filter(|voice| voice.group == group)
+            {
+                voice.volume = volume.clamp(0.0, 1.0);
+            }
+        }
+    }
+
+    /// Pause a middleware channel without consuming its playback position.
+    pub fn set_voice_group_paused(&self, group: u32, paused: bool) {
+        if let Ok(mut shared) = self.shared.lock() {
+            for voice in shared
+                .voices
+                .iter_mut()
+                .filter(|voice| voice.group == group)
+            {
+                voice.paused = paused;
+            }
+        }
+    }
+
     pub fn push_samples_u8(&self, bytes: &[u8]) -> usize {
         let mut buf = Vec::with_capacity(bytes.len());
         for &b in bytes {
@@ -657,11 +735,9 @@ impl AudioEngine {
 
     #[cfg(not(feature = "audio-cpal"))]
     fn start_impl(&mut self) {
-        // A build with the feature off can never make a sound, and the
-        // guest cannot tell — so this is a warning, not a note. It is
-        // the first thing to rule out when a packaged binary is silent
-        // but a local one is not.
-        log::warn!("AudioEngine: built without the audio-cpal feature — running silently");
+        // EverQuest voices are also mixed by Web Audio / Android AudioTrack.
+        // No cpal device does not mean the shared mixer is silent.
+        log::info!("AudioEngine: cpal output disabled; audio is available through AudioTap");
     }
 
     /// Stop the host stream and clear any pending samples. The
@@ -702,7 +778,21 @@ impl std::fmt::Debug for AudioTap {
     }
 }
 
+impl Drop for AudioEngine {
+    fn drop(&mut self) {
+        // EverQuest sessions can end through an error or a replaced WASM
+        // session too. Do not leave a cpal worker or a looping theme alive.
+        self.stop();
+    }
+}
+
 impl AudioTap {
+    pub fn set_transport_paused(&self, paused: bool) {
+        if let Ok(mut shared) = self.shared.lock() {
+            shared.transport_paused = paused;
+            shared.virtual_tick = None;
+        }
+    }
     /// The format the guest is currently submitting samples in, so the
     /// host can configure its own output device to match.
     pub fn guest_format(&self) -> GuestFormat {
@@ -947,6 +1037,95 @@ fn fill_output_u16(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn voice_pause_retains_position_and_live_gain_does_not_mute_other_groups() {
+        let e = AudioEngine::new();
+        let fmt = GuestFormat {
+            sample_rate: 22050,
+            channels: 1,
+            bits_per_sample: 16,
+        };
+        e.play_voice_with(
+            &[8192, 16384],
+            fmt,
+            VoiceParams {
+                group: 10,
+                looped: true,
+                volume: 1.0,
+            },
+        );
+        let tap = e.tap();
+        let mut out = [0.0; 2];
+        tap.render_mix(&mut out, 22050, 2);
+        assert_eq!(out, [0.25; 2]);
+        e.set_voice_group_paused(10, true);
+        tap.render_mix(&mut out, 22050, 2);
+        assert_eq!(out, [0.0; 2]);
+        e.set_voice_group_paused(10, false);
+        e.set_voice_group_volume(10, 0.5);
+        tap.render_mix(&mut out, 22050, 2);
+        assert_eq!(out, [0.25; 2]); // second sample at half gain, not restarted
+        e.play_voice_with(
+            &[4096],
+            fmt,
+            VoiceParams {
+                group: 11,
+                looped: true,
+                volume: 1.0,
+            },
+        );
+        e.set_voice_group_volume(10, 0.0);
+        tap.render_mix(&mut out, 44100, 2);
+        assert_eq!(out, [0.125; 2]); // music remains audible when effects are muted
+        e.stop_voice_group(11);
+        tap.render_mix(&mut out, 44100, 2);
+        assert_eq!(out, [0.0; 2]);
+    }
+
+    #[test]
+    fn dropping_an_engine_stops_voices_and_pcm_even_when_a_tap_survives() {
+        let audio = AudioEngine::new();
+        let format = GuestFormat {
+            sample_rate: 44100,
+            channels: 1,
+            bits_per_sample: 16,
+        };
+        audio.set_guest_format(format);
+        audio.push_samples(&[4096; 8]);
+        audio.play_voice(&[8192], format, true);
+        let tap = audio.tap();
+        let mut output = [0.0; 2];
+        tap.render_mix(&mut output, 44100, 2);
+        assert_eq!(output, [0.375; 2]);
+        drop(audio);
+        tap.render_mix(&mut output, 44100, 2);
+        assert_eq!(output, [0.0; 2]);
+    }
+
+    #[test]
+    fn host_menu_pause_freezes_pcm_and_voices_without_flushing_them() {
+        let audio = AudioEngine::new();
+        let fmt = GuestFormat {
+            sample_rate: 44100,
+            channels: 1,
+            bits_per_sample: 16,
+        };
+        audio.set_guest_format(fmt);
+        audio.push_samples(&[4096; 8]);
+        audio.play_voice(&[8192, 16384], fmt, false);
+        let tap = audio.tap();
+        let mut output = [0.0; 2];
+        audio.set_transport_paused(true);
+        tap.render_mix(&mut output, 44100, 2);
+        assert_eq!(output, [0.0; 2]);
+        audio.set_transport_paused(false);
+        audio.set_master_volume(0.5);
+        tap.render_mix(&mut output, 44100, 2);
+        assert_eq!(output, [0.1875; 2]);
+        tap.render_mix(&mut output, 44100, 2);
+        assert_eq!(output, [0.3125; 2]);
+    }
 
     #[test]
     fn engine_starts_silently_with_no_feature() {

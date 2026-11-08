@@ -44,6 +44,7 @@
 //! session ended and stop calling back in).
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
@@ -106,11 +107,14 @@ impl FrameSnapshot {
 pub enum InputCommand {
     Input(InputEvent),
     Stop,
+    SetPaused(bool),
+    SetVolume(u16),
 }
 
 /// Shared between the worker thread and the UI thread for the
 /// lifetime of one game session.
 pub(crate) struct SessionState {
+    pub(crate) paused: AtomicBool,
     /// Latest framebuffer the guest produced. The polling loop on
     /// the UI thread drains this slot and paints it; a write
     /// overwrites whatever was there because the UI only ever
@@ -132,6 +136,7 @@ pub(crate) struct SessionState {
 impl SessionState {
     fn new() -> Self {
         Self {
+            paused: AtomicBool::new(false),
             latest_frame: Mutex::new(None),
             running: Mutex::new(true),
             summary: Mutex::new(None),
@@ -148,6 +153,9 @@ pub struct Session {
 }
 
 impl Session {
+    pub fn is_paused(&self) -> bool {
+        self.state.paused.load(Ordering::Acquire)
+    }
     /// Move the latest framebuffer out of the shared slot.
     pub fn poll_frame(&self) -> Option<FrameSnapshot> {
         self.state
@@ -322,8 +330,13 @@ fn run_game_to_completion(
     };
     summary_lines.push(format!("Effective backend: {}", effective_backend.label()));
 
-    emu.set_halt_on_unimplemented(entry.settings.halt_on_unimplemented);
-    emu.max_slices = entry.settings.max_slices;
+    let config = match Library::open(library_root) {
+        Ok(library) => library.config().clone(),
+        Err(error) => return format!("Could not read launcher settings: {error}"),
+    };
+    let (max_slices, halt_on_unimplemented) = config.run_limits(&entry.settings);
+    emu.set_halt_on_unimplemented(halt_on_unimplemented);
+    emu.max_slices = max_slices;
     emu.instruction_budget_per_slice = entry.settings.instructions_per_slice;
 
     if let Err(e) = emu.load_pe(&exe) {
@@ -402,6 +415,8 @@ fn run_game_to_completion(
         Ok(()) => summary_lines.push("Emulator exited cleanly.".to_string()),
         Err(e) => summary_lines.push(format!("Emulator stopped: {e:#}")),
     }
+    pocket_core::kernel::guest_clock::set_paused(false);
+    state.paused.store(false, Ordering::Release);
     emu.stop_audio();
 
     // Push one last framebuffer so the UI ends up showing whatever
@@ -471,6 +486,7 @@ struct SessionHook {
     state: Arc<SessionState>,
     input_rx: Receiver<InputCommand>,
     last_frame: u64,
+    last_complete: u64,
     input_disconnected: bool,
     last_emit_at: Option<Instant>,
     scratch: Vec<u8>,
@@ -483,6 +499,7 @@ impl SessionHook {
             state,
             input_rx,
             last_frame: 0,
+            last_complete: 0,
             input_disconnected: false,
             last_emit_at: None,
             scratch: Vec::new(),
@@ -497,18 +514,55 @@ impl FrameHook for SessionHook {
         let mut stop_requested = false;
         if !self.input_disconnected {
             loop {
-                match self.input_rx.try_recv() {
-                    Ok(InputCommand::Input(ev)) => kernel.pending_input.push_back(ev),
-                    Ok(InputCommand::Stop) => stop_requested = true,
+                let command = if self.state.paused.load(Ordering::Acquire) {
+                    match self.input_rx.recv_timeout(Duration::from_millis(50)) {
+                        Ok(c) => Ok(c),
+                        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
+                        Err(_) => Err(TryRecvError::Disconnected),
+                    }
+                } else {
+                    self.input_rx.try_recv()
+                };
+                match command {
+                    Ok(InputCommand::Input(ev)) => {
+                        if !self.state.paused.load(Ordering::Acquire)
+                            || matches!(
+                                ev,
+                                InputEvent::Text { .. }
+                                    | InputEvent::KeyUp { .. }
+                                    | InputEvent::PointerUp { .. }
+                            )
+                        {
+                            kernel.pending_input.push_back(ev);
+                        }
+                    }
+                    Ok(InputCommand::SetPaused(value)) => {
+                        pocket_core::kernel::guest_clock::set_paused(value);
+                        kernel.audio.set_transport_paused(value);
+                        self.state.paused.store(value, Ordering::Release);
+                    }
+                    Ok(InputCommand::SetVolume(value)) => {
+                        kernel.audio.set_master_volume(value as f32 / 1000.0)
+                    }
+                    Ok(InputCommand::Stop) => {
+                        stop_requested = true;
+                        break;
+                    }
                     Err(TryRecvError::Empty) => break,
                     Err(TryRecvError::Disconnected) => {
                         self.input_disconnected = true;
+                        stop_requested = true;
                         break;
                     }
                 }
             }
         }
 
+        if stop_requested {
+            pocket_core::kernel::guest_clock::set_paused(false);
+            self.state.paused.store(false, Ordering::Release);
+            kernel.audio.set_transport_paused(false);
+        }
         // Stream a fresh framebuffer if the guest produced one.
         let counter = kernel.framebuffer.frame_counter;
         if counter != self.last_frame {
@@ -527,8 +581,18 @@ impl FrameHook for SessionHook {
                 .last_emit_at
                 .map(|t| now.duration_since(t) >= interval)
                 .unwrap_or(true);
-            if due {
+            if due
+                && pocket_core::kernel::presentation::frame_ready(
+                    kernel.complete_frames,
+                    self.last_complete,
+                    kernel.host_yield_ms.is_some(),
+                    self.last_emit_at
+                        .map(|then| now.duration_since(then))
+                        .unwrap_or(Duration::from_millis(100)),
+                )
+            {
                 self.last_frame = counter;
+                self.last_complete = kernel.complete_frames;
                 self.last_emit_at = Some(now);
                 let frame =
                     FrameSnapshot::from_framebuffer_into(&kernel.framebuffer, &mut self.scratch);

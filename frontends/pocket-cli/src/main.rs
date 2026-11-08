@@ -1131,7 +1131,11 @@ fn cmd_run(
 
     if let Some(p) = emu.process() {
         let ppm = p.state.framebuffer.snapshot_ppm();
-        let final_path = std::path::PathBuf::from("/tmp/pockethle-final.ppm");
+        // Keep EQ captures together. A literal /tmp resolved against the
+        // drive root on Windows and let unrelated runs overwrite each other.
+        let final_path = dump_frames_to
+            .map(|dir| dir.join("final.ppm"))
+            .unwrap_or_else(|| std::env::temp_dir().join("pockethle-final.ppm"));
         if let Err(e) = std::fs::write(&final_path, &ppm) {
             eprintln!("warn: could not write {} ({e})", final_path.display());
         } else {
@@ -1501,7 +1505,8 @@ impl ScheduledInputHook {
             pocket_core::kernel::InputEvent::PointerUp { x, y } => {
                 self.held_pointers.remove(&(x, y));
             }
-            pocket_core::kernel::InputEvent::PointerMove { .. } => {}
+            pocket_core::kernel::InputEvent::PointerMove { .. }
+            | pocket_core::kernel::InputEvent::Text { .. } => {}
         }
     }
 }
@@ -1674,6 +1679,7 @@ mod display_window {
         pointer_down: bool,
         pointer_at: (i32, i32),
         last_poll_at: Instant,
+        held_keys: [bool; 256],
     }
 
     const EVENT_POLL_INTERVAL: Duration = Duration::from_millis(8);
@@ -1711,6 +1717,7 @@ mod display_window {
                 pointer_down: false,
                 pointer_at: (0, 0),
                 last_poll_at: Instant::now(),
+                held_keys: [false; 256],
             })
         }
     }
@@ -1747,22 +1754,18 @@ mod display_window {
             }
             self.pointer_down = down;
             self.pointer_at = at;
-            // EverQuest's registration dialog needs typed text, and its other
-            // controls are the device buttons reported by GXGetDefaultKeys.
-            for key in self.window.get_keys_pressed(minifb::KeyRepeat::No) {
-                if let Some(vk) = minifb_key_to_vk(key) {
-                    state
-                        .pending_input
-                        .push_back(pocket_core::kernel::InputEvent::KeyDown { vk });
-                }
-            }
-            for key in self.window.get_keys_released() {
-                if let Some(vk) = minifb_key_to_vk(key) {
-                    state
-                        .pending_input
-                        .push_back(pocket_core::kernel::InputEvent::KeyUp { vk });
-                }
-            }
+            // EverQuest EP3's registration needs key edges even while its
+            // dialog is static. minifb's pressed/released flags belong to a
+            // window update, whereas this hook runs on every CPU slice.
+            // Compare held state so each press/release reaches CE exactly once.
+            let keys = self
+                .window
+                .get_keys()
+                .into_iter()
+                .filter_map(minifb_key_to_vk);
+            state
+                .pending_input
+                .extend(key_edges(&mut self.held_keys, keys));
 
             let counter = state.framebuffer.frame_counter;
             let dirty = counter != self.last_frame;
@@ -1801,6 +1804,32 @@ mod display_window {
             }
             FrameAction::Continue
         }
+    }
+
+    fn key_edges(
+        held: &mut [bool; 256],
+        keys: impl IntoIterator<Item = u16>,
+    ) -> Vec<pocket_core::kernel::InputEvent> {
+        use pocket_core::kernel::InputEvent;
+        let mut current = [false; 256];
+        for vk in keys {
+            if let Some(down) = current.get_mut(vk as usize) {
+                *down = true;
+            }
+        }
+        let mut events = Vec::new();
+        for vk in 0..256 {
+            if current[vk] && !held[vk] {
+                events.push(InputEvent::KeyDown { vk: vk as u16 });
+            }
+        }
+        for vk in 0..256 {
+            if held[vk] && !current[vk] {
+                events.push(InputEvent::KeyUp { vk: vk as u16 });
+            }
+        }
+        *held = current;
+        events
     }
 
     /// Windows virtual-key code for a host key: letters and digits match ASCII.
@@ -1865,5 +1894,31 @@ mod display_window {
         let g = (g6 << 2) | (g6 >> 4);
         let b = (b5 << 3) | (b5 >> 2);
         (r << 16) | (g << 8) | b
+    }
+    #[cfg(test)]
+    mod tests {
+        use super::key_edges;
+        use pocket_core::kernel::InputEvent;
+
+        #[test]
+        fn keyboard_edges_do_not_depend_on_cpu_slice_count() {
+            let mut held = [false; 256];
+            assert_eq!(
+                key_edges(&mut held, [0x31]),
+                vec![InputEvent::KeyDown { vk: 0x31 }]
+            );
+            for _ in 0..1000 {
+                assert!(key_edges(&mut held, [0x31]).is_empty());
+            }
+            assert_eq!(
+                key_edges(&mut held, []),
+                vec![InputEvent::KeyUp { vk: 0x31 }]
+            );
+            assert!(key_edges(&mut held, []).is_empty());
+            assert_eq!(
+                key_edges(&mut held, [0x31]),
+                vec![InputEvent::KeyDown { vk: 0x31 }]
+            );
+        }
     }
 }

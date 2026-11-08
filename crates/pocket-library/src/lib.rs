@@ -32,12 +32,16 @@ use rars::ArchiveReader;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub mod audio_patch;
 pub mod bundle;
+pub mod catalog;
+pub mod controls;
 pub mod import_kb;
 pub mod import_problem;
 pub mod installshield;
 pub mod is3;
 pub mod keybindings;
+mod player_state;
 pub mod save_archive;
 pub mod save_data;
 pub mod wise;
@@ -495,6 +499,10 @@ impl CpuBackendPref {
 /// `<library_root>/config.json`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LauncherConfig {
+    /// EQ can exceed the old 50-million-slice cap during normal play.
+    /// Keep stored diagnostic limits, but apply them only by explicit opt-in.
+    #[serde(default)]
+    pub apply_run_limits: bool,
     #[serde(default = "default_schema_version")]
     pub schema_version: u32,
     /// Default CPU backend used when importing a new game.
@@ -544,11 +552,11 @@ pub struct LauncherConfig {
 }
 
 fn default_show_fps() -> bool {
-    true
+    false
 }
 
 fn default_show_backend_log() -> bool {
-    true
+    false
 }
 
 fn default_controls_opacity() -> f32 {
@@ -563,10 +571,22 @@ fn default_fullscreen_mode() -> String {
     "with_controls".to_string()
 }
 
+impl LauncherConfig {
+    /// Interactive sessions are unlimited unless diagnostics were enabled.
+    pub fn run_limits(&self, settings: &GameSettings) -> (u64, bool) {
+        if self.apply_run_limits {
+            (settings.max_slices, settings.halt_on_unimplemented)
+        } else {
+            (0, false)
+        }
+    }
+}
+
 impl Default for LauncherConfig {
     fn default() -> Self {
         Self {
             schema_version: 1,
+            apply_run_limits: false,
             default_cpu_backend: CpuBackendPref::default(),
             verbosity: 1,
             last_import_dir: None,
@@ -784,14 +804,77 @@ impl Library {
         &mut self.config
     }
 
+    pub fn controls_path(&self, id: Option<&str>) -> Result<PathBuf, LibraryError> {
+        match id {
+            Some(id) => {
+                self.get(id)
+                    .ok_or_else(|| LibraryError::NotFound(id.to_string()))?;
+                Ok(self.root.join("games").join(id).join("controls.json"))
+            }
+            None => Ok(self.root.join("controls-default.json")),
+        }
+    }
+
+    pub fn effective_controls(&self, id: &str) -> Result<(controls::Controls, bool), LibraryError> {
+        let path = self.controls_path(Some(id))?;
+        if let Some(value) = controls::read(&path)? {
+            return Ok((value, true));
+        }
+        // Web's first UI release wrote this sidecar. Reading it is a migration,
+        // not permission to overwrite a future-version controls.json.
+        if let Some(value) = controls::read(&path.with_file_name("web-controls.json"))? {
+            return Ok((value, true));
+        }
+        Ok((
+            controls::read(&self.controls_path(None)?)?.unwrap_or_default(),
+            false,
+        ))
+    }
+
+    pub fn write_controls(
+        &self,
+        id: Option<&str>,
+        value: &controls::Controls,
+    ) -> Result<(), LibraryError> {
+        controls::write(&self.controls_path(id)?, value)?;
+        Ok(())
+    }
+
+    pub fn presentation(&self, id: &str) -> Result<controls::Presentation, LibraryError> {
+        let path = self
+            .controls_path(Some(id))?
+            .with_file_name("presentation.json");
+        match fs::read(path) {
+            Ok(bytes) => Ok(serde_json::from_slice(&bytes)?),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                Ok(controls::Presentation::default())
+            }
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    pub fn write_presentation(
+        &self,
+        id: &str,
+        value: &controls::Presentation,
+    ) -> Result<(), LibraryError> {
+        let path = self
+            .controls_path(Some(id))?
+            .with_file_name("presentation.json");
+        write_json(&path, value)
+    }
+
     /// Import a Pocket PC `.CAB` into the library.
     ///
     /// Returns the freshly created [`GameEntry`]. The cab is extracted
     /// into `<library_root>/games/<id>/extracted/`, where `<id>` is
     /// derived from the source cab's filename. Existing entries with
-    /// the same id are replaced (the directory is wiped first).
+    /// the same id are updated transactionally, preserving written progress and settings.
     pub fn import_cab(&mut self, cab_path: impl AsRef<Path>) -> Result<&GameEntry, LibraryError> {
         let cab_path = cab_path.as_ref();
+        if self.replaced.is_none() {
+            return self.import_direct(cab_path);
+        }
         let source_cab = cab_path
             .file_name()
             .map(|s| s.to_string_lossy().to_string())
@@ -1019,6 +1102,9 @@ impl Library {
     /// but it has no entry point to start.
     pub fn import_exe(&mut self, exe_path: impl AsRef<Path>) -> Result<&GameEntry, LibraryError> {
         let exe_path = exe_path.as_ref();
+        if self.replaced.is_none() {
+            return self.import_direct(exe_path);
+        }
         if is_nsis_installer(exe_path) {
             return self.import_nsis_installer(exe_path);
         }
@@ -1162,6 +1248,21 @@ impl Library {
     /// ARM PE32 inside the archive is picked as the entry point.
     pub fn import_zip(&mut self, zip_path: impl AsRef<Path>) -> Result<&GameEntry, LibraryError> {
         let zip_path = zip_path.as_ref();
+        if self.replaced.is_none() {
+            return self.import_direct(zip_path);
+        }
+        if let Some(patch) = audio_patch::read(zip_path)? {
+            let entry = self
+                .get(&patch.game)
+                .ok_or_else(|| LibraryError::NotFound(patch.game.clone()))?;
+            let count = patch.apply(&entry.extracted_dir(&self.root))?;
+            self.last_import_note = Some(format!(
+                "Added {count} missing sound(s); saved progress preserved."
+            ));
+            return self
+                .get(&patch.game)
+                .ok_or(LibraryError::NotFound(patch.game));
+        }
         if let Some(id) = self.import_cab_package(zip_path)? {
             return self.get(&id).ok_or(LibraryError::NoExecutable);
         }
@@ -1334,7 +1435,9 @@ impl Library {
         let names: Vec<String> = archive.file_names().map(str::to_string).collect();
         let is_root_cab = |n: &String| !n.contains('/') && n.to_ascii_lowercase().ends_with(".cab");
         if names.iter().filter(|n| is_root_cab(n)).count() != 1
-            || names.iter().any(|n| n.contains('/') && !n.ends_with('/'))
+            || names
+                .iter()
+                .any(|n| n.contains('/') && n.to_ascii_lowercase().ends_with(".cab"))
         {
             return Ok(None);
         }
@@ -1344,11 +1447,27 @@ impl Library {
         let mut cab = None;
         let mut budget = limits::Budget::default();
         for name in &names {
-            let safe = Path::new(name).file_name().map(PathBuf::from);
-            let Some(leaf) = safe.filter(|_| !name.ends_with('/')) else {
+            if name.ends_with('/') {
                 continue;
-            };
+            }
+            // EverQuest audio supplements keep Sounds/ beside the CAB. Preserve
+            // that layout, but never allow an extra to escape the staging root.
+            let leaf = PathBuf::from(name);
+            if name.contains(['\\', ':'])
+                || !leaf
+                    .components()
+                    .all(|c| matches!(c, std::path::Component::Normal(_)))
+            {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "unsafe package entry",
+                )
+                .into());
+            }
             let out = temp.join(&leaf);
+            if let Some(parent) = out.parent() {
+                fs::create_dir_all(parent)?;
+            }
             let mut entry = archive
                 .by_name(name)
                 .map_err(|error| std::io::Error::other(error.to_string()))?;
@@ -1361,7 +1480,10 @@ impl Library {
         }
         let result = (|| {
             let cab = cab.ok_or(LibraryError::NoExecutable)?;
-            let id = self.import_cab(&cab)?.id.clone();
+            // EverQuest EP2's local CAB needs checksum recovery. Recover the
+            // cabinet here so Sounds/ supplements survive; recovering the
+            // outer ZIP alone selects a bare CAB and loses its extra files.
+            let id = self.import_any(&cab)?.id.clone();
             let exe = self
                 .get(&id)
                 .map(|entry| {
@@ -1373,7 +1495,11 @@ impl Library {
                 .ok_or(LibraryError::NoExecutable)?;
             let target = exe.parent().ok_or(LibraryError::NoExecutable)?;
             for (leaf, source) in &extras {
-                fs::copy(source, target.join(leaf))?;
+                let dest = target.join(leaf);
+                if let Some(parent) = dest.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                fs::copy(source, dest)?;
             }
             Ok::<String, LibraryError>(id)
         })();
@@ -1389,6 +1515,9 @@ impl Library {
     /// selected just like for ZIP imports.
     pub fn import_rar(&mut self, rar_path: impl AsRef<Path>) -> Result<&GameEntry, LibraryError> {
         let rar_path = rar_path.as_ref();
+        if self.replaced.is_none() {
+            return self.import_direct(rar_path);
+        }
         let source_name = rar_path
             .file_name()
             .map(|s| s.to_string_lossy().to_string())
@@ -1623,6 +1752,21 @@ impl Library {
             .import_direct_unchecked(path)
             .map(|entry| entry.id.clone());
         let replaced = self.replaced.take().unwrap_or_default();
+        let outcome = outcome.and_then(|id| {
+            for (old_id, old) in &replaced {
+                let dir = games.join(old_id);
+                if dir.join("game.json").is_file() && self.get(old_id).is_some() {
+                    player_state::preserve(old, &dir)?;
+                    if let Some(previous) = listed.iter().find(|g| g.id == *old_id) {
+                        let entry = self.get_mut(old_id).expect("checked above");
+                        entry.settings = previous.settings.clone();
+                        write_json(&dir.join("game.json"), entry)?;
+                    }
+                }
+            }
+            self.save()?;
+            Ok(id)
+        });
         match outcome {
             Ok(id) => {
                 // Only a game this import actually put in place loses its old
@@ -1945,6 +2089,13 @@ fn recover_replaced(games: &Path) {
         };
         let dir = games.join(id);
         if dir.join("game.json").is_file() {
+            // A tab can close after asset installation but before the normal
+            // commit copies EQ's written progress. Never discard that backup
+            // until preservation succeeds, including on recovery.
+            if let Err(error) = player_state::preserve(&entry.path(), &dir) {
+                log::warn!("could not preserve recovered progress for {id}: {error}");
+                continue;
+            }
             let _ = fs::remove_dir_all(entry.path());
         } else {
             let _ = fs::remove_dir_all(&dir);
@@ -2592,6 +2743,19 @@ fn guess_screen(
 #[cfg(test)]
 mod tests {
     #[test]
+    fn interactive_limits_require_explicit_opt_in() {
+        let mut config: super::LauncherConfig = serde_json::from_str("{}").unwrap();
+        let mut settings = super::GameSettings::default();
+        settings.max_slices = 50_000_000;
+        settings.halt_on_unimplemented = true;
+        assert_eq!(config.run_limits(&settings), (0, false));
+        config.apply_run_limits = true;
+        let restored: super::LauncherConfig =
+            serde_json::from_str(&serde_json::to_string(&config).unwrap()).unwrap();
+        assert_eq!(restored.run_limits(&settings), (50_000_000, true));
+        assert_eq!(settings.max_slices, 50_000_000);
+    }
+    #[test]
     fn a_cabinet_for_an_arm_device_is_preferred() {
         for arm in [
             "ptaipei.arm.CAB",
@@ -2612,14 +2776,14 @@ mod tests {
         assert_eq!(super::cab_name_processor_rank("game.cab"), 1);
     }
 
-    /// A ZIP holding folders is an ordinary game, not a CAB package.
+    /// A nested installer CAB must retain the ordinary wrapper import path.
     #[test]
-    fn a_zip_with_folders_is_not_a_cab_package() {
+    fn a_zip_with_a_nested_cab_is_not_a_root_cab_package() {
         use std::io::Write;
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("game.zip");
         let mut zip = zip::ZipWriter::new(fs::File::create(&path).unwrap());
-        zip.start_file("a.cab", zip::write::FileOptions::default())
+        zip.start_file("installer/a.cab", zip::write::FileOptions::default())
             .unwrap();
         zip.write_all(b"not a cabinet").unwrap();
         zip.start_file("data/b.bin", zip::write::FileOptions::default())
@@ -2628,6 +2792,138 @@ mod tests {
         zip.finish().unwrap();
         let mut library = Library::open(dir.path().join("library")).unwrap();
         assert!(library.import_cab_package(&path).unwrap().is_none());
+    }
+
+    #[test]
+    fn cab_package_preserves_eq_sound_supplements_and_rejects_escape_paths() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let cabinet = dir.path().join("device.cab");
+        legacy_cab(&cabinet, MACHINE_ARM);
+        let source = fs::read(&cabinet).unwrap();
+        for name in [
+            "Sounds/Rat_Att.wav",
+            "../escape.wav",
+            "C:/escape.wav",
+            "Sounds\\escape.wav",
+        ] {
+            let zip_path = dir.path().join("supplement.zip");
+            let mut zip = zip::ZipWriter::new(fs::File::create(&zip_path).unwrap());
+            let opt = zip::write::FileOptions::default();
+            zip.start_file("device.cab", opt).unwrap();
+            zip.write_all(&source).unwrap();
+            zip.start_file(name, opt).unwrap();
+            zip.write_all(b"sound fixture").unwrap();
+            zip.finish().unwrap();
+            let mut lib = Library::open(dir.path().join("lib")).unwrap();
+            let result = lib.import_cab_package(&zip_path);
+            if name == "Sounds/Rat_Att.wav" {
+                let id = result.unwrap().unwrap();
+                assert_eq!(
+                    fs::read(lib.get(&id).unwrap().extracted_dir(lib.root()).join(name)).unwrap(),
+                    b"sound fixture"
+                );
+            } else {
+                assert!(result.is_err(), "{name}");
+            }
+        }
+    }
+
+    #[test]
+    fn eq_audio_supplements_survive_inner_cab_checksum_recovery() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let cabinet = dir.path().join("device.cab");
+        legacy_cab(&cabinet, MACHINE_ARM);
+        let mut bytes = fs::read(&cabinet).unwrap();
+        let block = u32::from_le_bytes(bytes[36..40].try_into().unwrap()) as usize;
+        bytes[block..block + 4].copy_from_slice(&1u32.to_le_bytes());
+        let zip_path = dir.path().join("audio.zip");
+        let mut zip = zip::ZipWriter::new(fs::File::create(&zip_path).unwrap());
+        let opt = zip::write::FileOptions::default();
+        zip.start_file("device.cab", opt).unwrap();
+        zip.write_all(&bytes).unwrap();
+        zip.start_file("Sounds/Rat_Att.wav", opt).unwrap();
+        zip.write_all(b"supplement fixture").unwrap();
+        zip.finish().unwrap();
+        let mut lib = Library::open(dir.path().join("library")).unwrap();
+        let entry = lib.import_any(&zip_path).unwrap().clone();
+        assert_eq!(
+            fs::read(entry.extracted_dir(lib.root()).join("Sounds/Rat_Att.wav")).unwrap(),
+            b"supplement fixture"
+        );
+        assert!(entry.launch_path(lib.root()).is_file());
+        assert!(lib.last_import_note().is_some());
+    }
+
+    #[test]
+    fn eq_audio_patch_preserves_progress_executable_and_game_metadata() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let cab = dir.path().join("device.cab");
+        legacy_cab(&cab, MACHINE_ARM);
+        let mut library = Library::open(dir.path().join("library")).unwrap();
+        let entry = library.import_any(&cab).unwrap().clone();
+        let game = library.root().join(entry.relative_dir());
+        fs::create_dir_all(game.join("saves")).unwrap();
+        for name in ["hero.sav", "hero.css", "pockethle-registry.dat"] {
+            fs::write(game.join("saves").join(name), name).unwrap();
+        }
+        let before = fs::read(game.join("game.json")).unwrap();
+        let exe = fs::read(entry.launch_path(library.root())).unwrap();
+        let patch = dir.path().join("sounds.zip");
+        let wav = b"RIFF\x10\0\0\0WAVEaudio fixture";
+        let write_patch = |leaf: &str, data: &[u8]| {
+            let mut zip = zip::ZipWriter::new(fs::File::create(&patch).unwrap());
+            let options = zip::write::FileOptions::default();
+            zip.start_file(audio_patch::MANIFEST, options).unwrap();
+            zip.write_all(
+                &serde_json::to_vec(&audio_patch::Manifest {
+                    version: 1,
+                    game: entry.id.clone(),
+                    files: vec![leaf.into()],
+                })
+                .unwrap(),
+            )
+            .unwrap();
+            zip.start_file(leaf, options).unwrap();
+            zip.write_all(data).unwrap();
+            zip.finish().unwrap();
+        };
+        write_patch("Sounds/Rat_Att.wav", wav);
+        for _ in 0..2 {
+            assert_eq!(library.import_any(&patch).unwrap().id, entry.id);
+            assert_eq!(library.games().len(), 1);
+            assert_eq!(fs::read(game.join("game.json")).unwrap(), before);
+            assert_eq!(fs::read(entry.launch_path(library.root())).unwrap(), exe);
+            for name in ["hero.sav", "hero.css", "pockethle-registry.dat"] {
+                assert_eq!(
+                    fs::read(game.join("saves").join(name)).unwrap(),
+                    name.as_bytes()
+                );
+            }
+        }
+        write_patch("Sounds/Rat_Att.wav", b"RIFF\x10\0\0\0WAVEdifferent sound");
+        assert!(library.import_any(&patch).is_err());
+        assert_eq!(
+            fs::read(
+                entry
+                    .extracted_dir(library.root())
+                    .join("Sounds/Rat_Att.wav")
+            )
+            .unwrap(),
+            wav
+        );
+        for bad in [
+            "Sounds/../../escape.wav",
+            "Sounds/evil.exe",
+            "Sounds/C:/escape.wav",
+            "Sounds\\escape.wav",
+        ] {
+            write_patch(bad, wav);
+            assert!(library.import_any(&patch).is_err(), "{bad}");
+            assert_eq!(fs::read(game.join("saves/hero.sav")).unwrap(), b"hero.sav");
+        }
     }
 
     use super::*;
@@ -2805,15 +3101,15 @@ mod tests {
     }
 
     #[test]
-    fn show_fps_defaults_to_true() {
+    fn show_fps_is_opt_in() {
         // A brand-new library that has never been saved should
-        // come back with the FPS overlay enabled.
+        // come back with the FPS overlay disabled.
         let root = tmpdir("showfps_default");
         let lib = Library::open(&root).unwrap();
-        assert!(lib.config().show_fps);
+        assert!(!lib.config().show_fps);
 
         // A pre-existing config.json that pre-dates the show_fps
-        // field must also default to enabled when re-opened.
+        // field must also default to disabled when re-opened.
         let root2 = tmpdir("showfps_legacy");
         fs::create_dir_all(&root2).unwrap();
         let legacy_config = serde_json::json!({
@@ -2828,7 +3124,7 @@ mod tests {
         )
         .unwrap();
         let lib2 = Library::open(&root2).unwrap();
-        assert!(lib2.config().show_fps);
+        assert!(!lib2.config().show_fps);
     }
 
     #[test]
@@ -2943,6 +3239,39 @@ mod tests {
 
     const MACHINE_ARM: u16 = 0x01c0;
     const MACHINE_X86: u16 = 0x014c;
+
+    #[test]
+    fn public_cab_update_preserves_written_progress_and_controls() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut lib = Library::open(dir.path().join("library")).unwrap();
+        let cab = dir.path().join("device.cab");
+        legacy_cab(&cab, MACHINE_ARM);
+        lib.import_cab(&cab).unwrap();
+        let game_dir = lib.root().join("games/device");
+        fs::create_dir_all(game_dir.join("saves")).unwrap();
+        fs::write(game_dir.join("saves/player.sav"), b"existing progress").unwrap();
+        let cfg = controls::Controls::preset(controls::Profile::Stylus);
+        lib.write_controls(Some("device"), &cfg).unwrap();
+        lib.get_mut("device").unwrap().settings.rotation = RotationPref::Cw90;
+        lib.save().unwrap();
+        lib.import_cab(&cab).unwrap();
+        assert_eq!(
+            fs::read(game_dir.join("saves/player.sav")).unwrap(),
+            b"existing progress"
+        );
+        assert_eq!(lib.effective_controls("device").unwrap().0, cfg);
+        assert_eq!(
+            lib.get("device").unwrap().settings.rotation,
+            RotationPref::Cw90
+        );
+        legacy_cab(&cab, MACHINE_X86);
+        assert!(lib.import_cab(&cab).is_err());
+        assert_eq!(
+            fs::read(game_dir.join("saves/player.sav")).unwrap(),
+            b"existing progress"
+        );
+        assert_eq!(lib.effective_controls("device").unwrap().0, cfg);
+    }
 
     /// A cabinet holding one program of `machine` and an unrelated file,
     /// with no WinCE setup file: the shape of a desktop setup cabinet.

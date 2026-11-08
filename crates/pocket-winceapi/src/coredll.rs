@@ -1929,16 +1929,7 @@ fn get_tick_count(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError
 }
 
 fn get_tick_count_value() -> u32 {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static START: AtomicU64 = AtomicU64::new(0);
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis() as u64)
-        .unwrap_or(0);
-    if START.load(Ordering::Relaxed) == 0 {
-        START.store(now, Ordering::Relaxed);
-    }
-    now.saturating_sub(START.load(Ordering::Relaxed)) as u32
+    pocket_kernel::guest_clock::milliseconds() as u32
 }
 
 fn read_guest_regs(cpu: &mut dyn pocket_cpu::Cpu) -> Result<[u32; 17], KernelError> {
@@ -8815,6 +8806,7 @@ const VK_LBUTTON: u32 = 0x01;
 const WM_MOUSEMOVE: u32 = 0x0200;
 const WM_KEYDOWN: u32 = 0x0100;
 const WM_KEYUP: u32 = 0x0101;
+const WM_CHAR: u32 = 0x0102;
 const WM_SIZE: u32 = 0x0005;
 
 // Window styles read off a `DLGTEMPLATE`.
@@ -8843,6 +8835,7 @@ fn input_to_message(
     left_button_down: bool,
 ) -> Option<(u32, u32, u32)> {
     match ev {
+        pocket_kernel::InputEvent::Text { unit } => Some((WM_CHAR, unit as u32, 1)),
         pocket_kernel::InputEvent::PointerDown { x, y } => {
             let lparam = ((y as u32) << 16) | (x as u32);
             Some((WM_LBUTTONDOWN, MK_LBUTTON, lparam))
@@ -8910,6 +8903,7 @@ fn controls_take_input(
         return None;
     }
     let action = match ev {
+        pocket_kernel::InputEvent::Text { unit } => ctx.kernel.controls.text_input(unit),
         pocket_kernel::InputEvent::PointerDown { x, y } => {
             ctx.kernel.controls.pointer_down(x as i32, y as i32)
         }
@@ -9447,14 +9441,12 @@ fn get_capture(_ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
 }
 
 fn monotonic_ms() -> u64 {
-    use std::sync::OnceLock;
-    use std::time::Instant;
-    static START: OnceLock<Instant> = OnceLock::new();
-    START.get_or_init(Instant::now).elapsed().as_millis() as u64
+    pocket_kernel::guest_clock::milliseconds()
 }
 
 fn update_key_state(ctx: &mut CallCtx<'_>, ev: pocket_kernel::InputEvent) {
     match ev {
+        pocket_kernel::InputEvent::Text { .. } => {}
         pocket_kernel::InputEvent::KeyDown { vk } => {
             if (vk as usize) < ctx.kernel.pressed_keys.len() {
                 ctx.kernel.pressed_keys[vk as usize] = true;
@@ -12501,7 +12493,19 @@ fn set_window_long_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelErr
     let hwnd = ctx.arg_u32(0)?;
     let n_index = ctx.arg_u32(1)? as i32;
     let new_long = ctx.arg_u32(2)?;
-    let previous = if n_index == -4 {
+    let previous = if (n_index == -16 || n_index == -20)
+        && ctx.kernel.controls.panel(hwnd).is_some()
+    {
+        let panel = ctx.kernel.controls.panel_mut(hwnd).expect("checked above");
+        if n_index == -20 {
+            std::mem::replace(&mut panel.ex_style, new_long)
+        } else {
+            let previous = (panel.style & !WS_VISIBLE) | if panel.visible { WS_VISIBLE } else { 0 };
+            panel.style = new_long;
+            panel.visible = new_long & WS_VISIBLE != 0;
+            previous
+        }
+    } else if n_index == -4 {
         let previous = ctx
             .kernel
             .window_procs
@@ -12701,7 +12705,27 @@ fn get_open_file_name_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, Kernel
 fn get_window_long_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> {
     let hwnd = ctx.arg_u32(0)?;
     let n_index = ctx.arg_u32(1)? as i32;
-    let v = if n_index == -4 {
+    let v = if n_index == -16 || n_index == -20 {
+        if let Some(panel) = ctx.kernel.controls.panel(hwnd) {
+            if n_index == -20 {
+                panel.ex_style
+            } else {
+                (panel.style & !WS_VISIBLE) | if panel.visible { WS_VISIBLE } else { 0 }
+            }
+        } else if n_index == -16 {
+            if let Some(child) = ctx.kernel.controls.get(hwnd) {
+                (child.style & !(WS_VISIBLE | 0x0800_0000))
+                    | if child.visible { WS_VISIBLE } else { 0 }
+                    | if child.enabled { 0 } else { 0x0800_0000 }
+            } else if let Some(win) = ctx.kernel.guest_windows.get(&hwnd) {
+                (win.style & !WS_VISIBLE) | if win.visible { WS_VISIBLE } else { 0 }
+            } else {
+                0
+            }
+        } else {
+            0
+        }
+    } else if n_index == -4 {
         ctx.kernel
             .window_procs
             .get(&hwnd)
@@ -13394,6 +13418,7 @@ fn dialog_box_indirect_param_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome,
     while let Some(ev) = take_pending_input(ctx) {
         update_key_state(ctx, ev);
         let action = match ev {
+            InputEvent::Text { unit } => ctx.kernel.controls.text_input(unit),
             InputEvent::PointerDown { x, y } => ctx
                 .kernel
                 .controls
@@ -16872,7 +16897,8 @@ fn jump_to_init_dialog(
     ctx.cpu.write_reg(ArmReg::Sp, frame.sp)?;
     ctx.cpu.write_reg(ArmReg::R0, FAKE_DIALOG_HWND)?;
     ctx.cpu.write_reg(ArmReg::R1, WM_INITDIALOG)?;
-    ctx.cpu.write_reg(ArmReg::R2, 0)?;
+    let first = ctx.kernel.controls.first_dialog_tab_stop(FAKE_DIALOG_HWND);
+    ctx.cpu.write_reg(ArmReg::R2, first)?;
     ctx.cpu.write_reg(ArmReg::R3, init_param)?;
     ctx.cpu.write_reg(ArmReg::Lr, ctx.thunk.thunk_va)?;
     ctx.kernel.dialog_frame = Some(frame);
@@ -16963,6 +16989,9 @@ fn build_dialog_from_template_for(
     ctx.kernel.controls.destroy_children_of(owner_hwnd);
     ctx.kernel.controls.add_panel(DialogPanel {
         hwnd: owner_hwnd,
+        // CE's dialog manager adds DS_3DLOOK (Device Emulator probe).
+        style: tmpl.style | 0x0000_0004,
+        ex_style: tmpl.ex_style,
         x,
         y,
         w: win_w,
@@ -17081,6 +17110,16 @@ fn create_dialog_indirect_param_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutco
         // `DialogProc` runs on a deeper stack; only SP back at its
         // saved value means our callback has actually returned.
         if ctx.cpu.read_reg(ArmReg::Sp)? >= frame.sp {
+            // The dialog manager focuses the suggested edit only when
+            // WM_INITDIALOG returns TRUE. FALSE preserves
+            // a focus chosen by the application's callback instead.
+            if ctx.cpu.read_reg(ArmReg::R0)? != 0 {
+                let first = ctx.kernel.controls.first_dialog_tab_stop(FAKE_DIALOG_HWND);
+                if first != 0 {
+                    ctx.kernel.controls.focus = first;
+                    repaint_controls(ctx);
+                }
+            }
             ctx.kernel.dialog_frame = None;
             ctx.cpu.write_reg(ArmReg::Sp, frame.sp)?;
             ctx.cpu.write_reg(ArmReg::R1, frame.args[1])?;
@@ -18084,6 +18123,15 @@ fn get_sys_color(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome, KernelError> 
 
 /// The system palette, as a `COLORREF`.
 fn sys_color(idx: i32) -> u32 {
+    // EverQuest's registration dialog uses CE-tagged system colors. The
+    // Pocket PC 2003 dialog probe records these separately from untagged
+    // indices; keep the existing untagged palette for older game callers.
+    match idx as u32 {
+        0x4000_0005 => return 0x00FF_FFFF,
+        0x4000_000F => return 0x00C0_CCD9,
+        0x4000_0012 => return 0,
+        _ => {}
+    }
     match idx {
         // COLOR_SCROLLBAR / COLOR_BACKGROUND / COLOR_INACTIVECAPTION
         0..=2 => 0x00C8C8C8,
@@ -18917,6 +18965,7 @@ pub(crate) mod tests {
             wave_out_format: GuestFormat::default(),
             wave_out: Default::default(),
             hss: Default::default(),
+            fmod: Default::default(),
             gz_files: Default::default(),
             posted_messages: Default::default(),
             main_window_destroyed: false,
@@ -18982,6 +19031,154 @@ pub(crate) mod tests {
         assert!(ctx.kernel.window_procs.is_empty());
         assert!(ctx.kernel.pending_startup.is_empty());
         assert!(!ctx.kernel.synthetic_create_sent);
+    }
+
+    #[test]
+    fn ce_tagged_system_colors_match_the_ppc2003_dialog_probe() {
+        let mut cpu = StubCpu::new();
+        let mut kernel = fresh_kernel();
+        let thunk = dummy_thunk();
+        let mut ctx = CallCtx {
+            cpu: &mut cpu,
+            thunk: &thunk,
+            kernel: &mut kernel,
+        };
+        for (index, color) in [
+            (0x4000_0005, 0x00FF_FFFF),
+            (0x4000_000F, 0x00C0_CCD9),
+            (0x4000_0012, 0),
+        ] {
+            ctx.cpu.write_reg(ArmReg::R0, index).unwrap();
+            assert_eq!(
+                get_sys_color(&mut ctx).unwrap(),
+                DispatchOutcome::ReturnedR0(color)
+            );
+        }
+        assert_eq!(sys_color(5), 0x00FF_FFFF);
+        assert_eq!(sys_color(15), 0x00C8_C8C8);
+        assert_eq!(sys_color(18), 0);
+    }
+
+    #[test]
+    fn dialog_template_styles_survive_creation_and_visibility_changes() {
+        let mut cpu = StubCpu::new();
+        cpu.map_region(0x10000, 0x1000, Prot::READ | Prot::WRITE)
+            .unwrap();
+        let mut template = Vec::new();
+        template.extend_from_slice(&0x80c0_0000u32.to_le_bytes());
+        template.extend_from_slice(&0x0000_0100u32.to_le_bytes());
+        for word in [1u16, 0, 0, 135, 92, 0, 0, 0] {
+            template.extend_from_slice(&word.to_le_bytes());
+        }
+        template.extend_from_slice(&0x5000_0000u32.to_le_bytes());
+        template.extend_from_slice(&0u32.to_le_bytes());
+        for word in [0u16, 0, 10, 10, 1, 0xffff, 0x0082, 0, 0] {
+            template.extend_from_slice(&word.to_le_bytes());
+        }
+        cpu.write_mem(0x10000, &template).unwrap();
+        let mut kernel = fresh_kernel();
+        let thunk = dummy_thunk();
+        let mut ctx = CallCtx {
+            cpu: &mut cpu,
+            thunk: &thunk,
+            kernel: &mut kernel,
+        };
+        build_dialog_from_template_for(&mut ctx, 0x10000, FAKE_DIALOG_HWND, false);
+        ctx.cpu.write_reg(ArmReg::R0, FAKE_DIALOG_HWND).unwrap();
+        ctx.cpu.write_reg(ArmReg::R1, (-16i32) as u32).unwrap();
+        assert_eq!(
+            get_window_long_w(&mut ctx).unwrap(),
+            DispatchOutcome::ReturnedR0(0x80c0_0004)
+        );
+        ctx.cpu.write_reg(ArmReg::R1, 1).unwrap();
+        show_window(&mut ctx).unwrap();
+        ctx.cpu.write_reg(ArmReg::R1, (-16i32) as u32).unwrap();
+        assert_eq!(
+            get_window_long_w(&mut ctx).unwrap(),
+            DispatchOutcome::ReturnedR0(0x90c0_0004)
+        );
+        ctx.cpu.write_reg(ArmReg::R1, (-20i32) as u32).unwrap();
+        ctx.cpu.write_reg(ArmReg::R2, 0x200).unwrap();
+        assert_eq!(
+            set_window_long_w(&mut ctx).unwrap(),
+            DispatchOutcome::ReturnedR0(0x100)
+        );
+        assert_eq!(
+            get_window_long_w(&mut ctx).unwrap(),
+            DispatchOutcome::ReturnedR0(0x200)
+        );
+        ctx.cpu.write_reg(ArmReg::R1, (-16i32) as u32).unwrap();
+        ctx.cpu.write_reg(ArmReg::R2, 0x8000_0004).unwrap();
+        assert_eq!(
+            set_window_long_w(&mut ctx).unwrap(),
+            DispatchOutcome::ReturnedR0(0x90c0_0004)
+        );
+        assert_eq!(
+            get_window_long_w(&mut ctx).unwrap(),
+            DispatchOutcome::ReturnedR0(0x8000_0004)
+        );
+        assert!(!ctx.kernel.controls.panel(FAKE_DIALOG_HWND).unwrap().visible);
+    }
+
+    #[test]
+    fn modeless_dialog_initial_focus_respects_the_callback_result() {
+        use pocket_kernel::controls::ControlClass;
+        for accepted in [false, true] {
+            let mut cpu = StubCpu::new();
+            let mut kernel = fresh_kernel();
+            let edit = kernel.controls.create(
+                FAKE_DIALOG_HWND,
+                ControlClass::Edit,
+                1000,
+                String::new(),
+                0x5001_0000,
+                0,
+                0,
+                40,
+                20,
+            );
+            let other = kernel.controls.create(
+                FAKE_DIALOG_HWND,
+                ControlClass::Button,
+                1,
+                String::new(),
+                0x5001_0000,
+                0,
+                30,
+                40,
+                20,
+            );
+            let thunk = dummy_thunk();
+            let mut ctx = CallCtx {
+                cpu: &mut cpu,
+                thunk: &thunk,
+                kernel: &mut kernel,
+            };
+            let frame = GuestCallFrame {
+                args: [1, 2, 3, 4],
+                lr: 0x1234,
+                sp: 0x20000,
+            };
+            assert_eq!(
+                jump_to_init_dialog(&mut ctx, frame, 0x10000, 42).unwrap(),
+                DispatchOutcome::JumpTo(0x10000)
+            );
+            assert_eq!(ctx.cpu.read_reg(ArmReg::R2).unwrap(), edit);
+            assert_eq!(ctx.kernel.controls.focus, 0);
+            // Simulate a callback that explicitly chose a different control.
+            ctx.kernel.controls.focus = other;
+            ctx.cpu.write_reg(ArmReg::R0, u32::from(accepted)).unwrap();
+            assert_eq!(
+                create_dialog_indirect_param_w(&mut ctx).unwrap(),
+                DispatchOutcome::ReturnedR0(FAKE_DIALOG_HWND)
+            );
+            assert_eq!(
+                ctx.kernel.controls.focus,
+                if accepted { edit } else { other }
+            );
+            assert_eq!(ctx.cpu.read_reg(ArmReg::Lr).unwrap(), frame.lr);
+            assert!(ctx.kernel.dialog_frame.is_none());
+        }
     }
 
     #[test]

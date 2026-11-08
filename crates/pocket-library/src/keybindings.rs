@@ -147,6 +147,18 @@ pub fn keys_match(a: &str, b: &str) -> bool {
 }
 
 fn canonical_key_name(key: &str) -> &str {
+    if key.eq_ignore_ascii_case("Esc") {
+        return "Escape";
+    }
+    if key.eq_ignore_ascii_case("Control")
+        || key.eq_ignore_ascii_case("CtrlLeft")
+        || key.eq_ignore_ascii_case("CtrlRight")
+    {
+        return "Ctrl";
+    }
+    if key.eq_ignore_ascii_case("ShiftLeft") || key.eq_ignore_ascii_case("ShiftRight") {
+        return "Shift";
+    }
     for arrow in ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] {
         if key.eq_ignore_ascii_case(arrow) {
             return &arrow["Arrow".len()..];
