@@ -14,16 +14,35 @@ const LOGICAL_HEIGHT: u32 = 320;
 const CLIENT_TOP: i32 = 20;
 const CLIENT_HEIGHT: i32 = 268;
 
-const BACKDROP: &[u8] = include_bytes!("../assets/valien-attack/BackDrop.png");
-const GREEN_ALIEN: &[u8] = include_bytes!("../assets/valien-attack/GAlien.png");
-const BLUE_ALIEN: &[u8] = include_bytes!("../assets/valien-attack/BAlien.png");
-const RED_ALIEN: &[u8] = include_bytes!("../assets/valien-attack/RAlien.png");
-const PURPLE_ALIEN: &[u8] = include_bytes!("../assets/valien-attack/PAlien.png");
-const YELLOW_ALIEN: &[u8] = include_bytes!("../assets/valien-attack/YAlien.png");
-const DEFENDER: &[u8] = include_bytes!("../assets/valien-attack/Defender.png");
-const MISSILE: &[u8] = include_bytes!("../assets/valien-attack/Missile.png");
-const STAR: &[u8] = include_bytes!("../assets/valien-attack/Star.png");
-const CROSS: &[u8] = include_bytes!("../assets/valien-attack/Cross.png");
+// The sprites come from the player's own installed copy of the game (the PNG files
+// shipped beside vAlienAttack.exe). They used to be embedded in this library, which
+// meant distributing the game's art with the app; PocketPC3630 does not ship game files.
+const SPRITE_FILES: [&str; 10] = [
+    "BackDrop", "RAlien", "PAlien", "YAlien", "BAlien", "GAlien", "Defender", "Missile", "Star",
+    "Cross",
+];
+
+/// Find `<name>.png` (any letter case) in the game's folder or up to three
+/// folders below it.
+fn find_sprite(dir: &Path, name: &str, depth: u32) -> Option<std::path::PathBuf> {
+    let wanted = format!("{name}.png").to_ascii_lowercase();
+    let mut subdirs = Vec::new();
+    for entry in std::fs::read_dir(dir).ok()?.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            subdirs.push(path);
+        } else if entry.file_name().to_string_lossy().to_ascii_lowercase() == wanted {
+            return Some(path);
+        }
+    }
+    if depth == 0 {
+        return None;
+    }
+    subdirs.sort();
+    subdirs
+        .iter()
+        .find_map(|sub| find_sprite(sub, name, depth - 1))
+}
 
 #[derive(Clone)]
 struct Sprite {
@@ -33,8 +52,16 @@ struct Sprite {
 }
 
 impl Sprite {
-    fn load(data: &[u8], name: &str) -> Result<Self> {
-        let image = image::load_from_memory(data).with_context(|| format!("decode {name}"))?;
+    fn load(dir: &Path, name: &str) -> Result<Self> {
+        let path = find_sprite(dir, name, 3).with_context(|| {
+            format!(
+                "{name}.png was not found in the installed game. The Android renderer draws \
+                 vAlienAttack with the game's own sprite files; import the game package \
+                 that contains them"
+            )
+        })?;
+        let data = std::fs::read(&path).with_context(|| format!("read {}", path.display()))?;
+        let image = image::load_from_memory(&data).with_context(|| format!("decode {name}"))?;
         let rgba = image.to_rgba8();
         Ok(Self {
             width: rgba.width(),
@@ -58,20 +85,16 @@ struct Assets {
 }
 
 impl Assets {
-    fn load() -> Result<Self> {
+    fn load(dir: &Path) -> Result<Self> {
+        let [backdrop, red, purple, yellow, blue, green, defender, missile, star, cross] =
+            SPRITE_FILES.map(|name| Sprite::load(dir, name));
         Ok(Self {
-            backdrop: Sprite::load(BACKDROP, "BackDrop")?,
-            aliens: [
-                Sprite::load(RED_ALIEN, "RAlien")?,
-                Sprite::load(PURPLE_ALIEN, "PAlien")?,
-                Sprite::load(YELLOW_ALIEN, "YAlien")?,
-                Sprite::load(BLUE_ALIEN, "BAlien")?,
-                Sprite::load(GREEN_ALIEN, "GAlien")?,
-            ],
-            defender: Sprite::load(DEFENDER, "Defender")?,
-            missile: Sprite::load(MISSILE, "Missile")?,
-            star: Sprite::load(STAR, "Star")?,
-            cross: Sprite::load(CROSS, "Cross")?,
+            backdrop: backdrop?,
+            aliens: [red?, purple?, yellow?, blue?, green?],
+            defender: defender?,
+            missile: missile?,
+            star: star?,
+            cross: cross?,
         })
     }
 }
@@ -96,8 +119,8 @@ struct ManagedGame {
 }
 
 impl ManagedGame {
-    fn new(screen: (u32, u32)) -> Result<Self> {
-        let assets = Assets::load()?;
+    fn new(screen: (u32, u32), game_dir: &Path) -> Result<Self> {
+        let assets = Assets::load(game_dir)?;
         Ok(Self {
             assets,
             screen,
@@ -313,7 +336,8 @@ pub(crate) fn run(
     input_rx: Receiver<InputCommand>,
     screen: (u32, u32),
 ) -> String {
-    let mut game = match ManagedGame::new(screen) {
+    let game_dir = exe.parent().unwrap_or_else(|| Path::new("."));
+    let mut game = match ManagedGame::new(screen, game_dir) {
         Ok(game) => game,
         Err(error) => return format!("Managed vAlienAttack renderer failed: {error:#}"),
     };
@@ -466,18 +490,61 @@ fn glyph(ch: char) -> [u8; 7] {
 mod tests {
     use super::*;
 
+    /// Sprites of the original sizes, plain colours, in a fresh folder: the test
+    /// does not need (and the repository does not hold) the game's art.
+    fn fake_game(tag: &str) -> std::path::PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("pockethle-valien-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("Images")).unwrap();
+        let sizes = [
+            (240, 268),
+            (20, 11),
+            (20, 11),
+            (20, 11),
+            (20, 11),
+            (20, 11),
+            (90, 12),
+            (18, 8),
+            (3, 3),
+            (9, 9),
+        ];
+        for (name, (w, h)) in SPRITE_FILES.iter().zip(sizes) {
+            let image = image::RgbaImage::from_pixel(w, h, image::Rgba([200, 120, 40, 255]));
+            image
+                .save(dir.join("Images").join(format!("{name}.PNG")))
+                .unwrap();
+        }
+        dir
+    }
+
     #[test]
-    fn bundled_assets_match_original_dimensions() {
-        let assets = Assets::load().expect("managed game assets must decode");
+    fn sprites_load_from_the_installed_game_folder() {
+        let dir = fake_game("load");
+        let assets = Assets::load(&dir).expect("sprites in a subfolder, any letter case");
         assert_eq!((assets.backdrop.width, assets.backdrop.height), (240, 268));
         assert_eq!((assets.aliens[0].width, assets.aliens[0].height), (20, 11));
         assert_eq!((assets.defender.width, assets.defender.height), (90, 12));
         assert_eq!((assets.missile.width, assets.missile.height), (18, 8));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_missing_sprite_is_reported_instead_of_drawing_nothing() {
+        let dir = fake_game("missing");
+        std::fs::remove_file(dir.join("Images").join("Star.PNG")).unwrap();
+        let error = Assets::load(&dir)
+            .err()
+            .expect("Star.png is missing")
+            .to_string();
+        assert!(error.contains("Star.png was not found"), "{error}");
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
     fn initial_frame_is_visible_and_start_tap_reaches_gameplay() {
-        let mut game = ManagedGame::new((240, 320)).expect("renderer must initialize");
+        let dir = fake_game("play");
+        let mut game = ManagedGame::new((240, 320), &dir).expect("renderer must initialize");
         let mut framebuffer = Framebuffer::new(240, 320);
         game.render(&mut framebuffer);
         assert!(!framebuffer.is_all_black());
@@ -491,5 +558,6 @@ mod tests {
             .filter(|p| **p != [0, 0])
             .count();
         assert!(non_black > 250);
+        let _ = std::fs::remove_dir_all(dir);
     }
 }
