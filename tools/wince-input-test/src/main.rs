@@ -203,6 +203,6 @@ pub extern "C" fn entry(instance:usize,_previous:usize,_command:usize,_show:i32)
 #[panic_handler]
 fn panic(_: &PanicInfo)->! {loop {}}
 #[no_mangle]
-pub unsafe extern "C" fn memset(dst:*mut u8,value:i32,n:usize)->*mut u8 {let mut i=0;while i<n {core::ptr::write_volatile(dst.add(i),value as u8);i+=1;}dst}
+pub unsafe extern "C" fn memset(dst:*mut core::ffi::c_void,value:i32,n:usize)->*mut core::ffi::c_void {let d=dst as *mut u8;let mut i=0;while i<n {core::ptr::write_volatile(d.add(i),value as u8);i+=1;}dst}
 #[no_mangle]
-pub unsafe extern "C" fn memcpy(dst:*mut u8,src:*const u8,n:usize)->*mut u8 {let mut i=0;while i<n {core::ptr::write_volatile(dst.add(i),core::ptr::read_volatile(src.add(i)));i+=1;}dst}
+pub unsafe extern "C" fn memcpy(dst:*mut core::ffi::c_void,src:*const core::ffi::c_void,n:usize)->*mut core::ffi::c_void {let (d,s)=(dst as *mut u8,src as *const u8);let mut i=0;while i<n {core::ptr::write_volatile(d.add(i),core::ptr::read_volatile(s.add(i)));i+=1;}dst}
