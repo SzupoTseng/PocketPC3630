@@ -151,7 +151,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-emscripten
+          targets: wasm32-unknown-emscripten, armv5te-unknown-linux-gnueabi
       - uses: Swatinem/rust-cache@v2
       # Cache emsdk and the 3.1.74 toolchain: without it every run downloaded emsdk from
       # GitHub, and the web build failed whenever that download got HTTP 502.
@@ -163,6 +163,24 @@ jobs:
         env:
           EXTRA_RUSTFLAGS: -D warnings
         run: frontends/pocket-wasm/build.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: web unit tests; generated theme files up to date
+        run: |
+          node --test tools/eq-validation/*.test.mjs
+          python3 tools/ui/gen-themes.py --check
+      # Opens the page just built in headless Chrome and runs our own input probe
+      # (tools/wince-input-test, no game files): page loads without errors, the WASM
+      # starts, library cards and stories, the program draws, pause stops the guest
+      # clock, themes switch, leaving returns to the library.
+      - name: end-to-end test in headless Chrome
+        run: |
+          tools/wince-input-test/build.sh
+          (cd target/ui-validation/input-probe && zip -q ../input-test.zip input-test.exe)
+          node frontends/pocket-wasm/web/prepare-pages.mjs
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" \
+            node tools/web-e2e/e2e.mjs docs target/ui-validation/input-test.zip
 
   # The same configuration the release ships: the interpreter backend
   # (no Unicorn), arm64 and x86_64, a release build. CI has no signing key,
