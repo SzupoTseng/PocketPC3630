@@ -239,5 +239,7 @@
  "play.padTitle": "Bildschirmtasten ein- oder ausblenden; bei Spielen mit Eingabestift ausblenden, damit das Bild größer wird",
  "play.pause": "Pause",
  "play.paused": "Pausiert",
- "play.resumeHint": "Tippen zum Fortsetzen; auch die Spielzeit steht still"
+ "play.resumeHint": "Tippen zum Fortsetzen; auch die Spielzeit steht still",
+ "lib.story": "Damals (auf Englisch)",
+ "lib.detailsStory": "Geschichte und Details"
 }

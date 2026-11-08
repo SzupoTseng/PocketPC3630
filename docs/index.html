@@ -3069,12 +3069,20 @@ async function getFree(entry, button) {
 // library/index.json holds the facts (status, CPUs, platforms, images);
 // library/story.zh-TW.json: a short story for each program, in Chinese,
 // loaded once, the first time a reader opens one.
-let storiesLoad = null;
+// Stories exist in Traditional Chinese, Simplified Chinese and English; every
+// other interface language shows the English one (its label says so).
+function storyLang() {
+  const lang = I18N.lang || '';
+  if (!/^zh/i.test(lang)) return 'en';
+  return /^zh-(cn|sg|hans)/i.test(lang) ? 'zh-CN' : 'zh-TW';
+}
+const storiesLoad = {};
 function libraryStories() {
-  storiesLoad ??= fetch('library/story.zh-TW.json')
+  const lang = storyLang();
+  storiesLoad[lang] ??= fetch(`library/story.${lang}.json`)
     .then((r) => (r.ok ? r.json() : {}))
     .catch(() => ({}));
-  return storiesLoad;
+  return storiesLoad[lang];
 }
 
 // library/desc.<lang>.json holds the descriptions in each language.
@@ -3419,7 +3427,7 @@ function libraryCard(entry) {
   const more = document.createElement('details');
   more.className = 'lib-info';
   const summary = document.createElement('summary');
-  const hasStory = entry.story && /^zh/.test(I18N.lang);
+  const hasStory = Boolean(entry.story);
   summary.textContent = t(hasStory ? 'lib.detailsStory' : 'lib.details');
   more.append(summary, facts, kw);
   const controls = document.createElement('button');
@@ -3443,6 +3451,7 @@ function libraryCard(entry) {
       if (!text) return;
       const box = document.createElement('div');
       box.className = 'story';
+      box.lang = storyLang();
       const title = document.createElement('h4');
       title.textContent = t('lib.story');
       box.append(

@@ -239,5 +239,7 @@
  "play.padTitle": "Mostrar u ocultar los botones en pantalla; ocúltalos en juegos con lápiz para agrandar la pantalla",
  "play.pause": "Pausa",
  "play.paused": "En pausa",
- "play.resumeHint": "Toca para continuar; el tiempo del juego también se detiene"
+ "play.resumeHint": "Toca para continuar; el tiempo del juego también se detiene",
+ "lib.story": "En su época (en inglés)",
+ "lib.detailsStory": "Historia y detalles"
 }

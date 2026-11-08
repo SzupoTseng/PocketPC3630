@@ -239,5 +239,7 @@
  "play.padTitle": "画面のボタンを表示／非表示。スタイラスで遊ぶゲームでは隠すと画面が大きくなります",
  "play.pause": "一時停止",
  "play.paused": "一時停止中",
- "play.resumeHint": "タップで再開。ゲーム内の時間も止まっています"
+ "play.resumeHint": "タップで再開。ゲーム内の時間も止まっています",
+ "lib.story": "当時の話（英語）",
+ "lib.detailsStory": "ストーリーと詳細"
 }

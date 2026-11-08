@@ -209,7 +209,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v3
       - name: build APK
         working-directory: frontends/pocket-android
-        run: ./gradlew assembleRelease --no-daemon
+        run: |
+          # Fill the cache once. The official URL redirects to GitHub releases, which
+          # has been answering with HTTP 504 or timing out; if it fails, fetch the same
+          # file from a mirror. The wrapper checks distributionSha256Sum (the official
+          # value), so a different file from the mirror is rejected, never used.
+          if ! ./gradlew --version --no-daemon; then
+            sed -i 's#^distributionUrl=.*#distributionUrl=https\\://mirrors.cloud.tencent.com/gradle/gradle-8.7-bin.zip#' gradle/wrapper/gradle-wrapper.properties
+            ./gradlew --version --no-daemon
+          fi
+          ./gradlew assembleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: PocketHLE-android

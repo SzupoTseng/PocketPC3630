@@ -239,5 +239,7 @@
  "play.padTitle": "Show or hide the on-screen keys; hide them for games played with the stylus to make the screen bigger",
  "play.pause": "Pause",
  "play.paused": "Paused",
- "play.resumeHint": "Tap to resume; game time is stopped too"
+ "play.resumeHint": "Tap to resume; game time is stopped too",
+ "lib.story": "Back in the day",
+ "lib.detailsStory": "Story and details"
 }

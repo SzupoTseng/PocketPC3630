@@ -239,5 +239,7 @@
  "play.padTitle": "화면 버튼 표시/숨기기. 스타일러스로 하는 게임은 숨기면 화면이 커집니다",
  "play.pause": "일시 정지",
  "play.paused": "일시 정지됨",
- "play.resumeHint": "탭하면 계속합니다. 게임 시간도 멈춰 있습니다"
+ "play.resumeHint": "탭하면 계속합니다. 게임 시간도 멈춰 있습니다",
+ "lib.story": "그 시절 이야기 (영어)",
+ "lib.detailsStory": "이야기와 세부 정보"
 }
