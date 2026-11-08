@@ -98,7 +98,7 @@ pub(crate) fn poll() -> Vec<Pad> {
     if pads.devices.is_empty() {
         pads.devices = (0..DEVICES).map(|_| None).collect();
     }
-    if pads.last_scan.map_or(true, |at| at.elapsed() >= RESCAN) {
+    if pads.last_scan.is_none_or(|at| at.elapsed() >= RESCAN) {
         pads.last_scan = Some(Instant::now());
         for (index, slot) in pads.devices.iter_mut().enumerate() {
             if slot.is_none() {

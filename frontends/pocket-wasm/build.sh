@@ -28,7 +28,11 @@ link=(
   -sMODULARIZE=1 -sEXPORT_NAME=PocketHLE -sFORCE_FILESYSTEM=1 -lidbfs.js
   -sENVIRONMENT=web,node -sEXIT_RUNTIME=0
 )
-flags="-C panic=abort ${EXTRA_RUSTFLAGS:-}"
+# Keep build-machine paths out of the published .wasm (prepare-pages.mjs refuses a
+# build that contains one): the same remapping the Windows build script uses.
+remap="--remap-path-prefix=$HOME=/build --remap-path-prefix=$HOME/.cargo/registry/src=/cargo --remap-path-prefix=$HOME/.cargo/git/checkouts=/cargo-git"
+remap+=" --remap-path-prefix=$HOME/.rustup=/rustup --remap-path-prefix=$(pwd)=/src"
+flags="-C panic=abort $remap ${EXTRA_RUSTFLAGS:-}"
 for arg in "${link[@]}"; do
   flags+=" -C link-args=$arg"
 done
