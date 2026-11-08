@@ -12,6 +12,7 @@ object Themes {
     const val KEY = "ui_theme"
     private val styles = mapOf(
         "red" to R.style.Theme_PocketHLE,
+        "classic" to R.style.Theme_PocketHLE_Classic,
         "blue" to R.style.Theme_PocketHLE_Blue,
         "green" to R.style.Theme_PocketHLE_Green,
         "purple" to R.style.Theme_PocketHLE_Purple,

@@ -407,7 +407,8 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
 /* Emulator interface: the glossy Windows Mobile 5/6 look. Red is the default; the other
    colors are themes chosen in the game menu. Only the player (toolbar, on-screen keys,
    pause veil, in-game dialogs) uses it; the software library keeps its own look. */
-:root{--em-title:linear-gradient(#ee6a5e 0%,#d1382e 48%,#a9231b 50%,#c63127 100%);--em-edge:#a3231b;--em-sel:linear-gradient(#ff7a6c,#d8392e);--em-selink:#fff;--em-flat:#c8372d;--em-panel:#fbf5f4;--em-panel2:#f3e3e1;--em-ink:#3a1412;--em-line:#d7a6a2;--em-dim:#8c6a67;--em-btn:linear-gradient(#fffefe,#f3dcd9);--em-btnink:#3a1412;--em-btnline:#c98b86;}
+:root{--em-radius:8px;--em-radius-lg:10px;--em-title:linear-gradient(#ee6a5e 0%,#d1382e 48%,#a9231b 50%,#c63127 100%);--em-edge:#a3231b;--em-sel:linear-gradient(#ff7a6c,#d8392e);--em-selink:#fff;--em-flat:#c8372d;--em-panel:#fbf5f4;--em-panel2:#f3e3e1;--em-ink:#3a1412;--em-line:#d7a6a2;--em-dim:#8c6a67;--em-btn:linear-gradient(#fffefe,#f3dcd9);--em-btnink:#3a1412;--em-btnline:#c98b86;}
+:root[data-em-theme="classic"]{--em-radius:0px;--em-radius-lg:0px;--em-title:#1055b5;--em-edge:#0a3a8a;--em-sel:#00009c;--em-selink:#fff;--em-flat:#1055b5;--em-panel:#fff;--em-panel2:#bdebff;--em-ink:#000;--em-line:#848284;--em-dim:#636563;--em-btn:#bdebff;--em-btnink:#000;--em-btnline:#848284}
 :root[data-em-theme="blue"]{--em-title:linear-gradient(#4c7bd0 0%,#2f5fb8 48%,#1f4796 50%,#2d5cb0 100%);--em-edge:#1f4796;--em-sel:linear-gradient(#ffb64a,#f58a14);--em-selink:#2a1600;--em-flat:#2f5fb8;--em-panel:#f4f7fc;--em-panel2:#e4ebf8;--em-ink:#14213d;--em-line:#9bb0d6;--em-dim:#6a7a99;--em-btn:linear-gradient(#fdfeff,#d9e3f5);--em-btnink:#14213d;--em-btnline:#7f95c2;}
 :root[data-em-theme="green"]{--em-title:linear-gradient(#6cc47a 0%,#3a9a4b 48%,#237a34 50%,#33903f 100%);--em-edge:#237a34;--em-sel:linear-gradient(#ffd966,#f0b020);--em-selink:#2b2000;--em-flat:#2e8b3d;--em-panel:#f4faf5;--em-panel2:#e1f1e4;--em-ink:#10281a;--em-line:#9cc8a4;--em-dim:#5f7d66;--em-btn:linear-gradient(#fdfffd,#d9ecdd);--em-btnink:#10281a;--em-btnline:#82b48b;}
 :root[data-em-theme="purple"]{--em-title:linear-gradient(#a780dc 0%,#7a4cc0 48%,#5a2f96 50%,#6e42ae 100%);--em-edge:#5a2f96;--em-sel:linear-gradient(#d9bcff,#a874ec);--em-selink:#1f0a3a;--em-flat:#6b3fb0;--em-panel:#f8f5fc;--em-panel2:#ebe3f7;--em-ink:#21143a;--em-line:#b9a0e0;--em-dim:#7b6a99;--em-btn:linear-gradient(#fefcff,#e4d9f6);--em-btnink:#21143a;--em-btnline:#a58bd0;}
@@ -429,9 +430,9 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
 .paused{background:rgb(8 6 6 / 66%);color:#fff}.paused .ico{color:var(--em-flat);text-shadow:0 0 0 #fff;filter:brightness(1.5)}
 body.playing .software-dialog,.software-dialog.game-menu{
   --surface:var(--em-panel);--bg:var(--em-panel2);--ink:var(--em-ink);--line:var(--em-line);--accent:var(--em-flat);--dim:var(--em-dim);
-  background:var(--em-panel);color:var(--em-ink);border:1px solid var(--em-edge);border-radius:10px;box-shadow:0 10px 28px rgb(0 0 0 / 45%)}
-.software-dialog.game-menu>h2:first-child{margin:-16px -16px 8px;padding:8px 14px;background:var(--em-title);color:#fff;border-radius:9px 9px 0 0;font-size:15px;text-shadow:0 1px 0 rgb(0 0 0 / 30%)}
-body.playing .software-dialog button,.software-dialog.game-menu button{background:var(--em-btn);color:var(--em-btnink);border:1px solid var(--em-btnline);border-radius:8px;box-shadow:inset 0 1px 0 #fff;font-weight:600}
+  background:var(--em-panel);color:var(--em-ink);border:1px solid var(--em-edge);border-radius:var(--em-radius-lg);box-shadow:0 10px 28px rgb(0 0 0 / 45%)}
+.software-dialog.game-menu>h2:first-child{margin:-16px -16px 8px;padding:8px 14px;background:var(--em-title);color:#fff;border-radius:calc(var(--em-radius-lg) - 1px) calc(var(--em-radius-lg) - 1px) 0 0;font-size:15px;text-shadow:0 1px 0 rgb(0 0 0 / 30%)}
+body.playing .software-dialog button,.software-dialog.game-menu button{background:var(--em-btn);color:var(--em-btnink);border:1px solid var(--em-btnline);border-radius:var(--em-radius);box-shadow:inset 0 1px 0 #fff;font-weight:600}
 .software-dialog.game-menu button:nth-of-type(1){background:var(--em-sel);color:var(--em-selink);border-color:var(--em-edge)}
 body.playing .software-dialog button:hover,.software-dialog.game-menu button:hover{filter:brightness(.97)}
 .software-dialog.game-menu select,body.playing .software-dialog select{border-radius:8px;background:var(--em-panel);color:var(--em-ink)}
@@ -816,7 +817,7 @@ function gameId(index) {
 
 // The emulator's color theme: red unless the player chose another in the game menu.
 const EM_THEMES = [
-  ['red', '紅', 'Red'], ['blue', '藍＋橘', 'Blue + orange'], ['green', '綠', 'Green'], ['purple', '紫', 'Purple'],
+  ['red', '紅', 'Red'], ['classic', '2003 經典', '2003 classic'], ['blue', '藍＋橘', 'Blue + orange'], ['green', '綠', 'Green'], ['purple', '紫', 'Purple'],
   ['orange', '橘', 'Orange'], ['graphite', '石墨', 'Graphite'], ['nightred', '深色紅（夜間）', 'Dark red (night)'],
 ];
 function emTheme() {

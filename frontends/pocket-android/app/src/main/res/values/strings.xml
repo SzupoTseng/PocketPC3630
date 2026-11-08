@@ -138,6 +138,7 @@
     <string name="pref_ui_theme_summary">Colors of the PocketPC3630 interface. Red is the default.</string>
     <string-array name="ui_theme_entries">
         <item>Red / 紅</item>
+        <item>2003 classic / 2003 經典</item>
         <item>Blue + orange / 藍＋橘</item>
         <item>Green / 綠</item>
         <item>Purple / 紫</item>
@@ -147,6 +148,7 @@
     </string-array>
     <string-array name="ui_theme_values">
         <item>red</item>
+        <item>classic</item>
         <item>blue</item>
         <item>green</item>
         <item>purple</item>

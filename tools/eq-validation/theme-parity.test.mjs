@@ -9,8 +9,8 @@ const rust = readFileSync('crates/pocket-library/src/theme.rs', 'utf8');
 const themes = [...rust.matchAll(/id: "(\w+)",[\s\S]*?flat: 0x(\w+),\s*edge: 0x(\w+),/g)]
   .map(([, id, flat, edge]) => ({id, flat: '#' + flat, edge: '#' + edge}));
 
-test('theme.rs lists red first and seven themes', () => {
-  assert.equal(themes.length, 7);
+test('theme.rs lists red first and eight themes', () => {
+  assert.equal(themes.length, 8);
   assert.equal(themes[0].id, 'red');
 });
 
