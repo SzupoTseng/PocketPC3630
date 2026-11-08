@@ -1,4 +1,5 @@
-//! Basic Windows XInput polling, independent of guest CPU / GAPI bindings.
+//! Gamepad polling, independent of guest CPU / GAPI bindings: Windows XInput here,
+//! Linux through the kernel joystick interface (gamepad_linux.rs).
 //! ABI: https://learn.microsoft.com/en-us/windows/win32/api/xinput/ns-xinput-xinput_gamepad
 //! XInput9_1_0 ships with desktop Windows; no bundled redistributable is needed.
 #[derive(Debug)]
@@ -84,7 +85,14 @@ pub fn poll() -> Vec<Pad> {
     }
     pads
 }
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
+#[path = "gamepad_linux.rs"]
+mod linux;
+#[cfg(target_os = "linux")]
+pub fn poll() -> Vec<Pad> {
+    linux::poll()
+}
+#[cfg(not(any(windows, target_os = "linux")))]
 pub fn poll() -> Vec<Pad> {
     Vec::new()
 }
