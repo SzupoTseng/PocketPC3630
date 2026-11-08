@@ -107,6 +107,8 @@ try {
     '1. the WASM module starts');
   check(await until("document.querySelectorAll('.lib-card').length >= 20", 30000), '2. the library shows cards',
     `${await evaluate("document.querySelectorAll('.lib-card').length")} cards`);
+  check(await until("document.getElementById('lib-status')?.children.length > 2 && document.getElementById('lib-q')", 10000),
+    '2. the library filters are built');
   const story = await evaluate(`(async () => {
     const info = [...document.querySelectorAll('.lib-info')].find((d) => d.querySelector('.story') || /story/i.test(d.querySelector('summary')?.textContent || ''));
     if (!info) return 0;

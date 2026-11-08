@@ -15,10 +15,18 @@ const docs = join(repo, 'docs');
 // A syntax error in the page would publish a site that never starts.
 const page = readFileSync(join(here, 'index.html'), 'utf8');
 new Function(page.match(/<script>([\s\S]*?)<\/script>/)[1]);
+// The page script is split into index.html (core and player) and these files, loaded in
+// this order into the same global scope; each must parse, and each must be referenced.
+const PAGE_SCRIPTS = ['mfc.js', 'wall.js', 'library.js'];
+for (const name of PAGE_SCRIPTS) {
+  new Function(readFileSync(join(here, name), 'utf8'));
+  if (!page.includes(`<script src="${name}"></script>`)) throw new Error(`index.html does not load ${name}`);
+}
 
 const files = [
   [join(here, 'index.html'), 'index.html'],
   [join(here, 'library-ui.js'), 'library-ui.js'],
+  ...PAGE_SCRIPTS.map((name) => [join(here, name), name]),
   [join(repo, 'crates/pocket-library/data/control-guides.json'), 'library/control-guides.json'],
   [join(build, 'pockethle.js'), 'pockethle.js'],
   [join(build, 'pockethle.wasm'), 'pockethle.wasm'],
