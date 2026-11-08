@@ -201,7 +201,10 @@ jobs:
       - name: build APK
         working-directory: frontends/pocket-android
         run: |
-          gradle wrapper --gradle-version 8.7
+          # The runner's Gradle checks the distribution URL with a request that fails
+          # intermittently ("Test of distribution url ... failed"), before any of our
+          # code is built. The real download still happens in the next step.
+          gradle wrapper --gradle-version 8.7 --no-validate-url
           ./gradlew assembleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
