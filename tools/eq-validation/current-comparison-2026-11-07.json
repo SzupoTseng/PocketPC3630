@@ -1,0 +1,99 @@
+{
+  "scope": "current WASM versus pre-existing docs build; registration screens only",
+  "episodes": {
+    "ep1-disc": {
+      "package": {
+        "name": "ep1-disc.zip",
+        "sha256": "2140670a34d1d7ea3f288ef1cf6524731544412cd45669bfc7e20119e1b9b0be"
+      },
+      "build": {
+        "pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+        "pockethle.wasm": "6b65f3e18ca63c819b2c347f2e20d27f90c2a501433f41aff719602cb60b56a1"
+      },
+      "modules": [
+        {
+          "path": "/library/games/pocketeqppc2002.strongarm/extracted/GD104.dll",
+          "bytes": 114688,
+          "sha256": "877ca3a6ace4c04b36caa82b74323fabd293cbdaa5fd1af191d926472ae0922d"
+        },
+        {
+          "path": "/library/games/pocketeqppc2002.strongarm/extracted/fmodce.dll",
+          "bytes": 284672,
+          "sha256": "3f5bb42a392ced8b23bf2e26dea0e7e2435b7ef7439db80f345cd7a2349623fd"
+        },
+        {
+          "path": "/library/games/pocketeqppc2002.strongarm/extracted/PocketEQ.exe",
+          "bytes": 403456,
+          "sha256": "2dcc8d05e14aa64d32213a9c697e5dfedaafa505053388089d7b28d06f6ecfe5"
+        },
+        {
+          "path": "/library/games/pocketeqppc2002.strongarm/extracted/mfcce300.dll",
+          "bytes": 403968,
+          "sha256": "e7e22d4bc7a864879be0cfe0efbbb51bdad2b3b6dc167d1b439f2e7ec38632b0"
+        }
+      ],
+      "baseline_presentation_events": 2088,
+      "current_presentation_events": 2,
+      "baseline_wall_seconds": 20.002141126,
+      "current_wall_seconds": 20.011806778,
+      "current_error": null,
+      "current_distinct_captured_frames": 1,
+      "changed_pixels": 0,
+      "changed_pixel_bounds": null
+    },
+    "ep3": {
+      "package": {
+        "name": "ep3.zip",
+        "sha256": "083a4b276ce7c332c6382e739e22c1360d3111d367ea601943eedfc0ad246f99"
+      },
+      "build": {
+        "pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+        "pockethle.wasm": "6b65f3e18ca63c819b2c347f2e20d27f90c2a501433f41aff719602cb60b56a1"
+      },
+      "modules": [
+        {
+          "path": "/library/games/eq_e3/extracted/GD104.dll",
+          "bytes": 114688,
+          "sha256": "877ca3a6ace4c04b36caa82b74323fabd293cbdaa5fd1af191d926472ae0922d"
+        },
+        {
+          "path": "/library/games/eq_e3/extracted/gx.dll",
+          "bytes": 8704,
+          "sha256": "b7fb4114b505e8bfa16dffef0b1e8f7149094123d3fcb4a359c1c1f182886d32"
+        },
+        {
+          "path": "/library/games/eq_e3/extracted/PocketEQ.exe",
+          "bytes": 421376,
+          "sha256": "5d1fab4503797a8fc7bc3beae25836dbb2e5758e744a376a4c299a61015ced1e"
+        },
+        {
+          "path": "/library/games/eq_e3/extracted/fmodce.dll",
+          "bytes": 373248,
+          "sha256": "d17483996d4c50d4d8b0369f09e7db43e3896db0c650f28a56357e2a050a6f0a"
+        },
+        {
+          "path": "/library/games/eq_e3/extracted/mfcce300.dll",
+          "bytes": 403968,
+          "sha256": "e7e22d4bc7a864879be0cfe0efbbb51bdad2b3b6dc167d1b439f2e7ec38632b0"
+        }
+      ],
+      "baseline_presentation_events": 2052,
+      "current_presentation_events": 1,
+      "baseline_wall_seconds": 20.001162913,
+      "current_wall_seconds": 20.002196618,
+      "current_error": null,
+      "current_distinct_captured_frames": 1,
+      "changed_pixels": 34,
+      "changed_pixel_bounds": [
+        13,
+        74,
+        96,
+        178
+      ]
+    }
+  },
+  "visual_inspection": {
+    "ep1-disc": "Final frame byte-identical to original baseline; registration dialog remains intact.",
+    "ep3": "Manually inspected rebuilt screenshot; copyright and registered symbols replace question marks."
+  }
+}

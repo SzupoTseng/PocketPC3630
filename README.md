@@ -56,7 +56,7 @@ That is why it needs no Microsoft ROM and starts in a second.
 
 | | How | |
 |---|---|---|
-| 🌐 **Browser** | Open **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**, choose *Import game*, pick a `.zip` or `.cab`. | Nothing to install. Browse the **software library** of 1,203 Pocket PC programs (74 play with one click), in 11 languages, with box covers, screenshots or program icons, filters and sorting. Your games and saves stay in your browser. |
+| 🌐 **Browser** | Open **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**, choose *Import game*, pick a `.zip` or `.cab`. | Nothing to install. Browse the **software library** of 1,202 Pocket PC programs (74 play with one click), in 11 languages, with box covers, screenshots or program icons, filters and sorting. Your games and saves stay in your browser. |
 | 🪟 **Windows** | **[Download the zip](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-windows-x64.zip)**, unzip, run `PocketPC3630.exe`, then *Import game*. | Desktop library with icons, saves, keyboard and mouse. |
 | 🤖 **Android** | **[Download the APK](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-android.apk)** and install it. | Touch controls with a D-pad, action buttons and Turbo. |
 | ⌨️ **Command line** | `pockethle play MyGame.zip` | For testing, tracing and screenshots. |
@@ -103,7 +103,7 @@ The importer opens these without ever running them:
 See [docs/PACKAGE_FORMAT.md](docs/PACKAGE_FORMAT.md) for exactly what a package may contain.
 
 ### A software library worth browsing
-The website's library lists **1,203 Pocket PC programs**: the archive.org downloads, a retail disc collection, Wikipedia's Pocket PC game lists and the programs recommended in Mobile01's Pocket PC threads.
+The website's library lists **1,202 Pocket PC programs**: the archive.org downloads, a retail disc collection, Wikipedia's Pocket PC game lists and the programs recommended in Mobile01's Pocket PC threads.
 
 - **Pictures on every card:** 606 have a box cover or a screenshot, 216 more show the program's own icon taken from its executable, and the rest show a drawing for their category.
 - **Honest status:** *plays in one click* (74), *runs* (207), *partly works* (168), *does not start* (407), *not tested* (186). Downloads that turned out not to be Pocket PC programs (161) stay listed with the reason: a desktop program, a plug-in, an installer with nothing inside, and so on.

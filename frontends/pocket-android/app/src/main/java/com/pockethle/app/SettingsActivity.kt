@@ -13,6 +13,7 @@ import org.json.JSONObject
 /** Global launcher settings (default backend, log verbosity). */
 class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        Themes.apply(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
         setSupportActionBar(findViewById<Toolbar>(R.id.toolbar))
@@ -37,6 +38,18 @@ class SettingsActivity : AppCompatActivity() {
             rootDir = LibraryPaths.root(requireContext())
             current = readConfig() ?: LauncherConfig.default()
             setPreferencesFromResource(R.xml.preferences_global, rootKey)
+            findPreference<ListPreference>(Themes.KEY)?.setOnPreferenceChangeListener { _, _ ->
+                activity?.window?.decorView?.post { activity?.recreate() }
+                true
+            }
+            findPreference<SwitchPreferenceCompat>("apply_run_limits")?.apply {
+                isChecked = current.applyRunLimits
+                setOnPreferenceChangeListener { _, newValue ->
+                    current = current.copy(applyRunLimits = newValue as Boolean)
+                    writeConfig()
+                    true
+                }
+            }
             findPreference<ListPreference>("default_cpu_backend")?.apply {
                 value = current.defaultCpuBackend
                 setOnPreferenceChangeListener { _, newValue ->

@@ -18,15 +18,25 @@ new Function(page.match(/<script>([\s\S]*?)<\/script>/)[1]);
 
 const files = [
   [join(here, 'index.html'), 'index.html'],
+  [join(here, 'library-ui.js'), 'library-ui.js'],
+  [join(repo, 'crates/pocket-library/data/control-guides.json'), 'library/control-guides.json'],
   [join(build, 'pockethle.js'), 'pockethle.js'],
   [join(build, 'pockethle.wasm'), 'pockethle.wasm'],
 ];
+// Preflight every input before replacing any published file. A stale WASM
+// build must not receive a page that calls exports it cannot provide.
+const glue = readFileSync(join(build, 'pockethle.js'), 'utf8');
+for (const name of ['pocket_controls_json', 'pocket_controls_write', 'pocket_set_paused', 'pocket_set_volume', 'pocket_guest_time', 'pocket_text']) {
+  if (!glue.includes(name)) throw new Error(`stale browser build: missing ${name}; rebuild pocket-wasm first`);
+}
 for (const [from, name] of files) {
   if (!existsSync(from)) throw new Error(`missing ${from}: build pocket-wasm first`);
   // Debug paths in a build name the machine and account that made it. Pass
   // --remap-path-prefix to rustc instead of publishing them.
   const leak = readFileSync(from, 'latin1').match(/[A-Za-z]:\\+(?:Users|home)\\+[^\\]+|\/(?:home|Users)\/[a-z0-9_.-]+\//);
   if (leak) throw new Error(`${name} contains a local path (${leak[0]}): not publishing`);
+}
+for (const [from, name] of files) {
   copyFileSync(from, join(docs, name));
   console.log(`${name}  ${statSync(from).size} bytes`);
 }

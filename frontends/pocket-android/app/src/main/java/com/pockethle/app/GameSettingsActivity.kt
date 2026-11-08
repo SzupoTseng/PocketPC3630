@@ -12,6 +12,7 @@ import org.json.JSONObject
 /** Per-game settings sheet. */
 class GameSettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        Themes.apply(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
         setSupportActionBar(findViewById<Toolbar>(R.id.toolbar))

@@ -8808,6 +8808,7 @@ const VK_LBUTTON: u32 = 0x01;
 const WM_MOUSEMOVE: u32 = 0x0200;
 const WM_KEYDOWN: u32 = 0x0100;
 const WM_KEYUP: u32 = 0x0101;
+const WM_CHAR: u32 = 0x0102;
 const WM_SIZE: u32 = 0x0005;
 
 // Window styles read off a `DLGTEMPLATE`.
@@ -8836,6 +8837,7 @@ fn input_to_message(
     left_button_down: bool,
 ) -> Option<(u32, u32, u32)> {
     match ev {
+        pocket_kernel::InputEvent::Text { unit } => Some((WM_CHAR, unit as u32, 1)),
         pocket_kernel::InputEvent::PointerDown { x, y } => {
             let lparam = ((y as u32) << 16) | (x as u32);
             Some((WM_LBUTTONDOWN, MK_LBUTTON, lparam))
@@ -8903,6 +8905,7 @@ fn controls_take_input(
         return None;
     }
     let action = match ev {
+        pocket_kernel::InputEvent::Text { unit } => ctx.kernel.controls.text_input(unit),
         pocket_kernel::InputEvent::PointerDown { x, y } => {
             ctx.kernel.controls.pointer_down(x as i32, y as i32)
         }
@@ -9445,6 +9448,7 @@ fn monotonic_ms() -> u64 {
 
 fn update_key_state(ctx: &mut CallCtx<'_>, ev: pocket_kernel::InputEvent) {
     match ev {
+        pocket_kernel::InputEvent::Text { .. } => {}
         pocket_kernel::InputEvent::KeyDown { vk } => {
             if (vk as usize) < ctx.kernel.pressed_keys.len() {
                 ctx.kernel.pressed_keys[vk as usize] = true;
@@ -13416,6 +13420,7 @@ fn dialog_box_indirect_param_w(ctx: &mut CallCtx<'_>) -> Result<DispatchOutcome,
     while let Some(ev) = take_pending_input(ctx) {
         update_key_state(ctx, ev);
         let action = match ev {
+            InputEvent::Text { unit } => ctx.kernel.controls.text_input(unit),
             InputEvent::PointerDown { x, y } => ctx
                 .kernel
                 .controls

@@ -3,27 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <ListPreference
-        android:key="default_cpu_backend"
-        android:title="@string/pref_default_backend_title"
-        android:summary="@string/pref_default_backend_summary"
-        android:entries="@array/cpu_backend_entries"
-        android:entryValues="@array/cpu_backend_values"
-        android:defaultValue="stub" />
-
-    <SeekBarPreference
-        android:key="verbosity"
-        android:title="@string/pref_verbosity_title"
-        android:summary="@string/pref_verbosity_summary"
-        android:max="3"
-        app:min="0"
-        app:showSeekBarValue="true"
-        android:defaultValue="1" />
-
-    <SwitchPreferenceCompat
-        android:key="show_fps"
-        android:title="@string/pref_show_fps_title"
-        android:summary="@string/pref_show_fps_summary"
-        android:defaultValue="true" />
+        android:key="ui_theme"
+        android:title="@string/pref_ui_theme_title"
+        android:summary="@string/pref_ui_theme_summary"
+        android:entries="@array/ui_theme_entries"
+        android:entryValues="@array/ui_theme_values"
+        android:defaultValue="red" />
 
     <SwitchPreferenceCompat
         android:key="fullscreen"
@@ -47,12 +32,6 @@
         android:entryValues="@array/orientation_values"
         android:defaultValue="auto" />
 
-    <SwitchPreferenceCompat
-        android:key="show_backend_log"
-        android:title="@string/pref_show_backend_log_title"
-        android:summary="@string/pref_show_backend_log_summary"
-        android:defaultValue="true" />
-
     <SeekBarPreference
         android:key="controls_opacity"
         android:title="@string/pref_controls_opacity_title"
@@ -67,4 +46,39 @@
         android:title="@string/pref_library_root_title"
         android:selectable="false" />
 
+    <PreferenceCategory android:title="進階診斷 / Advanced diagnostics">
+    <SwitchPreferenceCompat
+        android:key="apply_run_limits"
+        android:title="套用診斷執行限制 / Apply diagnostic run limits"
+        android:summary="套用各程式的執行上限及未實作呼叫中止設定；一般遊玩請關閉，下次啟動生效。"
+        android:defaultValue="false" />
+    <ListPreference
+        android:key="default_cpu_backend"
+        android:title="@string/pref_default_backend_title"
+        android:summary="@string/pref_default_backend_summary"
+        android:entries="@array/cpu_backend_entries"
+        android:entryValues="@array/cpu_backend_values"
+        android:defaultValue="stub" />
+
+    <SeekBarPreference
+        android:key="verbosity"
+        android:title="@string/pref_verbosity_title"
+        android:summary="@string/pref_verbosity_summary"
+        android:max="3"
+        app:min="0"
+        app:showSeekBarValue="true"
+        android:defaultValue="1" />
+
+    <SwitchPreferenceCompat
+        android:key="show_fps"
+        android:title="@string/pref_show_fps_title"
+        android:summary="@string/pref_show_fps_summary"
+        android:defaultValue="false" />
+
+    <SwitchPreferenceCompat
+        android:key="show_backend_log"
+        android:title="@string/pref_show_backend_log_title"
+        android:summary="@string/pref_show_backend_log_summary"
+        android:defaultValue="false" />
+    </PreferenceCategory>
 </PreferenceScreen>

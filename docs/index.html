@@ -5,18 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#12100e">
 <title>PocketPC3630</title>
-<link rel="icon" href="data:,">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Crect%20x%3D%225.5%22%20y%3D%221.5%22%20width%3D%2213%22%20height%3D%2221%22%20rx%3D%223.2%22%20fill%3D%22%23c8372d%22/%3E%3Crect%20x%3D%227.8%22%20y%3D%224.6%22%20width%3D%228.4%22%20height%3D%2210.2%22%20rx%3D%221%22%20fill%3D%22%23fff%22/%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2218.6%22%20r%3D%221.7%22%20fill%3D%22%23fff%22/%3E%3C/svg%3E">
 <style>
 :root {
-  /* Palette from zjmud: 宣紙日 (rice paper) by day, 竹簡夜 (bamboo slips) by night. */
-  --bg: #efe9dd; --surface: #fffbf2; --ink: #2b2620; --dim: #5e564a; --line: #d3c8b4;
-  --accent: #9c6d1e; --accent-ink: #fffbf2; --bad: #b03a3a; --shadow: 0 6px 20px rgb(90 70 40 / 18%);
+  /* PPC chrome: blue title bars, quiet gray surfaces, compact command rows. */
+  --bg: #e9eef2; --surface: #fafcfd; --ink: #203447; --dim: #5c7080; --line: #c6d2dc;
+  --accent: #235f8c; --accent-ink: #ffffff; --bad: #b03a3a; --shadow: 0 6px 20px rgb(90 70 40 / 18%);
   --stage: #12100e; --pad: rgb(255 255 255 / 9%); --pad-press: rgb(255 255 255 / 22%); --pad-ink: rgb(255 255 255 / 70%);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #12100e; --surface: #1a1714; --ink: #e8e0d4; --dim: #a89e90; --line: #3a322a;
-    --accent: #d9a441; --accent-ink: #12100e; --bad: #e07a7a; --shadow: 0 8px 28px rgb(0 0 0 / 45%);
+    --bg: #101923; --surface: #192734; --ink: #e1ebf2; --dim: #a4b7c7; --line: #344a5c;
+    --accent: #8abddd; --accent-ink: #102535; --bad: #e07a7a; --shadow: 0 8px 28px rgb(0 0 0 / 45%);
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -130,6 +130,9 @@ canvas { display: block; touch-action: none; image-rendering: pixelated; backgro
 .screen { overflow: hidden; position: relative; align-self: stretch; }
 .bar-right { display: flex; gap: 8px; flex-wrap: wrap; }
 
+dialog button, .bar button, .more summary { min-height:44px; }
+.software-dialog textarea { display:block; width:100%; min-height:90px; color:var(--ink); background:var(--bg); }
+.pad[hidden], #hud[hidden] { display:none; }
 /* Touch controls, the same keys as the Android version's pad. */
 /* Shown on every screen, like the buttons under a Pocket PC's display in
    Device Emulator: a navigation disc with the action key in its centre,
@@ -168,7 +171,7 @@ body.no-pad .pad { display: none !important; }
 @media (orientation: landscape) and (max-height: 520px) {
   body.touch #stage { flex-direction: row; flex-wrap: wrap; }
   body.touch .bar { order: 0; max-width: none; }
-  body.touch .screen { order: 2; flex: 1; height: calc(100% - 44px); }
+  body.touch .screen { order: 2; flex: 1; height: calc(100% - var(--play-chrome-height, 44px)); }
   body.touch .pad { display: contents; }
   body.touch .dpad { order: 1; align-self: center; margin-left: 16px; }
   body.touch .buttons { order: 3; align-self: center; margin-right: 16px; }
@@ -364,6 +367,80 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
 .app-dl span { display: flex; flex-direction: column; line-height: 1.25; }
 .app-dl small { color: var(--dim); font-size: 12px; }
 .app-ver { color: var(--dim); font-size: 13px; }
+/* Software introductions share the page palette; previews never send input. */
+.software-dialog { width: min(48rem, calc(100vw - 24px)); max-width: none; max-height: calc(100dvh - 24px); overflow: hidden; }
+.software-dialog.game-menu { overflow-y: auto; padding: 16px; gap: 8px; }
+.software-dialog.game-menu > * { flex-shrink: 0; }
+.software-dialog[open] { display: flex; flex-direction: column; }
+.software-dialog article { max-height: 78dvh; min-height: 0; padding: 20px; overflow: auto; overscroll-behavior: contain; }
+.software-header { flex: none; background: var(--surface); padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.software-header h2 { overflow-wrap: anywhere; }
+.software-dialog button, .software-dialog select { min-height: 44px; border: 1px solid var(--line); padding: 8px 12px; border-radius: 10px; font: inherit; }
+.software-dialog button:disabled { opacity: .55; cursor: not-allowed; }
+.software-dialog section { border-top: 1px solid var(--line); margin-top: 14px; }
+.software-dialog p, .software-dialog li { line-height: 1.6; overflow-wrap: anywhere; }
+.software-dialog select { max-width: 100%; color: var(--ink); background: var(--bg); }
+.software-dialog .muted, .game-controls { color: var(--dim); font-size: 12px; }
+.software-shot { max-width: min(240px, 100%); max-height: 320px; object-fit: contain; image-rendering: pixelated; border-radius: 8px; }
+.software-state { display: grid; grid-template-columns: minmax(5rem, 1fr) 3fr; gap: 8px; }
+.software-state dd { margin: 0; overflow-wrap: anywhere; }
+.control-preview { margin-top: 12px; max-width: 24rem; padding: 14px; border: 2px solid var(--line); border-radius: 20px; background: var(--bg); display: flex; flex-wrap: wrap; gap: 8px; }
+.control-preview .preview-screen { width: 100%; min-height: 140px; background: var(--surface); border: 1px dashed var(--dim); border-radius: 8px; display: grid; place-items: center; }
+.control-preview.landscape .preview-screen { min-height: 80px; }
+.control-preview button:focus, .control-preview button:active { background: var(--accent); color: var(--accent-ink); }
+.control-custom { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; border: 1px solid var(--line); }
+.control-custom label { display: flex; align-items: center; gap: 6px; min-height: 44px; }
+.software-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.control-custom[hidden], .pad [hidden], .pad[hidden] { display: none !important; }
+.game .name { display: flex; flex-direction: column; gap: 4px; }
+.game .name > span { overflow: hidden; text-overflow: ellipsis; }
+.game-controls { white-space: normal; }
+.lib-controls { display: block; min-height: 44px; text-align: left; color: var(--accent); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.lib-input-filter { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.lib-input-filter select { min-height: 44px; max-width: 100%; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; }
+@media (max-width: 480px) { .software-state { grid-template-columns: 1fr; } .software-state dt { font-weight: 600; } .software-dialog article { padding: 14px; } }
+/* Functional PPC command strip; no borrowed device artwork. */
+.ppc-panel { max-width: 380px; margin-inline: auto; border-top: 1px solid #536b7e; background: linear-gradient(#273e50,#1b2c3a); border-radius: 4px 4px 12px 12px; }
+.ppc-panel .key { color: #e3edf5; background: #344e62; border: 1px solid #7890a2; border-radius: 6px; font-size: 13px; box-shadow: 0 2px 0 #10202e; }
+.ppc-panel .key[data-vk="13"] { border-radius: 50%; background: #235f8c; }
+.ppc-panel .key:active, .ppc-panel .key.down { background: #668ba6; box-shadow: none; }
+/* Emulator interface: the glossy Windows Mobile 5/6 look. Red is the default; the other
+   colors are themes chosen in the game menu. Only the player (toolbar, on-screen keys,
+   pause veil, in-game dialogs) uses it; the software library keeps its own look. */
+:root{--em-title:linear-gradient(#ee6a5e 0%,#d1382e 48%,#a9231b 50%,#c63127 100%);--em-edge:#a3231b;--em-sel:linear-gradient(#ff7a6c,#d8392e);--em-selink:#fff;--em-flat:#c8372d;--em-panel:#fbf5f4;--em-panel2:#f3e3e1;--em-ink:#3a1412;--em-line:#d7a6a2;--em-dim:#8c6a67;--em-btn:linear-gradient(#fffefe,#f3dcd9);--em-btnink:#3a1412;--em-btnline:#c98b86;}
+:root[data-em-theme="blue"]{--em-title:linear-gradient(#4c7bd0 0%,#2f5fb8 48%,#1f4796 50%,#2d5cb0 100%);--em-edge:#1f4796;--em-sel:linear-gradient(#ffb64a,#f58a14);--em-selink:#2a1600;--em-flat:#2f5fb8;--em-panel:#f4f7fc;--em-panel2:#e4ebf8;--em-ink:#14213d;--em-line:#9bb0d6;--em-dim:#6a7a99;--em-btn:linear-gradient(#fdfeff,#d9e3f5);--em-btnink:#14213d;--em-btnline:#7f95c2;}
+:root[data-em-theme="green"]{--em-title:linear-gradient(#6cc47a 0%,#3a9a4b 48%,#237a34 50%,#33903f 100%);--em-edge:#237a34;--em-sel:linear-gradient(#ffd966,#f0b020);--em-selink:#2b2000;--em-flat:#2e8b3d;--em-panel:#f4faf5;--em-panel2:#e1f1e4;--em-ink:#10281a;--em-line:#9cc8a4;--em-dim:#5f7d66;--em-btn:linear-gradient(#fdfffd,#d9ecdd);--em-btnink:#10281a;--em-btnline:#82b48b;}
+:root[data-em-theme="purple"]{--em-title:linear-gradient(#a780dc 0%,#7a4cc0 48%,#5a2f96 50%,#6e42ae 100%);--em-edge:#5a2f96;--em-sel:linear-gradient(#d9bcff,#a874ec);--em-selink:#1f0a3a;--em-flat:#6b3fb0;--em-panel:#f8f5fc;--em-panel2:#ebe3f7;--em-ink:#21143a;--em-line:#b9a0e0;--em-dim:#7b6a99;--em-btn:linear-gradient(#fefcff,#e4d9f6);--em-btnink:#21143a;--em-btnline:#a58bd0;}
+:root[data-em-theme="orange"]{--em-title:linear-gradient(#f5a54a 0%,#e07a14 48%,#b85a08 50%,#d06e0e 100%);--em-edge:#b85a08;--em-sel:linear-gradient(#5b8de0,#2d5fbd);--em-selink:#fff;--em-flat:#d9770f;--em-panel:#fdf8f1;--em-panel2:#f6e8d3;--em-ink:#33200c;--em-line:#e0b784;--em-dim:#9a7f5f;--em-btn:linear-gradient(#fffefb,#f8e3c4);--em-btnink:#33200c;--em-btnline:#d3a468;}
+:root[data-em-theme="graphite"]{--em-title:linear-gradient(#8a93a1 0%,#555d6a 48%,#353b46 50%,#4b5360 100%);--em-edge:#353b46;--em-sel:linear-gradient(#b4bdcc,#7a8497);--em-selink:#10151e;--em-flat:#4a525f;--em-panel:#f5f6f8;--em-panel2:#e6e9ef;--em-ink:#1a1f29;--em-line:#aab2c0;--em-dim:#767e8d;--em-btn:linear-gradient(#fdfdfe,#e1e5ec);--em-btnink:#1a1f29;--em-btnline:#9aa3b3;}
+:root[data-em-theme="nightred"]{--em-title:linear-gradient(#d4564c 0%,#a82a22 48%,#7d1812 50%,#972119 100%);--em-edge:#6a2a26;--em-sel:linear-gradient(#ff7a6c,#d8392e);--em-selink:#fff;--em-flat:#b3322a;--em-panel:#1d1112;--em-panel2:#2a1819;--em-ink:#f1e4e2;--em-line:#5a3436;--em-dim:#a58885;--em-btn:linear-gradient(#3a2425,#2a1819);--em-btnink:#f1e4e2;--em-btnline:#6a3a3c;}
+.bar{background:var(--em-title);border-bottom:1px solid var(--em-edge);color:var(--em-selink)}
+.bar button{color:#fff;border:1px solid rgb(255 255 255 / 38%);background:rgb(255 255 255 / 14%);box-shadow:inset 0 1px 0 rgb(255 255 255 / 30%)}
+.bar button:hover{background:rgb(255 255 255 / 24%)}
+.bar button[aria-pressed="true"]{background:var(--em-sel);color:var(--em-selink);border-color:var(--em-edge)}
+.bar #leave{background:var(--em-btn);color:var(--em-btnink);border-color:var(--em-btnline);font-weight:700}
+#play-title{color:#fff;text-shadow:0 1px 0 rgb(0 0 0 / 30%)}
+#hud{background:rgb(0 0 0 / 28%);color:#fff}
+.key{background:var(--em-btn);color:var(--em-btnink);border:1px solid var(--em-btnline);box-shadow:inset 0 1px 0 #fff;opacity:.86}
+.key.down,.vkbd button:active,.vkbd button.on{background:var(--em-sel);color:var(--em-selink);border-color:var(--em-edge)}
+.dpad{background:rgb(255 255 255 / 5%)}.dpad .key{background:transparent;border-color:transparent;box-shadow:none;color:rgb(255 255 255 / 80%)}
+.dpad .center,.dpad .key.down{background:var(--em-btn);color:var(--em-btnink)}
+.vkbd button{background:var(--em-btn);color:var(--em-btnink);border:1px solid var(--em-btnline)}
+.paused{background:rgb(8 6 6 / 66%);color:#fff}.paused .ico{color:var(--em-flat);text-shadow:0 0 0 #fff;filter:brightness(1.5)}
+body.playing .software-dialog,.software-dialog.game-menu{
+  --surface:var(--em-panel);--bg:var(--em-panel2);--ink:var(--em-ink);--line:var(--em-line);--accent:var(--em-flat);--dim:var(--em-dim);
+  background:var(--em-panel);color:var(--em-ink);border:1px solid var(--em-edge);border-radius:10px;box-shadow:0 10px 28px rgb(0 0 0 / 45%)}
+.software-dialog.game-menu>h2:first-child{margin:-16px -16px 8px;padding:8px 14px;background:var(--em-title);color:#fff;border-radius:9px 9px 0 0;font-size:15px;text-shadow:0 1px 0 rgb(0 0 0 / 30%)}
+body.playing .software-dialog button,.software-dialog.game-menu button{background:var(--em-btn);color:var(--em-btnink);border:1px solid var(--em-btnline);border-radius:8px;box-shadow:inset 0 1px 0 #fff;font-weight:600}
+.software-dialog.game-menu button:nth-of-type(1){background:var(--em-sel);color:var(--em-selink);border-color:var(--em-edge)}
+body.playing .software-dialog button:hover,.software-dialog.game-menu button:hover{filter:brightness(.97)}
+.software-dialog.game-menu select,body.playing .software-dialog select{border-radius:8px;background:var(--em-panel);color:var(--em-ink)}
+body.playing .software-dialog input[type="range"],.software-dialog.game-menu input[type="range"]{accent-color:var(--em-flat)}
+.software-header{background:var(--em-title);color:#fff;border-bottom:1px solid var(--em-edge)}
+body.playing .software-header h2{color:#fff}
+.brand{display:inline-flex;align-items:center;gap:6px;color:#fff;font-weight:700;letter-spacing:.01em;text-shadow:0 1px 0 rgb(0 0 0 / 30%);white-space:nowrap}
+.brand-icon{flex:none;filter:drop-shadow(0 1px 1px rgb(0 0 0 / 35%))}
+@media (max-width:700px){.brand-name{display:none}}
 </style>
 </head>
 <body>
@@ -406,7 +483,6 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
     <span id="fix-lib-text" data-i18n="h.010">這個遊戲需要 Pocket PC 內建的 MFC 系統檔。</span>
     <button type="button" id="fix-lib-go" data-i18n="h.011">自動取得 MFC 並重新開始</button>
   </div>
-  <input type="search" id="find-game" class="find-game" hidden autocomplete="off" data-i18n-attr="placeholder=js.findGame" placeholder="搜尋我的遊戲…">
   <section class="list" id="games"></section>
   <p class="note"><span data-i18n="h.012">遊戲與進度只存在這個瀏覽器。進度會自動保存；清除網站資料前請先下載存檔。有些遊戲要從遊戲內正常退出才會寫入進度。</span><button type="button" class="link" id="help-open" data-i18n="h.013">遊戲包格式</button></p>
   <p id="status" role="status" data-i18n="h.014">載入中…</p>
@@ -442,6 +518,7 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
         </label>
       </div>
     </div>
+    <label class="lib-input-filter" id="lib-input-label"><span id="lib-input-caption">操作需求</span><select id="lib-input"></select></label>
     <p class="lib-count" id="lib-count" role="status"></p>
     <div class="cards" id="lib-cards"></div>
     <p class="empty" id="lib-empty" hidden data-i18n="lib.none">沒有符合的程式，換個關鍵字或篩選試試。</p>
@@ -531,6 +608,7 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
 <div id="stage">
   <div class="bar">
     <button type="button" id="leave" data-i18n="h.077">‹ 遊戲庫</button>
+    <span class="brand" title="PocketPC3630"><svg class="brand-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="5.5" y="1.5" width="13" height="21" rx="3.2" fill="#fff" stroke="rgba(0,0,0,.35)"/><rect x="7.8" y="4.6" width="8.4" height="10.2" rx="1" style="fill:var(--em-flat)"/><circle cx="12" cy="18.6" r="1.7" style="fill:var(--em-flat)"/></svg><span class="brand-name">PocketPC3630</span></span>
     <span class="play-info"><b id="play-title"></b><span id="hud"></span></span>
     <span class="bar-right">
       <button type="button" id="pause" aria-pressed="false"><span class="ico" aria-hidden="true">⏸</span><span data-i18n="play.pause">暫停</span></button>
@@ -538,6 +616,7 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
       <button type="button" id="kbd-toggle" aria-controls="vkbd" aria-pressed="false"><span class="ico" aria-hidden="true">⌨</span><span data-i18n="play.keyboard">鍵盤</span></button>
       <button type="button" id="help-toggle" aria-controls="controls-help"><span class="ico" aria-hidden="true">?</span><span data-i18n="h.036">操作方式對照</span></button>
       <button type="button" id="rotate" title="遊戲畫面是躺著的？轉過來" data-i18n-attr="title=h.078"><span class="ico" aria-hidden="true">⟳</span><span data-i18n="h.079">旋轉畫面</span></button>
+      <button type="button" id="software-controls">操作方式</button>
       <button type="button" id="save-now"><span class="ico" aria-hidden="true">⇩</span><span data-i18n="h.080">下載存檔</span></button>
     </span>
   </div>
@@ -610,6 +689,7 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
 <div id="drop-overlay" aria-hidden="true"><div data-i18n="h.101">放開即可匯入<small>.zip、.cab、.exe，可一次多個檔案</small></div></div>
 <input type="file" id="save-file" accept=".zip" hidden>
 <script src="pockethle.js"></script>
+<script src="library-ui.js"></script>
 <script>
 // The page pumps everything, as with FluffOS's WebAssembly driver: a tab cannot
 // block, so pocket_tick runs until the guest sleeps and says how long to wait.
@@ -617,13 +697,24 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
 const $ = (id) => document.getElementById(id);
 
 // ---- Languages ----
-const I18N_LANGS = [['zh-TW', '繁體中文'], ['zh-CN', '简体中文'], ['en', 'English'], ['ja', '日本語'], ['ko', '한국어'],
-  ['es', 'Español'], ['fr', 'Français'], ['de', 'Deutsch'], ['pt', 'Português'], ['ru', 'Русский'], ['hi', 'हिन्दी']];
-const I18N_BASE = /*I18N*/{"h.001": "POCKET PC 模擬器 · 免安裝", "h.002": "2000 年代的 Pocket PC 遊戲與軟體，直接在瀏覽器裡重新玩。", "h.003": "支援 ARM、MIPS、SH3 三種處理器，不需要裝置 ROM。匯入網路上下載的 .zip 或 .cab 就能開始，遊戲與存檔只留在你的瀏覽器裡。", "h.004": "<span class=\"ico\" aria-hidden=\"true\">+</span>\n          <strong>把遊戲檔拖到這裡</strong>\n          <span>或點一下選擇檔案</span>\n          <small>.zip、.cab、.exe 安裝檔都可以，不用先解壓縮；可一次選多個檔案（遊戲＋DLL）</small>", "h.005": "<a class=\"ghost\" href=\"#free\">沒有遊戲？逛程式圖書館</a>\n          <a class=\"ghost\" href=\"#guide\">新手教學</a>", "h.006": "也有 <a href=\"https://github.com/SzupoTseng/PocketPC3630/releases/latest\">Windows 版</a> 與 <a href=\"https://github.com/SzupoTseng/PocketPC3630/releases/latest\">Android 版</a> · <a href=\"https://github.com/SzupoTseng/PocketPC3630\">GitHub 原始碼</a>", "h.007": "遊戲庫", "h.008": "我的遊戲庫", "h.009": "匯入遊戲", "h.010": "這個遊戲需要 Pocket PC 內建的 MFC 系統檔。", "h.011": "自動取得 MFC 並重新開始", "h.012": "遊戲與進度只存在這個瀏覽器。進度會自動保存；清除網站資料前請先下載存檔。有些遊戲要從遊戲內正常退出才會寫入進度。", "h.013": "遊戲包格式", "h.014": "載入中…", "lib.title": "Pocket PC 程式圖書館", "lib.intro": "當年流傳的 Pocket PC 程式，我們都實際匯入、執行過一遍。標著「可直接玩」的按一下就能下載並開始；其餘的只做介紹，說明它能不能模擬、難在哪裡，並附上搜尋關鍵字，方便你找回自己的合法副本。", "h.015": "搜尋名稱、機型、處理器…", "h.016": "搜尋名稱、機型、處理器…", "h.017": "依狀態", "h.018": "依類型", "h.019": "依處理器", "lib.none": "沒有符合的程式，換個關鍵字或篩選試試。", "lib.more": "顯示更多", "h.020": "新手教學：三步驟開始玩", "h.021": "第一次用？照著做，五分鐘內就能玩到第一個遊戲。", "h.022": "取得遊戲包", "h.023": "從下方的「Pocket PC 程式圖書館」挑一個標著「可直接玩」的程式，按「下載並開始」就好。自己的遊戲包通常是 <code>.zip</code>、<code>.cab</code> 或安裝程式 <code>.exe</code>，不用解壓縮，也不用挑處理器版本。", "h.024": "匯入", "h.025": "按上方的「匯入遊戲」，選剛下載的檔案。模擬器會自動拆開安裝程式、找出遊戲、挑出適合的版本，完成後出現在「我的遊戲庫」。", "h.026": "下載的程式絕不會被執行，只會被拆開檢查。看不懂的檔案會告訴你原因與下一步。", "h.027": "開始玩", "h.028": "點遊戲名稱開始；按 <b>‹ 遊戲庫</b> 回來", "h.029": "滑鼠點擊＝觸控筆", "h.030": "<kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 方向、<kbd>Enter</kbd> 動作鍵、<kbd>Esc</kbd> 返回", "h.031": "畫面下方有方向鍵圓盤、軟鍵與 A／B／C 按鈕，滑鼠或手指都能按", "h.032": "進度自動保存；「⋯」選單可下載、匯入或重置存檔", "h.033": "畫面是躺著的？按上方「旋轉畫面」，當年的橫向遊戲要把機器轉過來玩", "h.034": "更多教學", "h.035": "遇到下面這些情況時，照著做就好。", "h.036": "操作方式對照", "h.037": "觸控筆點擊", "h.038": "滑鼠左鍵／手指點畫面", "h.039": "方向鍵", "h.040": "<kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd>／螢幕方向鍵", "h.041": "動作鍵（中間鍵）", "h.042": "<kbd>Enter</kbd>／圓形大按鈕", "h.043": "按鍵 A／B／C", "h.044": "<kbd>Ctrl</kbd>／<kbd>Space</kbd>／<kbd>Shift</kbd>", "h.045": "軟鍵 1／2", "h.046": "<kbd>Tab</kbd>／<kbd>Esc</kbd>", "h.047": "遊戲說缺少 MFC", "h.048": "有些程式需要 Pocket PC 內建的 <code>mfcce300.dll</code>。遊戲畫面上方會出現「自動取得 MFC 並重新開始」，按下去就好：本站會從 archive.org 下載微軟當年免費提供的 <a href=\"https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe\">Pocket PC 2000 SDK</a>，只取出需要的檔案放進遊戲。", "h.049": "想手動處理：用 <a href=\"https://www.7-zip.org/\">7-Zip</a> 打開這個 SDK，取出 <code>Program Files/mfc/lib/arm/mfcce300.dll</code> 與 <code>olece300.dll</code>（MIPS、SH3 版遊戲改用 <code>mips</code>、<code>sh3</code> 資料夾），再和遊戲一起匯入。", "h.050": "一次匯入多個檔案", "h.051": "按「匯入遊戲」時可以同時選好幾個檔案，例如遊戲的 <code>.cab</code> 加上 <code>mfcce300.dll</code>，或遊戲本體加上資料檔。本站會自動把它們組成一個遊戲包，不用自己壓縮。", "h.052": "備份與搬移存檔", "h.053": "進度每 10 秒自動保存在瀏覽器裡。在遊戲庫按遊戲旁的「⋯ › 下載存檔」得到一個 <code>.zip</code>；到另一台電腦、Windows 版或 Android 版，用「⋯ › 匯入存檔」就能接著玩。", "h.054": "在手機或平板上玩", "h.055": "用手機瀏覽器打開本站就能玩，畫面下方會出現方向鍵和 A／B／C 按鈕；橫放時按鍵會移到兩側。想要離線玩，可以安裝 <a href=\"https://github.com/SzupoTseng/PocketPC3630/releases/latest\">Android 版</a>。", "h.056": "遊戲打不開怎麼辦", "h.057": "畫面會用白話說明原因與下一步，例如「這是桌面程式」「這是 .NET 程式」。多數下載檔有好幾個處理器版本，本站會自動挑選。也可以先查 <a href=\"https://github.com/SzupoTseng/PocketPC3630/blob/main/docs/COMPATIBILITY.md\">相容性清單</a>，看看這個軟體的測試結果。", "h.058": "為什麼好用", "h.059": "不是完整模擬整台機器，而是用 Rust 重新實作 Windows CE，所以開得快、不需要 ROM。", "h.060": "<b>三種處理器</b><span>ARM（iPAQ、Axim）、MIPS（Casio Cassiopeia）、SH3（HP Jornada）的版本都能玩。</span>", "h.061": "<b>看得懂下載檔</b><span>安裝程式、自解壓檔、藏在裡面的 CAB、1999 年的壓縮格式，都能自動拆出遊戲。</span>", "h.062": "<b>存檔到處通用</b><span>同一個存檔 zip 可以在網頁、Windows、Android 之間搬來搬去。</span>", "h.063": "<b>實測上千個軟體</b><span>archive.org 上 1,443 個下載檔都測過，<a href=\"https://github.com/SzupoTseng/PocketPC3630/blob/main/docs/COMPATIBILITY.md\">相容性清單</a>寫明每個的結果。</span>", "h.064": "常見問題", "h.065": "遇到問題先看這裡。", "h.066": "需要 Pocket PC 的 ROM 或系統檔嗎？", "h.067": "不需要。大多數遊戲直接就能玩。使用 MFC 的程式需要 <code>mfcce300.dll</code>：遊戲畫面會出現「自動取得 MFC」按鈕，本站會從 archive.org 上微軟的 <a href=\"https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe\">Pocket PC 2000 SDK</a> 取出它。也可以手動用 7-Zip 打開 SDK，取出 <code>Program Files/mfc/lib/arm/mfcce300.dll</code>，和遊戲一起匯入。", "h.068": "遊戲和存檔放在哪裡？會上傳嗎？", "h.069": "都只存在這個瀏覽器（IndexedDB），不會上傳到任何伺服器。清除網站資料會一併刪除，請先用「⋯ › 下載存檔」備份。", "h.070": "為什麼有的遊戲不能玩？", "h.071": "模擬器還沒實作所有 Windows CE 功能。.NET 程式、x86 版本和部分安裝程式目前不支援。<a href=\"https://github.com/SzupoTseng/PocketPC3630/blob/main/docs/COMPATIBILITY.md\">相容性清單</a>列出每個測過的軟體與原因。", "h.072": "可以在電腦或手機上離線玩嗎？", "h.073": "可以下載 <a href=\"https://github.com/SzupoTseng/PocketPC3630/releases/latest\">Windows 版與 Android 版</a>，功能與存檔格式和網頁版相同。", "h.074": "可以同時開兩個分頁嗎？", "h.075": "不行。兩個分頁會互相覆蓋進度，所以第二個分頁會停在提示畫面。", "h.076": "PocketPC3630 以 MIT 或 Apache 2.0 授權開源，fork 自 <a href=\"https://github.com/j92580498-max/PocketHLE\">PocketHLE</a>。不附任何遊戲或微軟檔案，請只使用你合法取得的軟體。\n    <a href=\"https://github.com/SzupoTseng/PocketPC3630\">GitHub</a> · <a href=\"https://github.com/SzupoTseng/PocketPC3630/blob/main/docs/COMPATIBILITY.md\">相容性清單</a> · <a href=\"https://github.com/SzupoTseng/PocketPC3630/releases/latest\">下載 Windows／Android 版</a>", "h.077": "‹ 遊戲庫", "h.078": "遊戲畫面是躺著的？轉過來", "h.079": "旋轉畫面", "h.080": "下載存檔", "h.081": "這個遊戲需要 Pocket PC 內建的 MFC 系統檔。", "h.082": "自動取得 MFC 並重新開始", "h.083": "遊戲畫面", "h.084": "遊戲包格式", "h.085": "直接匯入從網路下載的檔案即可。看不懂的檔案，模擬器會依知識庫往裡面找出遊戲，絕不會執行下載的程式。", "h.086": "可以匯入", "h.087": "Pocket PC 的 <code>.cab</code>", "h.088": "最上層放一個 <code>.cab</code> 的 <code>.zip</code>，可以附加其他檔案（例如 <code>mfcce300.dll</code>）", "h.089": "遊戲安裝後資料夾的 <code>.zip</code>，例如 <code>quake/PocketQuake.exe</code>", "h.090": "ARM 版的 <code>.exe</code>、<code>.rar</code>", "h.091": "桌面安裝程式（<code>setup.exe</code>，包括 InstallShield、Wise 製作的）或每種處理器各一個 CAB 的下載檔：會自動挑出 ARM 版", "h.092": "遊戲需要的系統檔案", "h.093": "使用 MFC 的遊戲需要 Pocket PC 內建的 <code>mfcce300.dll</code>（有些還需要 <code>olece300.dll</code>），模擬器不附帶。請把你自己裝置上的副本放進 <code>.zip</code>，和 <code>.cab</code> 放在同一層。缺少時，開始遊戲前會提示。", "h.094": "無法匯入", "h.095": ".NET Compact Framework 程式", "h.096": "使用浮點指令的 SH4 程式，以及 x86 版本", "h.097": "桌面版 Windows 遊戲與它的 <code>data1.cab</code>", "h.098": "存檔", "h.099": "存檔 <code>.zip</code> 包含遊戲的 <code>saves/</code> 資料夾與 <code>pockethle-registry.dat</code>，Windows、Android 與網頁版通用。", "h.100": "知道了", "h.101": "放開即可匯入<small>.zip、.cab、.exe，可一次多個檔案</small>", "js.noSave": "這個遊戲還沒有存檔。", "js.saveDownloaded": "已下載存檔（{count} 個檔案）。", "js.saveImported": "已匯入存檔（{count} 個檔案）。", "js.emptyLib": "<span class=\"ico\" aria-hidden=\"true\">+</span><strong>遊戲庫還是空的</strong><span>把遊戲檔拖到這裡，或點一下選擇檔案</span><small>也可以往下捲，到程式圖書館直接玩</small>", "js.options": "{name} 的選項", "js.menu.download": "下載存檔", "js.menu.import": "匯入存檔", "js.menu.reset": "重置存檔", "js.confirmReset": "要清除「{name}」的全部進度嗎？未下載的存檔將無法復原。", "js.resetDone": "已清除進度。", "js.menu.delete": "刪除遊戲", "js.confirmDelete": "要從這個瀏覽器刪除「{name}」與它的進度嗎？", "js.importing": "正在匯入 {file}…", "js.importedNote": "匯入完成：從下載檔取出遊戲（{note}）。", "js.imported": "匯入完成。", "js.ended": "遊戲已結束。", "js.sdk2000": "微軟 Pocket PC 2000 SDK（55 MB）", "js.sdk2002": "微軟 Pocket PC 2002 SDK（68 MB）", "js.mfcExtract": "正在從 {sdk} 取出 MFC…", "js.mfcNotFound": "找不到 {cpu} 版的 MFC", "js.mfcAdded": "已加入 {version} 版 MFC，重新開始中…", "js.mfcAddedMissing": "已加入 {version} 版 MFC（仍缺 {missing} 個函式），重新開始中…", "js.mfcFailed": "無法自動取得：{error}。可以手動取得 SDK（見首頁「常見問題」），再把 DLL 和遊戲一起匯入。", "js.httpError": "archive.org 回應 {status}", "js.downloading": "正在從 archive.org 下載 {label}…{progress}", "js.notZip": "不是 zip 檔", "js.quakeData": "Quake 共享版資料（18 MB）", "js.buildingQuake": "正在組合 Pocket Quake…", "js.noPak": "找不到 Quake 資料檔 pak0.pak", "js.getFailed": "無法取得「{title}」：{error}。請稍後再試，或用卡片上的搜尋關鍵字找到檔案後自行匯入。", "js.bundling": "正在把 {n} 個檔案組成一個遊戲包…", "js.otherTab": "PocketPC3630 已在另一個分頁開啟。請先關閉那個分頁再重新整理，以免進度互相覆蓋。", "js.noStorage": "這個瀏覽器無法保存資料：重新整理後遊戲與進度都會消失，請下載存檔備份。", "js.loadFailed": "無法載入模擬器：{error}", "lib.search": "搜尋名稱、機型、處理器…", "lib.byStatus": "依狀態", "lib.byCat": "依類型", "lib.byCpu": "依處理器", "lib.all.status": "全部狀態", "lib.all.cat": "全部類型", "lib.all.cpu": "全部處理器", "lib.status.play": "可直接玩", "lib.status.runs": "可執行・需自備", "lib.status.partial": "部分可用", "lib.status.nostart": "無法啟動", "lib.status.notppc": "無法匯入", "lib.cat.game": "遊戲", "lib.cat.tool": "工具程式", "lib.cat.office": "辦公與生產力", "lib.cat.media": "影音多媒體", "lib.cat.net": "網路與通訊", "lib.cat.dev": "程式開發", "lib.cat.system": "系統與驅動", "lib.cat.emu": "模擬器", "lib.cat.book": "電子書與參考", "lib.cat.edu": "教育學習", "lib.cat.other": "其他", "lib.count": "顯示 {shown} / {total} 個", "lib.shotAlt": "{name} 的畫面", "lib.platforms": "平台", "lib.devices": "機型", "lib.year": "年份", "lib.difficulty": "模擬難度", "lib.keywords": "搜尋關鍵字", "lib.copy": "複製", "lib.copied": "已複製", "lib.play": "下載並開始", "lib.diff.done": "已能執行", "lib.diff.medium": "中", "lib.diff.high": "高", "lib.diff.veryhigh": "很高", "lib.diff.na": "不適用", "lib.reason.blank": "能啟動，但畫面維持空白", "lib.reason.early": "啟動後很快自行結束", "lib.reason.noframes": "能啟動，但還沒畫出任何畫面", "lib.reason.stopped": "執行中途停止", "lib.reason.system": "需要裝置內建的系統檔（例如 MFC），網頁版多半能自動補上", "lib.reason.api": "用到模擬器還沒實作的 Windows CE 功能", "lib.reason.files": "需要的資料檔不在下載包裡", "lib.reason.dotnet": ".NET Compact Framework 程式，需要整套 .NET 執行環境", "lib.reason.exe": "程式檔無法載入", "lib.reason.instr": "用到模擬器還不支援的處理器指令", "lib.reason.internal": "模擬器內部錯誤", "lib.reason.noppc": "下載包裡找不到 Pocket PC 程式檔，可能包在其他格式的安裝程式裡", "lib.reason.desktop": "下載的是電腦端安裝程式，沒能從中取出 Pocket PC 版", "lib.reason.badcab": "安裝檔不是 Pocket PC 格式或已損毀", "lib.reason.badzip": "壓縮檔已損毀", "lib.reason.notprogram": "這是開發工具、韌體或文件，不是裝置上執行的程式", "lib.reason.uirect": "程式回報「Bad UI rectangle」，它需要的輸入法視窗位置還沒有提供", "lib.reason.bmp": "程式回報圖片資源載入失敗", "lib.reason.tree": "程式用到樹狀檢視還沒支援的功能", "lib.reason.driver": "程式需要裝置的硬體驅動資訊", "lib.reason.expired": "試用期已過，不是模擬器的問題", "lib.reason.notest": "沒有可測試的下載檔", "lib.dl.win": "Windows 版", "lib.dl.winSub": ".zip・解壓縮即可執行", "lib.dl.android": "Android 版", "lib.dl.androidSub": ".apk・直接安裝", "lib.dl.version": "最新版 {version}", "lib.total": "共 {total} 個", "lib.moreN": "顯示更多（還有 {n} 個）", "play.keyboard": "鍵盤", "js.clearAll": "清空遊戲庫", "js.confirmClear": "要刪除遊戲庫裡全部 {n} 個遊戲與它們的進度嗎？未下載的存檔將無法復原。", "lib.guideLabel": "實機教學", "lib.guideEq": "在 Windows 上用 Device Emulator 安裝 EverQuest for the Pocket PC", "lib.guideCard": "安裝教學 ›", "lib.status.untested": "尚未實測", "lib.reason.regcode": "需要註冊碼；本站只實測到註冊畫面", "lib.details": "詳細資訊", "lib.onlyPic": "只看有圖片", "lib.onlyPick": "★ 精選收藏", "lib.sort": "排序", "lib.sort.default": "推薦順序", "lib.sort.name": "名稱 A→Z", "lib.sort.new": "年份：新到舊", "lib.sort.old": "年份：舊到新", "lib.pick": "★ 精選", "lib.coll": "原始收藏分類", "lib.reason.flash": "這是給 Pocket IE 的 Flash 遊戲，不是 Pocket PC 程式；需要瀏覽器的 Flash 外掛", "lib.reason.vbce": "Visual Basic for Windows CE 程式，需要裝置上的 VB 執行環境，模擬器還不支援", "lib.reason.installer": "包在匯入器還不支援的安裝程式格式裡（Inno Setup、NSIS、Ghost Installer、Setup Factory 等）；可在電腦上用 7-Zip 或 innoextract 取出 Pocket PC 的 CAB 再匯入", "lib.reason.disclogs": "這份下載只有光碟備份時的紀錄檔，沒有光碟內容本身；需要自己的光碟或完整的安裝檔", "lib.reason.palm": "這是 Palm OS 版（.prc／.pdb），不是 Pocket PC 程式", "lib.reason.plugin": "這是給其他程式用的外掛元件（例如播放器的解碼器），本身不是可以啟動的程式", "lib.m01": "Mobile01 討論串", "lib.variant.retail": "零售光碟紀錄", "lib.m01note": "Mobile01 網友短評（2003）", "js.lastPlayed": "上次玩：{when}", "js.notPlayed": "還沒玩過", "js.findGame": "搜尋我的遊戲…", "play.pad": "按鍵", "play.padTitle": "顯示或隱藏螢幕按鍵；用觸控筆玩的遊戲可隱藏，讓畫面更大", "play.pause": "暫停", "play.paused": "已暫停", "play.resumeHint": "點一下繼續；遊戲時間也停在這一刻", "lib.story": "當年的故事", "lib.detailsStory": "故事與詳細資訊"}/*ENDI18N*/;
+const I18N_LANGS = [
+  ['zh-TW', '繁體中文'],
+  ['zh-CN', '简体中文'],
+  ['en', 'English'],
+  ['ja', '日本語'],
+  ['ko', '한국어'],
+  ['es', 'Español'],
+  ['fr', 'Français'],
+  ['de', 'Deutsch'],
+  ['pt', 'Português'],
+  ['ru', 'Русский'],
+  ['hi', 'हिन्दी'],
+];
+const I18N_BASE = /*I18N*/{"h.001": "POCKET PC 模擬器 · 免安裝", "h.002": "2000 年代的 Pocket PC 遊戲與軟體，直接在瀏覽器裡重新玩。", "h.003": "支援 ARM、MIPS、SH3 三種處理器，不需要裝置 ROM。匯入網路上下載的 .zip 或 .cab 就能開始，遊戲與存檔只留在你的瀏覽器裡。", "h.004": "<span class=\"ico\" aria-hidden=\"true\">+</span>\n          <strong>把遊戲檔拖到這裡</strong>\n          <span>或點一下選擇檔案</span>\n          <small>.zip、.cab、.exe 安裝檔都可以，不用先解壓縮；可一次選多個檔案（遊戲＋DLL）</small>", "h.005": "<a class=\"ghost\" href=\"#free\">沒有遊戲？逛程式圖書館</a>\n          <a class=\"ghost\" href=\"#guide\">新手教學</a>", "h.006": "也有 <a href=\"https://github.com/SzupoTseng/PocketPC3630/releases/latest\">Windows 版</a> 與 <a href=\"https://github.com/SzupoTseng/PocketPC3630/releases/latest\">Android 版</a> · <a href=\"https://github.com/SzupoTseng/PocketPC3630\">GitHub 原始碼</a>", "h.007": "遊戲庫", "h.008": "我的遊戲庫", "h.009": "匯入遊戲", "h.010": "這個遊戲需要 Pocket PC 內建的 MFC 系統檔。", "h.011": "自動取得 MFC 並重新開始", "h.012": "遊戲與進度只存在這個瀏覽器。進度會自動保存；清除網站資料前請先下載存檔。有些遊戲要從遊戲內正常退出才會寫入進度。", "h.013": "遊戲包格式", "h.014": "載入中…", "lib.title": "Pocket PC 程式圖書館", "lib.intro": "當年流傳的 Pocket PC 程式，我們都實際匯入、執行過一遍。標著「可直接玩」的按一下就能下載並開始；其餘的只做介紹，說明它能不能模擬、難在哪裡，並附上搜尋關鍵字，方便你找回自己的合法副本。", "h.015": "搜尋名稱、機型、處理器…", "h.016": "搜尋名稱、機型、處理器…", "h.017": "依狀態", "h.018": "依類型", "h.019": "依處理器", "lib.none": "沒有符合的程式，換個關鍵字或篩選試試。", "lib.more": "顯示更多", "h.020": "新手教學：三步驟開始玩", "h.021": "第一次用？照著做，五分鐘內就能玩到第一個遊戲。", "h.022": "取得遊戲包", "h.023": "從下方的「Pocket PC 程式圖書館」挑一個標著「可直接玩」的程式，按「下載並開始」就好。自己的遊戲包通常是 <code>.zip</code>、<code>.cab</code> 或安裝程式 <code>.exe</code>，不用解壓縮，也不用挑處理器版本。", "h.024": "匯入", "h.025": "按上方的「匯入遊戲」，選剛下載的檔案。模擬器會自動拆開安裝程式、找出遊戲、挑出適合的版本，完成後出現在「我的遊戲庫」。", "h.026": "下載的程式絕不會被執行，只會被拆開檢查。看不懂的檔案會告訴你原因與下一步。", "h.027": "開始玩", "h.028": "點遊戲名稱開始；按 <b>‹ 遊戲庫</b> 回來", "h.029": "滑鼠點擊＝觸控筆", "h.030": "<kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 方向、<kbd>Enter</kbd> 動作鍵、<kbd>Esc</kbd> 返回", "h.031": "畫面下方有方向鍵圓盤、軟鍵與 A／B／C 按鈕，滑鼠或手指都能按", "h.032": "進度自動保存；「⋯」選單可下載、匯入或重置存檔", "h.033": "畫面是躺著的？按上方「旋轉畫面」，當年的橫向遊戲要把機器轉過來玩", "h.034": "更多教學", "h.035": "遇到下面這些情況時，照著做就好。", "h.036": "操作方式對照", "h.037": "觸控筆點擊", "h.038": "滑鼠左鍵／手指點畫面", "h.039": "方向鍵", "h.040": "<kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd>／螢幕方向鍵", "h.041": "動作鍵（中間鍵）", "h.042": "<kbd>Enter</kbd>／圓形大按鈕", "h.043": "按鍵 A／B／C", "h.044": "<kbd>Ctrl</kbd>／<kbd>Space</kbd>／<kbd>Shift</kbd>", "h.045": "軟鍵 1／2", "h.046": "<kbd>Tab</kbd>／<kbd>Esc</kbd>", "h.047": "遊戲說缺少 MFC", "h.048": "有些程式需要 Pocket PC 內建的 <code>mfcce300.dll</code>。遊戲畫面上方會出現「自動取得 MFC 並重新開始」，按下去就好：本站會從 archive.org 下載微軟當年免費提供的 <a href=\"https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe\">Pocket PC 2000 SDK</a>，只取出需要的檔案放進遊戲。", "h.049": "想手動處理：用 <a href=\"https://www.7-zip.org/\">7-Zip</a> 打開這個 SDK，取出 <code>Program Files/mfc/lib/arm/mfcce300.dll</code> 與 <code>olece300.dll</code>（MIPS、SH3 版遊戲改用 <code>mips</code>、<code>sh3</code> 資料夾），再和遊戲一起匯入。", "h.050": "一次匯入多個檔案", "h.051": "按「匯入遊戲」時可以同時選好幾個檔案，例如遊戲的 <code>.cab</code> 加上 <code>mfcce300.dll</code>，或遊戲本體加上資料檔。本站會自動把它們組成一個遊戲包，不用自己壓縮。", "h.052": "備份與搬移存檔", "h.053": "進度每 10 秒自動保存在瀏覽器裡。在遊戲庫按遊戲旁的「⋯ › 下載存檔」得到一個 <code>.zip</code>；到另一台電腦、Windows 版或 Android 版，用「⋯ › 匯入存檔」就能接著玩。", "h.054": "在手機或平板上玩", "h.055": "用手機瀏覽器打開本站就能玩，畫面下方會出現方向鍵和 A／B／C 按鈕；橫放時按鍵會移到兩側。想要離線玩，可以安裝 <a href=\"https://github.com/SzupoTseng/PocketPC3630/releases/latest\">Android 版</a>。", "h.056": "遊戲打不開怎麼辦", "h.057": "畫面會用白話說明原因與下一步，例如「這是桌面程式」「這是 .NET 程式」。多數下載檔有好幾個處理器版本，本站會自動挑選。也可以先查 <a href=\"https://github.com/SzupoTseng/PocketPC3630/blob/main/docs/COMPATIBILITY.md\">相容性清單</a>，看看這個軟體的測試結果。", "h.058": "為什麼好用", "h.059": "不是完整模擬整台機器，而是用 Rust 重新實作 Windows CE，所以開得快、不需要 ROM。", "h.060": "<b>三種處理器</b><span>ARM（iPAQ、Axim）、MIPS（Casio Cassiopeia）、SH3（HP Jornada）的版本都能玩。</span>", "h.061": "<b>看得懂下載檔</b><span>安裝程式、自解壓檔、藏在裡面的 CAB、1999 年的壓縮格式，都能自動拆出遊戲。</span>", "h.062": "<b>存檔到處通用</b><span>同一個存檔 zip 可以在網頁、Windows、Android 之間搬來搬去。</span>", "h.063": "<b>實測上千個軟體</b><span>archive.org 上 1,443 個下載檔都測過，<a href=\"https://github.com/SzupoTseng/PocketPC3630/blob/main/docs/COMPATIBILITY.md\">相容性清單</a>寫明每個的結果。</span>", "h.064": "常見問題", "h.065": "遇到問題先看這裡。", "h.066": "需要 Pocket PC 的 ROM 或系統檔嗎？", "h.067": "不需要。大多數遊戲直接就能玩。使用 MFC 的程式需要 <code>mfcce300.dll</code>：遊戲畫面會出現「自動取得 MFC」按鈕，本站會從 archive.org 上微軟的 <a href=\"https://archive.org/download/pocketpc_2000_sdk_web/pocketpc_2000_sdk_web.exe\">Pocket PC 2000 SDK</a> 取出它。也可以手動用 7-Zip 打開 SDK，取出 <code>Program Files/mfc/lib/arm/mfcce300.dll</code>，和遊戲一起匯入。", "h.068": "遊戲和存檔放在哪裡？會上傳嗎？", "h.069": "都只存在這個瀏覽器（IndexedDB），不會上傳到任何伺服器。清除網站資料會一併刪除，請先用「⋯ › 下載存檔」備份。", "h.070": "為什麼有的遊戲不能玩？", "h.071": "模擬器還沒實作所有 Windows CE 功能。.NET 程式、x86 版本和部分安裝程式目前不支援。<a href=\"https://github.com/SzupoTseng/PocketPC3630/blob/main/docs/COMPATIBILITY.md\">相容性清單</a>列出每個測過的軟體與原因。", "h.072": "可以在電腦或手機上離線玩嗎？", "h.073": "可以下載 <a href=\"https://github.com/SzupoTseng/PocketPC3630/releases/latest\">Windows 版與 Android 版</a>，功能與存檔格式和網頁版相同。", "h.074": "可以同時開兩個分頁嗎？", "h.075": "不行。兩個分頁會互相覆蓋進度，所以第二個分頁會停在提示畫面。", "h.076": "PocketPC3630 以 MIT 或 Apache 2.0 授權開源，fork 自 <a href=\"https://github.com/j92580498-max/PocketHLE\">PocketHLE</a>。不附任何遊戲或微軟檔案，請只使用你合法取得的軟體。\n    <a href=\"https://github.com/SzupoTseng/PocketPC3630\">GitHub</a> · <a href=\"https://github.com/SzupoTseng/PocketPC3630/blob/main/docs/COMPATIBILITY.md\">相容性清單</a> · <a href=\"https://github.com/SzupoTseng/PocketPC3630/releases/latest\">下載 Windows／Android 版</a>", "h.077": "‹ 遊戲庫", "h.078": "遊戲畫面是躺著的？轉過來", "h.079": "旋轉畫面", "h.080": "下載存檔", "h.081": "這個遊戲需要 Pocket PC 內建的 MFC 系統檔。", "h.082": "自動取得 MFC 並重新開始", "h.083": "遊戲畫面", "h.084": "遊戲包格式", "h.085": "直接匯入從網路下載的檔案即可。看不懂的檔案，模擬器會依知識庫往裡面找出遊戲，絕不會執行下載的程式。", "h.086": "可以匯入", "h.087": "Pocket PC 的 <code>.cab</code>", "h.088": "最上層放一個 <code>.cab</code> 的 <code>.zip</code>，可以附加其他檔案（例如 <code>mfcce300.dll</code>）", "h.089": "遊戲安裝後資料夾的 <code>.zip</code>，例如 <code>quake/PocketQuake.exe</code>", "h.090": "ARM 版的 <code>.exe</code>、<code>.rar</code>", "h.091": "桌面安裝程式（<code>setup.exe</code>，包括 InstallShield、Wise 製作的）或每種處理器各一個 CAB 的下載檔：會自動挑出 ARM 版", "h.092": "遊戲需要的系統檔案", "h.093": "使用 MFC 的遊戲需要 Pocket PC 內建的 <code>mfcce300.dll</code>（有些還需要 <code>olece300.dll</code>），模擬器不附帶。請把你自己裝置上的副本放進 <code>.zip</code>，和 <code>.cab</code> 放在同一層。缺少時，開始遊戲前會提示。", "h.094": "無法匯入", "h.095": ".NET Compact Framework 程式", "h.096": "使用浮點指令的 SH4 程式，以及 x86 版本", "h.097": "桌面版 Windows 遊戲與它的 <code>data1.cab</code>", "h.098": "存檔", "h.099": "存檔 <code>.zip</code> 包含遊戲的 <code>saves/</code> 資料夾與 <code>pockethle-registry.dat</code>，Windows、Android 與網頁版通用。", "h.100": "知道了", "h.101": "放開即可匯入<small>.zip、.cab、.exe，可一次多個檔案</small>", "js.noSave": "這個遊戲還沒有存檔。", "js.saveDownloaded": "已下載存檔（{count} 個檔案）。", "js.saveImported": "已匯入存檔（{count} 個檔案）。", "js.emptyLib": "<span class=\"ico\" aria-hidden=\"true\">+</span><strong>遊戲庫還是空的</strong><span>把遊戲檔拖到這裡，或點一下選擇檔案</span><small>也可以往下捲，到程式圖書館直接玩</small>", "js.options": "{name} 的選項", "js.menu.download": "下載存檔", "js.menu.import": "匯入存檔", "js.menu.reset": "重置存檔", "js.confirmReset": "要清除「{name}」的全部進度嗎？未下載的存檔將無法復原。", "js.resetDone": "已清除進度。", "js.menu.delete": "刪除遊戲", "js.confirmDelete": "要從這個瀏覽器刪除「{name}」與它的進度嗎？", "js.importing": "正在匯入 {file}…", "js.importedNote": "匯入完成：從下載檔取出遊戲（{note}）。", "js.imported": "匯入完成。", "js.ended": "遊戲已結束。", "js.sdk2000": "微軟 Pocket PC 2000 SDK（55 MB）", "js.sdk2002": "微軟 Pocket PC 2002 SDK（68 MB）", "js.mfcExtract": "正在從 {sdk} 取出 MFC…", "js.mfcNotFound": "找不到 {cpu} 版的 MFC", "js.mfcAdded": "已加入 {version} 版 MFC，重新開始中…", "js.mfcAddedMissing": "已加入 {version} 版 MFC（仍缺 {missing} 個函式），重新開始中…", "js.mfcFailed": "無法自動取得：{error}。可以手動取得 SDK（見首頁「常見問題」），再把 DLL 和遊戲一起匯入。", "js.httpError": "archive.org 回應 {status}", "js.downloading": "正在從 archive.org 下載 {label}…{progress}", "js.notZip": "不是 zip 檔", "js.quakeData": "Quake 共享版資料（18 MB）", "js.buildingQuake": "正在組合 Pocket Quake…", "js.noPak": "找不到 Quake 資料檔 pak0.pak", "js.getFailed": "無法取得「{title}」：{error}。請稍後再試，或用卡片上的搜尋關鍵字找到檔案後自行匯入。", "js.bundling": "正在把 {n} 個檔案組成一個遊戲包…", "js.otherTab": "PocketPC3630 已在另一個分頁開啟。請先關閉那個分頁再重新整理，以免進度互相覆蓋。", "js.noStorage": "這個瀏覽器無法保存資料：重新整理後遊戲與進度都會消失，請下載存檔備份。", "js.loadFailed": "無法載入模擬器：{error}", "lib.search": "搜尋名稱、機型、處理器…", "lib.byStatus": "依狀態", "lib.byCat": "依類型", "lib.byCpu": "依處理器", "lib.all.status": "全部狀態", "lib.all.cat": "全部類型", "lib.all.cpu": "全部處理器", "lib.status.play": "可直接玩", "lib.status.runs": "可執行・需自備", "lib.status.partial": "部分可用", "lib.status.nostart": "無法啟動", "lib.status.notppc": "無法匯入", "lib.cat.game": "遊戲", "lib.cat.tool": "工具程式", "lib.cat.office": "辦公與生產力", "lib.cat.media": "影音多媒體", "lib.cat.net": "網路與通訊", "lib.cat.dev": "程式開發", "lib.cat.system": "系統與驅動", "lib.cat.emu": "模擬器", "lib.cat.book": "電子書與參考", "lib.cat.edu": "教育學習", "lib.cat.other": "其他", "lib.count": "顯示 {shown} / {total} 個", "lib.shotAlt": "{name} 的畫面", "lib.platforms": "平台", "lib.devices": "機型", "lib.year": "年份", "lib.difficulty": "模擬難度", "lib.keywords": "搜尋關鍵字", "lib.copy": "複製", "lib.copied": "已複製", "lib.play": "下載並開始", "lib.diff.done": "已能執行", "lib.diff.medium": "中", "lib.diff.high": "高", "lib.diff.veryhigh": "很高", "lib.diff.na": "不適用", "lib.reason.blank": "能啟動，但畫面維持空白", "lib.reason.early": "啟動後很快自行結束", "lib.reason.noframes": "能啟動，但還沒畫出任何畫面", "lib.reason.stopped": "執行中途停止", "lib.reason.system": "需要裝置內建的系統檔（例如 MFC），網頁版多半能自動補上", "lib.reason.api": "用到模擬器還沒實作的 Windows CE 功能", "lib.reason.files": "需要的資料檔不在下載包裡", "lib.reason.dotnet": ".NET Compact Framework 程式，需要整套 .NET 執行環境", "lib.reason.exe": "程式檔無法載入", "lib.reason.instr": "用到模擬器還不支援的處理器指令", "lib.reason.internal": "模擬器內部錯誤", "lib.reason.noppc": "下載包裡找不到 Pocket PC 程式檔，可能包在其他格式的安裝程式裡", "lib.reason.desktop": "下載的是電腦端安裝程式，沒能從中取出 Pocket PC 版", "lib.reason.badcab": "安裝檔不是 Pocket PC 格式或已損毀", "lib.reason.badzip": "壓縮檔已損毀", "lib.reason.notprogram": "這是開發工具、韌體或文件，不是裝置上執行的程式", "lib.reason.uirect": "程式回報「Bad UI rectangle」，它需要的輸入法視窗位置還沒有提供", "lib.reason.bmp": "程式回報圖片資源載入失敗", "lib.reason.tree": "程式用到樹狀檢視還沒支援的功能", "lib.reason.driver": "程式需要裝置的硬體驅動資訊", "lib.reason.expired": "試用期已過，不是模擬器的問題", "lib.reason.notest": "沒有可測試的下載檔", "lib.dl.win": "Windows 版", "lib.dl.winSub": ".zip・解壓縮即可執行", "lib.dl.android": "Android 版", "lib.dl.androidSub": ".apk・直接安裝", "lib.dl.version": "最新版 {version}", "lib.total": "共 {total} 個", "lib.moreN": "顯示更多（還有 {n} 個）", "play.keyboard": "鍵盤", "js.clearAll": "清空遊戲庫", "js.confirmClear": "要刪除遊戲庫裡全部 {n} 個遊戲與它們的進度嗎？未下載的存檔將無法復原。", "lib.guideLabel": "實機教學", "lib.guideEq": "在 Windows 上用 Device Emulator 安裝 EverQuest for the Pocket PC", "lib.guideCard": "安裝教學 ›", "lib.status.untested": "尚未實測", "lib.reason.regcode": "需要註冊碼；本站只實測到註冊畫面", "lib.details": "詳細資訊", "lib.onlyPic": "只看有圖片", "lib.onlyPick": "★ 精選收藏", "lib.sort": "排序", "lib.sort.default": "推薦順序", "lib.sort.name": "名稱 A→Z", "lib.sort.new": "年份：新到舊", "lib.sort.old": "年份：舊到新", "lib.pick": "★ 精選", "lib.coll": "原始收藏分類", "lib.reason.flash": "這是給 Pocket IE 的 Flash 遊戲，不是 Pocket PC 程式；需要瀏覽器的 Flash 外掛", "lib.reason.vbce": "Visual Basic for Windows CE 程式，需要裝置上的 VB 執行環境，模擬器還不支援", "lib.reason.installer": "包在匯入器還不支援的安裝程式格式裡（Inno Setup、NSIS、Ghost Installer、Setup Factory 等）；可在電腦上用 7-Zip 或 innoextract 取出 Pocket PC 的 CAB 再匯入", "lib.reason.disclogs": "這份下載只有光碟備份時的紀錄檔，沒有光碟內容本身；需要自己的光碟或完整的安裝檔", "lib.reason.palm": "這是 Palm OS 版（.prc／.pdb），不是 Pocket PC 程式", "lib.reason.plugin": "這是給其他程式用的外掛元件（例如播放器的解碼器），本身不是可以啟動的程式", "lib.m01": "Mobile01 討論串", "lib.variant.retail": "零售光碟紀錄", "lib.m01note": "Mobile01 網友短評（2003）", "js.lastPlayed": "上次玩：{when}", "js.notPlayed": "還沒玩過", "js.findGame": "搜尋我的遊戲…", "play.pad": "按鍵", "play.padTitle": "顯示或隱藏螢幕按鍵；用觸控筆玩的遊戲可隱藏，讓畫面更大", "play.pause": "暫停", "play.paused": "已暫停", "play.resumeHint": "點一下繼續；遊戲時間也停在這一刻", "lib.story": "當年的故事", "lib.detailsStory": "故事與詳細資訊"} /*ENDI18N*/
 const I18N = { lang: 'zh-TW', dict: I18N_BASE };
 function t(key, vars) {
   let text = I18N.dict[key] ?? I18N_BASE[key] ?? key;
-  if (vars) text = text.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m));
+  if (vars) text = text.replace(/\{(\w+)\}/g, (m, k) => vars[k] ?? m);
   return text;
 }
 function applyI18n() {
@@ -640,7 +731,11 @@ function applyI18n() {
 // the menu is remembered (under its own key: older visits stored their
 // automatic choice as 'lang', which pinned them to it).
 function pickLang() {
-  try { localStorage.removeItem('lang'); const saved = localStorage.getItem('langChosen'); if (saved && I18N_LANGS.some(([c]) => c === saved)) return saved; } catch {}
+  try {
+    localStorage.removeItem('lang');
+    const saved = localStorage.getItem('langChosen');
+    if (saved && I18N_LANGS.some(([c]) => c === saved)) return saved;
+  } catch {}
   for (const tag of navigator.languages || [navigator.language || 'zh-TW']) {
     const lower = tag.toLowerCase();
     if (/^zh-(tw|hk|mo|hant)/.test(lower)) return 'zh-TW';
@@ -653,26 +748,48 @@ function pickLang() {
 async function setLang(lang, chosen = false) {
   let dict = I18N_BASE;
   if (lang !== 'zh-TW') {
-    try { dict = await (await fetch(`i18n/${lang}.json`)).json(); } catch { lang = 'zh-TW'; dict = I18N_BASE; }
+    try {
+      dict = await (await fetch(`i18n/${lang}.json`)).json();
+    } catch {
+      lang = 'zh-TW';
+      dict = I18N_BASE;
+    }
   }
-  I18N.lang = lang; I18N.dict = dict;
+  I18N.lang = lang;
+  I18N.dict = dict;
   if (M) M._pocket_set_lang(lang.startsWith('zh') ? 0 : 1);
-  if (chosen) { try { localStorage.setItem('langChosen', lang); } catch {} }
+  if (chosen) {
+    try {
+      localStorage.setItem('langChosen', lang);
+    } catch {}
+  }
   $('lang').value = lang;
   applyI18n();
+  softwareUI.refresh();
+  $('software-controls').textContent = uiText('操作方式', 'Controls');
   if (M) listGames();
   if (APP_VERSION) $('app-ver').textContent = t('lib.dl.version', { version: APP_VERSION });
-  if (LIB.items.length) { await loadLibraryText(); buildLibraryFilters(); renderLibrary(true); }
+  if (LIB.items.length) {
+    await loadLibraryText();
+    buildLibraryFilters();
+    renderLibrary(true);
+  }
 }
 for (const [code, name] of I18N_LANGS) {
-  const option = document.createElement('option'); option.value = code; option.textContent = name; $('lang').append(option);
+  const option = document.createElement('option');
+  option.value = code;
+  option.textContent = name;
+  $('lang').append(option);
 }
 $('lang').addEventListener('change', () => setLang($('lang').value, true));
 const AUDIO_FRAMES = 4096;
 const SAVE_EVERY_MS = 10000;
 const FRAMES_PER_PRESS = 3;
 const MAX_PRESS_MS = 1000;
-let M, running = false, frameMs = 33;
+let M,
+  running = false,
+  frameMs = 33;
+let runningIndex = null;
 
 function say(text, bad = false) {
   $('status').textContent = text;
@@ -682,32 +799,327 @@ function say(text, bad = false) {
 const lastError = () => M.UTF8ToString(M._pocket_last_error());
 
 // IndexedDB is the only thing that survives a reload; MEMFS is rebuilt from it.
-// Writes to IndexedDB run one at a time. A save asked for while one is
-// running waits for a fresh one after it, and its promise settles only when
-// that one has finished: leaving the game awaits this before reloading the
-// page, so it must not resolve while a write is still queued.
-let syncRunning = null, syncQueued = null;
-function runSync(populate) {
-  return new Promise((resolve, reject) => M.FS.syncfs(populate, (error) => (error ? reject(error) : resolve())));
-}
-function syncFs(populate) {
-  if (populate) return runSync(true);
-  if (syncQueued) return syncQueued;
-  const begin = () => {
-    syncRunning = runSync(false).finally(() => { syncRunning = null; });
-    return syncRunning;
-  };
-  if (!syncRunning) return begin();
-  syncQueued = syncRunning.catch(() => {}).then(() => { syncQueued = null; return begin(); });
-  return syncQueued;
-}
+const syncFs = PocketLibraryUI.createSyncQueue((populate, done) => M.FS.syncfs(populate, done));
 
 function withPath(path, action) {
   const text = M.stringToNewUTF8(path);
-  try { return action(text); } finally { M._free(text); }
+  try {
+    return action(text);
+  } finally {
+    M._free(text);
+  }
 }
 
-function gameId(index) { return M.UTF8ToString(M._pocket_game_id(index)); }
+function gameId(index) {
+  return M.UTF8ToString(M._pocket_game_id(index));
+}
+
+// The emulator's color theme: red unless the player chose another in the game menu.
+const EM_THEMES = [
+  ['red', '紅', 'Red'], ['blue', '藍＋橘', 'Blue + orange'], ['green', '綠', 'Green'], ['purple', '紫', 'Purple'],
+  ['orange', '橘', 'Orange'], ['graphite', '石墨', 'Graphite'], ['nightred', '深色紅（夜間）', 'Dark red (night)'],
+];
+function emTheme() {
+  let name = 'red';
+  try {
+    name = localStorage.getItem('em-theme') || 'red';
+  } catch {}
+  return EM_THEMES.some((x) => x[0] === name) ? name : 'red';
+}
+function applyEmTheme(name) {
+  const ok = EM_THEMES.some((x) => x[0] === name) ? name : 'red';
+  if (ok === 'red') delete document.documentElement.dataset.emTheme;
+  else document.documentElement.dataset.emTheme = ok;
+  try {
+    localStorage.setItem('em-theme', ok);
+  } catch {}
+}
+applyEmTheme(emTheme());
+const uiText = (zh, en) => (I18N.lang.startsWith('zh') ? zh : en);
+let activeControls = PocketLibraryUI.defaultConfig();
+const pauseReasons = new Set();
+function setPaused(reason, value) {
+  if (value) {
+    releaseAllInput();
+    pauseReasons.add(reason);
+  } else pauseReasons.delete(reason);
+  if (running) M._pocket_set_paused(pauseReasons.size ? 1 : 0);
+  pauseObserver?.(pauseReasons.size > 0);
+}
+// The page sets this to show the Pause button state and the "paused" overlay,
+// whoever asked for the pause (the button, the game menu, a hidden tab). It
+// stays out of setPaused so that function can be tested without a page.
+let pauseObserver = null;
+function controlIndex(id) {
+  if (id === '') return -1;
+  const index = Array.from({ length: M._pocket_game_count() }, (_, i) => i).find((i) => gameId(i) === id);
+  if (index === undefined) throw new Error('Unknown installed program');
+  return index;
+}
+function controlsPath(id) {
+  controlIndex(id);
+  return id === '' ? '/library/controls-default.json' : `/library/games/${id}/controls.json`;
+}
+function controlsRecord(id) {
+  const result = JSON.parse(M.UTF8ToString(M._pocket_controls_json(controlIndex(id))));
+  if (!result.ok) throw new Error(result.error || 'Invalid controls');
+  return result;
+}
+function readControls(id) {
+  return PocketLibraryUI.normalize(controlsRecord(id).value);
+}
+function hasControls(id) {
+  return controlsRecord(id).overridden;
+}
+let preferenceWrites = Promise.resolve();
+function serializePreference(write) {
+  const current = preferenceWrites.catch(() => {}).then(write);
+  preferenceWrites = current;
+  return current;
+}
+function writeControls(id, value) {
+  return serializePreference(async () => {
+    const path = controlsPath(id);
+    const paths = [path, ...(id ? [path.replace('/controls.json', '/web-controls.json')] : [])];
+    const before = paths.map((p) => (M.FS.analyzePath(p).exists ? M.FS.readFile(p) : null));
+    const result = withPath(value === null ? 'null' : JSON.stringify(value), (p) =>
+      M._pocket_controls_write(controlIndex(id), p),
+    );
+    if (result < 0) throw new Error(lastError());
+    try {
+      await syncFs(false);
+    } catch (error) {
+      paths.forEach((p, i) => {
+        if (before[i]) M.FS.writeFile(p, before[i]);
+        else if (M.FS.analyzePath(p).exists) M.FS.unlink(p);
+      });
+      throw error;
+    }
+    listGames();
+    if (running && (id === '' || gameId(runningIndex) === id))
+      applyControls(readControls(gameId(runningIndex)));
+  });
+}
+const softwareUI = PocketLibraryUI.mount({
+  lang: () => I18N.lang,
+  t,
+  describe: (entry) => LIB.desc[entry.id] || '',
+  onOpen: () => setPaused('controls', true),
+  onClose: () => setPaused('controls', false),
+  apply: writeControls,
+  reset: async (id) => {
+    await writeControls(id, null);
+    return readControls(id);
+  },
+});
+function openLocalControls(index) {
+  releaseAllInput();
+  const id = gameId(index),
+    name = M.UTF8ToString(M._pocket_game_name(index));
+  // Family hints provide reading material only. The dialog explicitly keeps
+  // local version verification separate; no catalog result/config is copied.
+  const hints = { pocketeq_e1: 'everquest', eq_e2: 'everquest-e2', eq_e3: 'everquest-e3' };
+  const reference = LIB.items.find((entry) => entry.id === hints[id]);
+  let config,
+    invalid = false;
+  try {
+    config = readControls(id);
+  } catch {
+    config = PocketLibraryUI.defaultConfig();
+    invalid = true;
+  }
+  softwareUI.open({ ...(reference || { id: `local:${id}` }), name }, { id, config, invalid });
+}
+function applyControls(config) {
+  releaseAllInput();
+  activeControls = PocketLibraryUI.normalize(config);
+  const value = activeControls,
+    pad = document.querySelector('.pad');
+  pad.replaceChildren();
+  pad.style.position = 'relative';
+  pad.style.height = value.keys.length ? '210px' : '0';
+  pad.style.opacity = value.opacity;
+  pad.style.width = '100%';
+  const layout = rotation ? value.landscape : value.portrait;
+  pad.classList.toggle('ppc-panel', value.profile === 'ppc2003');
+  value.keys.forEach((vk, i) => {
+    const key = document.createElement('button');
+    key.type = 'button';
+    key.className = 'key';
+    key.dataset.vk = vk;
+    const record = PocketLibraryUI.keys.find((k) => k[0] === vk);
+    key.textContent = record?.[1] || `VK ${vk}`;
+    key.title = record ? uiText(record[2], record[3]) : `CE VK ${vk}`;
+    key.setAttribute('aria-label', key.title);
+    const panelButton =
+      value.profile === 'ppc2003' ? PocketLibraryUI.ppc2003.buttons.find((b) => b.vk === vk) : null;
+    if (panelButton) {
+      key.dataset.mode = panelButton.mode;
+      key.textContent = panelButton.label;
+    }
+    const p = layout.find((p) => p.vk === vk) ||
+      panelButton || { x: 0.1 + (i % 5) * 0.19, y: 0.14 + Math.floor(i / 5) * 0.28, size: 0.12 };
+    Object.assign(key.style, {
+      position: 'absolute',
+      left: `clamp(0px, calc(${p.x * 100}% - 24px), calc(100% - 48px))`,
+      top: `clamp(0px, calc(${p.y * 100}% - 24px), calc(100% - 48px))`,
+      width: `max(44px, ${p.size * 100}%)`,
+      height: '44px',
+      minWidth: '44px',
+    });
+    pad.append(key);
+  });
+  pad.hidden = value.keys.length === 0;
+  pad.removeAttribute('aria-hidden');
+  $('vkbd').hidden = !value.keyboard;
+  $('kbd-toggle').setAttribute('aria-pressed', String(value.keyboard));
+  menuButton.textContent = uiText('選單 ', 'Menu ') + value.menu_key;
+  if (running) M._pocket_set_volume(Math.round(value.volume * 1000));
+  fitCanvas();
+}
+const gameMenu = document.createElement('dialog');
+gameMenu.className = 'software-dialog game-menu';
+gameMenu.setAttribute('aria-label', uiText('遊戲中選單', 'Game menu'));
+document.body.append(gameMenu);
+function openGameMenu() {
+  if (!running || gameMenu.open) return;
+  setPaused('menu', true);
+  gameMenu.replaceChildren();
+  const heading = document.createElement('h2');
+  heading.textContent = uiText('PocketPC3630 · 已暫停', 'PocketPC3630 · Paused');
+  gameMenu.append(heading);
+  const action = (zh, en, fn) => {
+    const button = document.createElement('button');
+    button.textContent = uiText(zh, en);
+    button.onclick = fn;
+    gameMenu.append(button);
+  };
+  action('繼續遊戲', 'Resume', () => gameMenu.close());
+  action('操作方式', 'Controls', () => openLocalControls(runningIndex));
+  action('FPS 診斷', 'FPS diagnostics', () => {
+    const shown = $('hud').hidden;
+    $('hud').hidden = !shown;
+    localStorage.setItem('show-fps', String(shown));
+  });
+  action('旋轉畫面', 'Rotate', () => $('rotate').click());
+  action('全螢幕', 'Fullscreen', () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else
+      $('stage')
+        .requestFullscreen()
+        .catch((e) => toast(String(e)));
+  });
+  const volume = document.createElement('input');
+  volume.type = 'range';
+  volume.min = 0;
+  volume.max = 1000;
+  volume.value = activeControls.volume * 1000;
+  volume.setAttribute('aria-label', uiText('音量', 'Volume'));
+  volume.oninput = () => {
+    activeControls.volume = Number(volume.value) / 1000;
+    M._pocket_set_volume(Number(volume.value));
+  };
+  volume.onchange = () => writeControls(gameId(runningIndex), activeControls).catch((e) => toast(String(e)));
+  gameMenu.append(volume);
+  const themeLabel = document.createElement('label');
+  themeLabel.textContent = uiText('介面主題 ', 'Interface theme ');
+  const themeSelect = document.createElement('select');
+  themeSelect.id = 'em-theme';
+  for (const [value, zh, en] of EM_THEMES) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = uiText(zh, en);
+    themeSelect.append(option);
+  }
+  themeSelect.value = emTheme();
+  themeSelect.onchange = () => applyEmTheme(themeSelect.value);
+  themeLabel.append(themeSelect);
+  gameMenu.append(themeLabel);
+  const zoom = document.createElement('input');
+  zoom.type = 'range';
+  zoom.min = 1;
+  zoom.max = 4;
+  zoom.step = 0.25;
+  zoom.value = activeControls.zoom;
+  zoom.setAttribute('aria-label', uiText('畫面放大', 'Zoom'));
+  zoom.oninput = () => {
+    activeControls.zoom = Number(zoom.value);
+    fitCanvas();
+  };
+  zoom.onchange = () => writeControls(gameId(runningIndex), activeControls).catch((e) => toast(String(e)));
+  gameMenu.append(zoom);
+  for (const name of ['zoom_x', 'zoom_y']) {
+    const row = document.createElement('label');
+    row.textContent =
+      name === 'zoom_x' ? uiText('客體焦點 X', 'Guest focus X') : uiText('客體焦點 Y', 'Guest focus Y');
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = 0;
+    input.max = 1;
+    input.step = 0.05;
+    input.value = activeControls[name];
+    input.oninput = () => {
+      activeControls[name] = Number(input.value);
+      fitCanvas();
+    };
+    input.onchange = () => writeControls(gameId(runningIndex), activeControls).catch((e) => toast(String(e)));
+    row.append(input);
+    gameMenu.append(row);
+  }
+  const text = document.createElement('textarea');
+  text.placeholder = uiText('送入客體的文字（可使用 IME）', 'Text for guest (IME supported)');
+  text.setAttribute('aria-label', text.placeholder);
+  gameMenu.append(text);
+  action('排入客體退格', 'Queue guest backspace', () => withPath('\b', (p) => M._pocket_text(p)));
+  action('送入文字並繼續', 'Send text and resume', () => {
+    if (withPath(text.value, (p) => M._pocket_text(p)) < 0) {
+      toast(lastError());
+      return;
+    }
+    gameMenu.close();
+  });
+  action('備份進度 ZIP', 'Back up progress ZIP', () => $('save-now').click());
+  action('返回遊戲庫', 'Return to library', () => $('leave').click());
+  const note = document.createElement('p');
+  note.textContent = uiText(
+    '備份僅包含遊戲已寫出的進度，請先在遊戲內存檔。',
+    'A backup contains written progress. Save inside the game first.',
+  );
+  gameMenu.append(note);
+  const errorStatus = document.createElement('p');
+  errorStatus.id = 'game-menu-error';
+  errorStatus.setAttribute('role', 'alert');
+  gameMenu.append(errorStatus);
+  gameMenu.showModal();
+  gameMenu.querySelector('button').focus();
+}
+gameMenu.addEventListener('close', () => {
+  if (!gameMenu.open) setPaused('menu', false);
+});
+const menuButton = document.createElement('button');
+menuButton.textContent = uiText('選單 F1', 'Menu F1');
+menuButton.onclick = openGameMenu;
+document.querySelector('.bar').prepend(menuButton);
+const defaultButton = document.createElement('button');
+defaultButton.textContent = uiText('預設操作方式', 'Default controls');
+defaultButton.onclick = () => {
+  let config,
+    invalid = false;
+  try {
+    config = readControls('');
+  } catch {
+    config = PocketLibraryUI.defaultConfig();
+    invalid = true;
+  }
+  softwareUI.open(
+    { id: 'defaults', name: uiText('全域操作設定', 'Default controls') },
+    { id: '', config, invalid },
+  );
+};
+$('games').before(defaultButton);
+$('software-controls').onclick = () => {
+  if (running && runningIndex !== null) openLocalControls(runningIndex);
+};
 
 function download(bytes, name) {
   const link = document.createElement('a');
@@ -720,8 +1132,15 @@ function download(bytes, name) {
 function exportSave(index) {
   const path = '/save-export.zip';
   const count = withPath(path, (p) => M._pocket_save_export(index, p));
-  if (count < 0) { say(lastError(), true); return; }
-  if (count === 0) { M.FS.unlink(path); say(t('js.noSave')); return; }
+  if (count < 0) {
+    say(lastError(), true);
+    return;
+  }
+  if (count === 0) {
+    M.FS.unlink(path);
+    say(t('js.noSave'));
+    return;
+  }
   download(M.FS.readFile(path), `${gameId(index)}-save.zip`);
   M.FS.unlink(path);
   say(t('js.saveDownloaded', { count }));
@@ -732,7 +1151,10 @@ async function importSave(index, file) {
   M.FS.writeFile(path, new Uint8Array(await file.arrayBuffer()));
   const count = withPath(path, (p) => M._pocket_save_import(index, p));
   M.FS.unlink(path);
-  if (count < 0) { say(lastError(), true); return; }
+  if (count < 0) {
+    say(lastError(), true);
+    return;
+  }
   await syncFs(false);
   say(t('js.saveImported', { count }));
 }
@@ -741,7 +1163,8 @@ function removeTree(dir) {
   for (const name of M.FS.readdir(dir)) {
     if (name === '.' || name === '..') continue;
     const path = `${dir}/${name}`;
-    if (M.FS.isDir(M.FS.stat(path).mode)) removeTree(path); else M.FS.unlink(path);
+    if (M.FS.isDir(M.FS.stat(path).mode)) removeTree(path);
+    else M.FS.unlink(path);
   }
   M.FS.rmdir(dir);
 }
@@ -769,42 +1192,91 @@ function menuItem(label, action, danger = false) {
   if (danger) item.className = 'danger';
   item.addEventListener('click', (event) => {
     event.currentTarget.closest('details').open = false;
-    Promise.resolve().then(action).catch((error) => say(String(error.message ?? error), true));
+    Promise.resolve()
+      .then(action)
+      .catch((error) => say(String(error.message ?? error), true));
   });
   return item;
 }
 
 let saveTarget = null;
 
-// When each game was last started, remembered in this browser only, so the
-// library can put the games being played first.
-function playedAt(id) {
-  try { return Number(localStorage.getItem(`played:${id}`)) || 0; } catch { return 0; }
+function readPresentation(id) {
+  controlIndex(id);
+  try {
+    return JSON.parse(M.FS.readFile(`/library/games/${id}/presentation.json`, { encoding: 'utf8' }));
+  } catch {
+    return {};
+  }
 }
-function markPlayed(id) {
-  try { localStorage.setItem(`played:${id}`, String(Date.now())); } catch {}
+function writePresentation(id, value) {
+  return serializePreference(async () => {
+    controlIndex(id);
+    const path = `/library/games/${id}/presentation.json`;
+    const previous = M.FS.analyzePath(path).exists ? M.FS.readFile(path) : null;
+    M.FS.writeFile(path, JSON.stringify(value));
+    try {
+      await syncFs(false);
+    } catch (error) {
+      if (previous) M.FS.writeFile(path, previous);
+      else M.FS.unlink(path);
+      throw error;
+    }
+  });
 }
-function playedText(at) {
-  if (!at) return t('js.notPlayed');
-  const units = [['day', 86400000], ['hour', 3600000], ['minute', 60000]];
-  const ago = Date.now() - at;
+// Earlier versions remembered when each game was last started in this
+// browser's localStorage. The list now keeps it with the game's other
+// per-program settings (presentation.json), so carry the old value over once
+// instead of losing "last played" for games the player already had.
+function migratePlayedAt(id, meta) {
+  if (meta.last_played) return meta;
+  let old = 0;
+  try {
+    old = Math.floor((Number(localStorage.getItem(`played:${id}`)) || 0) / 1000);
+  } catch {}
+  if (!old) return meta;
+  const next = { ...meta, last_played: old };
+  writePresentation(id, next)
+    .then(() => {
+      try {
+        localStorage.removeItem(`played:${id}`);
+      } catch {}
+    })
+    .catch(() => {});
+  return next;
+}
+// "Last played 3 hours ago", under each game's name, as before.
+function playedText(seconds) {
+  if (!seconds) return t('js.notPlayed');
+  const ago = Date.now() - seconds * 1000;
   const rtf = new Intl.RelativeTimeFormat(I18N.lang, { numeric: 'auto' });
   if (ago < 60000) return t('js.lastPlayed', { when: rtf.format(0, 'second') });
-  for (const [unit, ms] of units) {
+  for (const [unit, ms] of [['day', 86400000], ['hour', 3600000], ['minute', 60000]]) {
     if (ago >= ms || unit === 'minute') {
       return t('js.lastPlayed', { when: rtf.format(-Math.max(0, Math.floor(ago / ms)), unit) });
     }
   }
   return '';
 }
-function filterGames() {
-  const words = $('find-game').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  for (const row of $('games').querySelectorAll('.game')) {
-    const name = row.dataset.name.toLowerCase();
-    row.hidden = !words.every((w) => name.includes(w));
-  }
+const librarySearch = document.createElement('input');
+librarySearch.type = 'search';
+librarySearch.placeholder = uiText('搜尋名稱／別名', 'Search name / alias');
+librarySearch.setAttribute('aria-label', librarySearch.placeholder);
+librarySearch.oninput = () => listGames();
+$('games').before(librarySearch);
+const recentSort = document.createElement('select');
+recentSort.setAttribute('aria-label', uiText('遊戲庫排序', 'Library order'));
+for (const [value, zh, en] of [
+  ['recent', '最近遊玩', 'Recently played'],
+  ['name', '名稱', 'Name'],
+]) {
+  const option = document.createElement('option');
+  option.value = value;
+  option.textContent = uiText(zh, en);
+  recentSort.append(option);
 }
-
+recentSort.onchange = () => listGames();
+$('games').before(recentSort);
 function listGames() {
   const list = $('games');
   list.replaceChildren();
@@ -820,25 +1292,53 @@ function listGames() {
     list.append(empty);
     return;
   }
-  $('find-game').hidden = count <= 5;
-  // Most recently played first, then the rest by name.
-  const order = Array.from({ length: count }, (_, i) => ({
-    i, name: M.UTF8ToString(M._pocket_game_name(i)), at: playedAt(gameId(i)),
-  })).sort((a, b) => (b.at - a.at) || a.name.localeCompare(b.name));
-  for (const { i, name, at } of order) {
+  const items = Array.from({ length: count }, (_, i) => ({
+    i,
+    name: M.UTF8ToString(M._pocket_game_name(i)),
+    meta: migratePlayedAt(gameId(i), readPresentation(gameId(i))),
+  }));
+  const query = librarySearch.value.toLocaleLowerCase();
+  const visible = items.filter((item) =>
+    (item.name + ' ' + (item.meta.alias || '')).toLocaleLowerCase().includes(query),
+  );
+  visible.sort(
+    (a, b) =>
+      Number(!!b.meta.favorite) - Number(!!a.meta.favorite) ||
+      (recentSort.value === 'recent'
+        ? (b.meta.last_played || 0) - (a.meta.last_played || 0)
+        : (a.meta.alias || a.name).localeCompare(b.meta.alias || b.name)),
+  );
+  if (!visible.length) {
+    const empty = document.createElement('p');
+    empty.textContent = uiText('沒有符合的軟體', 'No matching programs');
+    list.append(empty);
+  }
+  for (const { i, name, meta } of visible) {
     const row = document.createElement('div');
     row.className = 'game';
-    row.dataset.name = name;
+    row.dataset.gameId = gameId(i);
     const play = document.createElement('button');
     play.type = 'button';
     play.className = 'play';
     const label = document.createElement('span');
     label.className = 'name';
-    label.textContent = name;
+    const title = document.createElement('span');
+    title.textContent = `${meta.favorite ? '★ ' : ''}${meta.alias || name}`;
+    title.title = name;
+    const mode = document.createElement('small');
+    mode.className = 'game-controls';
+    try {
+      mode.textContent = `${softwareUI.name(readControls(gameId(i)))} · ${hasControls(gameId(i)) ? uiText('此軟體自訂', 'Program override') : uiText('繼承全域', 'Global default')}`;
+    } catch {
+      mode.textContent = uiText(
+        '操作設定無法讀取：可從操作方式恢復',
+        'Controls unreadable: open Controls to restore',
+      );
+    }
     const when = document.createElement('small');
     when.className = 'when';
-    when.textContent = playedText(at);
-    label.append(when);
+    when.textContent = playedText(meta.last_played);
+    label.append(title, when, mode);
     play.append(iconFor(i, name), label);
     play.addEventListener('click', () => start(i));
     const more = document.createElement('details');
@@ -850,43 +1350,76 @@ function listGames() {
     menu.className = 'menu';
     menu.append(
       menuItem(t('js.menu.download'), () => exportSave(i)),
-      menuItem(t('js.menu.import'), () => { saveTarget = i; $('save-file').click(); }),
-      menuItem(t('js.menu.reset'), async () => {
-        if (!confirm(t('js.confirmReset', { name }))) return;
-        if (withPath('', () => M._pocket_save_reset(i)) < 0) { say(lastError(), true); return; }
-        await syncFs(false);
-        say(t('js.resetDone'));
-      }, true),
-      menuItem(t('js.menu.delete'), async () => {
-        if (!confirm(t('js.confirmDelete', { name }))) return;
-        if (M._pocket_delete_game(i) !== 0) removeTree(`/library/games/${gameId(i)}`);
-        await syncFs(false);
-        location.reload();
-      }, true),
+      menuItem(t('js.menu.import'), () => {
+        saveTarget = i;
+        $('save-file').click();
+      }),
+      menuItem(
+        t('js.menu.reset'),
+        async () => {
+          if (!confirm(t('js.confirmReset', { name }))) return;
+          if (withPath('', () => M._pocket_save_reset(i)) < 0) {
+            say(lastError(), true);
+            return;
+          }
+          await syncFs(false);
+          say(t('js.resetDone'));
+        },
+        true,
+      ),
+      menuItem(
+        t('js.menu.delete'),
+        async () => {
+          if (!confirm(t('js.confirmDelete', { name }))) return;
+          if (M._pocket_delete_game(i) !== 0) removeTree(`/library/games/${gameId(i)}`);
+          await syncFs(false);
+          location.reload();
+        },
+        true,
+      ),
+      menuItem(uiText('名稱與收藏', 'Name and favorite'), async () => {
+        const alias = prompt(
+          uiText('顯示別名（空白使用正式名稱）', 'Display alias (empty uses original name)'),
+          meta.alias || '',
+        );
+        if (alias === null) return;
+        await writePresentation(gameId(i), { ...meta, alias: alias.slice(0, 256) });
+        listGames();
+      }),
+      menuItem(meta.favorite ? uiText('取消收藏', 'Unfavorite') : uiText('收藏', 'Favorite'), async () => {
+        await writePresentation(gameId(i), { ...meta, favorite: !meta.favorite });
+        listGames();
+      }),
+      menuItem(uiText('介紹與操作方式', 'About and controls'), () => openLocalControls(i)),
     );
     more.append(summary, menu);
     row.append(play, more);
     list.append(row);
   }
-  filterGames();
 }
 document.addEventListener('click', (event) => {
   for (const open of document.querySelectorAll('details.more[open]')) {
     if (!open.contains(event.target)) open.open = false;
   }
 });
-$('find-game').addEventListener('input', filterGames);
 
 async function importFile(file) {
   say(t('js.importing', { file: file.name }));
   await new Promise((resolve) => setTimeout(resolve, 30));
   // The library names a game after its file, so the file keeps its own name.
-  try { M.FS.mkdir('/import'); } catch { /* already there */ }
+  try {
+    M.FS.mkdir('/import');
+  } catch {
+    /* already there */
+  }
   const path = `/import/${file.name.replace(/[\\/]/g, '_')}`;
   M.FS.writeFile(path, new Uint8Array(await file.arrayBuffer()));
   const result = withPath(path, (p) => M._pocket_import(p));
   M.FS.unlink(path);
-  if (result !== 0) { say(lastError(), true); return; }
+  if (result !== 0) {
+    say(lastError(), true);
+    return;
+  }
   await syncFs(false);
   listGames();
   const note = M.UTF8ToString(M._pocket_import_note());
@@ -894,7 +1427,6 @@ async function importFile(file) {
 }
 
 let stopAudio = () => {};
-let audioContext = null;
 function startAudio() {
   stopAudio();
   const Context = window.AudioContext || window.webkitAudioContext;
@@ -908,7 +1440,10 @@ function startAudio() {
     const mix = M.HEAPF32.subarray(buffer >> 2, (buffer >> 2) + AUDIO_FRAMES * 2);
     const left = event.outputBuffer.getChannelData(0);
     const right = event.outputBuffer.getChannelData(1);
-    for (let i = 0; i < AUDIO_FRAMES; i++) { left[i] = mix[i * 2]; right[i] = mix[i * 2 + 1]; }
+    for (let i = 0; i < AUDIO_FRAMES; i++) {
+      left[i] = mix[i * 2];
+      right[i] = mix[i * 2 + 1];
+    }
   };
   node.connect(audio.destination);
   audio.resume().catch(console.error);
@@ -926,29 +1461,70 @@ function startAudio() {
 // A press shorter than a frame or two never registers: Pocket Quake samples its
 // keys once per frame, and a quick tap can start and end between samples. Slower
 // machines have longer frames, so the shortest press follows the frame rate.
-const pressedAt = new Map(), pendingUp = new Map();
+const pressedAt = new Map(),
+  pendingUp = new Map(),
+  keySources = new Map();
+let detachInput = () => {},
+  releasePointer = () => {},
+  saveTimer = null,
+  sessionNumber = 0;
 function keyUp(vk) {
   clearTimeout(pendingUp.get(vk));
   pendingUp.delete(vk);
   pressedAt.delete(vk);
+  keySources.delete(vk);
   M._pocket_key(0, vk);
 }
-function press(vk) {
-  if (pendingUp.has(vk)) keyUp(vk);
+function press(vk, source = 'keyboard') {
+  if (!running) return;
+  const sources = keySources.get(vk) || new Set();
+  if (sources.has(source)) return;
+  sources.add(source);
+  keySources.set(vk, sources);
+  clearTimeout(pendingUp.get(vk));
+  pendingUp.delete(vk);
+  if (pressedAt.has(vk)) return;
   pressedAt.set(vk, performance.now());
   M._pocket_key(1, vk);
 }
-// Let go of every key still down: when the game ends, the tab is hidden or
-// the window loses focus, a key whose KeyUp never comes must not stay held.
-function releaseAll() {
-  for (const vk of [...pressedAt.keys()]) keyUp(vk);
-}
-function release(vk) {
+function release(vk, source = 'keyboard') {
+  const sources = keySources.get(vk);
+  if (!sources?.delete(source)) return;
+  if (sources.size) return;
   if (!pressedAt.has(vk)) return;
   const held = performance.now() - pressedAt.get(vk);
   const shortest = Math.min(MAX_PRESS_MS, frameMs * FRAMES_PER_PRESS);
   if (held >= shortest) keyUp(vk);
-  else pendingUp.set(vk, setTimeout(() => keyUp(vk), shortest - held));
+  else
+    pendingUp.set(
+      vk,
+      setTimeout(() => keyUp(vk), shortest - held),
+    );
+}
+function pulseKey(vk, source = 'activation') {
+  press(vk, source);
+  const sources = keySources.get(vk);
+  if (sources?.delete(source) && !sources.size) keyUp(vk);
+}
+function releaseAllInput() {
+  for (const vk of [...pressedAt.keys()]) keyUp(vk);
+  releasePointer();
+  for (const key of document.querySelectorAll('.pad .key.down')) key.classList.remove('down');
+}
+function finishWebSession() {
+  sessionNumber++;
+  detachInput();
+  detachInput = () => {};
+  releaseAllInput();
+  clearInterval(saveTimer);
+  saveTimer = null;
+  stopAudio();
+  running = false;
+  runningIndex = null;
+  if (gameMenu.open) gameMenu.close();
+  softwareUI.refresh();
+  pauseReasons.clear();
+  document.body.classList.remove('playing');
 }
 
 // Landscape games of the time drew sideways on the portrait screen and the
@@ -957,109 +1533,297 @@ function release(vk) {
 let rotation = 0;
 function fitCanvas() {
   const canvas = $('screen');
+  const chromeHeight =
+    document.querySelector('.bar').getBoundingClientRect().height +
+    ($('vkbd').hidden ? 0 : $('vkbd').getBoundingClientRect().height);
+  $('stage').style.setProperty('--play-chrome-height', `${Math.ceil(chromeHeight)}px`);
   const area = canvas.parentElement.getBoundingClientRect();
   const [w, h] = [canvas.width, canvas.height];
   const turned = rotation !== 0;
-  const scale = 0.98 * Math.max(0.1, Math.min(area.width / (turned ? h : w), area.height / (turned ? w : h)));
+  const scale =
+    0.98 *
+    Math.max(0.1, Math.min(area.width / (turned ? h : w), area.height / (turned ? w : h))) *
+    activeControls.zoom;
   canvas.style.width = `${w * scale}px`;
   canvas.style.height = `${h * scale}px`;
+  const half = 0.5 / activeControls.zoom;
+  const cx = Math.max(half, Math.min(1 - half, activeControls.zoom_x)),
+    cy = Math.max(half, Math.min(1 - half, activeControls.zoom_y));
+  const dx = (0.5 - cx) * w * scale,
+    dy = (0.5 - cy) * h * scale;
+  const [sx, sy] = rotation === 90 ? [-dy, dx] : rotation === 270 ? [dy, -dx] : [dx, dy];
+  canvas.style.left = `calc(50% + ${sx}px)`;
+  canvas.style.top = `calc(50% + ${sy}px)`;
   canvas.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
 }
-window.addEventListener('resize', () => { if (running) fitCanvas(); });
+window.addEventListener('resize', () => {
+  if (running) fitCanvas();
+});
 
 // Every listener one game session adds; ended with the session, so starting
 // another game on the same page does not stack a second set of handlers.
-let inputSession = null;
 function attachInput(canvas, width, height) {
-  inputSession?.abort();
-  inputSession = new AbortController();
-  const listen = { signal: inputSession.signal };
+  const controller = new AbortController();
+  const on = (node, event, action) => node.addEventListener(event, action, { signal: controller.signal });
   const at = (event) => {
     const box = canvas.getBoundingClientRect();
-    const u = (event.clientX - box.left) / box.width, v = (event.clientY - box.top) / box.height;
+    const u = (event.clientX - box.left) / box.width,
+      v = (event.clientY - box.top) / box.height;
     const [x, y] = rotation === 90 ? [v, 1 - u] : rotation === 270 ? [1 - v, u] : [u, v];
     return [
       Math.min(width - 1, Math.max(0, Math.floor(x * width))),
       Math.min(height - 1, Math.max(0, Math.floor(y * height))),
     ];
   };
-  let stylus = false;
-  canvas.addEventListener('pointerdown', (event) => {
+  let stylus = null,
+    lastPoint = [0, 0];
+  releasePointer = () => {
+    if (stylus !== null) {
+      M._pocket_pointer(2, ...lastPoint);
+      stylus = null;
+    }
+  };
+  on(canvas, 'pointerdown', (event) => {
+    if (!running || pauseReasons.size || stylus !== null) return;
     event.preventDefault();
     canvas.focus();
     canvas.setPointerCapture(event.pointerId);
-    stylus = true;
-    M._pocket_pointer(1, ...at(event));
-  }, listen);
-  canvas.addEventListener('pointermove', (event) => { if (stylus) M._pocket_pointer(0, ...at(event)); }, listen);
-  const lift = (event) => { if (!stylus) return; stylus = false; M._pocket_pointer(2, ...at(event)); };
-  canvas.addEventListener('pointerup', lift, listen);
-  canvas.addEventListener('pointercancel', lift, listen);
+    stylus = event.pointerId;
+    lastPoint = at(event);
+    M._pocket_pointer(1, ...lastPoint);
+  });
+  on(canvas, 'pointermove', (event) => {
+    if (stylus === event.pointerId) {
+      lastPoint = at(event);
+      M._pocket_pointer(0, ...lastPoint);
+    }
+  });
+  const lift = (event) => {
+    if (stylus === event.pointerId) {
+      lastPoint = at(event);
+      releasePointer();
+    }
+  };
+  on(canvas, 'pointerup', lift);
+  on(canvas, 'pointercancel', lift);
 
-  // Keys typed into a text field of the page (a search box, a dialog) are
-  // the page's, not the game's.
-  const typing = (event) => event.target instanceof HTMLElement
-    && (event.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName));
-  const ignored = (event) => typing(event) || event.ctrlKey || event.metaKey || event.altKey || event.keyCode >= 112;
-  window.addEventListener('keydown', (event) => {
-    if (ignored(event)) return;
-    event.preventDefault();
-    if (!event.repeat) press(event.keyCode);
-  }, listen);
-  window.addEventListener('keyup', (event) => {
-    if (ignored(event)) return;
-    event.preventDefault();
-    release(event.keyCode);
-  }, listen);
-  window.addEventListener('blur', releaseAll, listen);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAll(); }, listen);
-
-  for (const key of document.querySelectorAll('.pad .key')) {
-    const vk = Number(key.dataset.vk);
-    key.addEventListener('pointerdown', (event) => {
+  const hostName = (event) =>
+    ({
+      ArrowUp: 'Up',
+      ArrowDown: 'Down',
+      ArrowLeft: 'Left',
+      ArrowRight: 'Right',
+      ' ': 'Space',
+      Control: 'Ctrl',
+      Escape: 'Esc',
+    })[event.key] || (event.key.length === 1 ? event.key.toUpperCase() : event.key);
+  const keyboardHeld = new Map();
+  const binding = (name, fallback) =>
+    activeControls.bindings.find(
+      (b) => PocketLibraryUI.canonicalName(b.input) === PocketLibraryUI.canonicalName(name),
+    )?.vk ?? fallback;
+  on(window, 'keydown', (event) => {
+    if (
+      (event.code.toLowerCase() === activeControls.menu_key.toLowerCase() ||
+        hostName(event).toLowerCase() === activeControls.menu_key.toLowerCase()) &&
+      !event.repeat &&
+      !event.target.closest?.('input,textarea,[contenteditable=true]')
+    ) {
       event.preventDefault();
-      key.setPointerCapture(event.pointerId);
-      key.classList.add('down');
-      navigator.vibrate?.(8);
-      press(vk);
-    }, listen);
-    const up = () => { if (!key.classList.contains('down')) return; key.classList.remove('down'); release(vk); };
-    key.addEventListener('pointerup', up, listen);
-    key.addEventListener('pointercancel', up, listen);
+      openGameMenu();
+      return;
+    }
+    if (
+      !running ||
+      pauseReasons.size ||
+      document.querySelector('dialog[open]') ||
+      event.metaKey ||
+      event.altKey ||
+      event.keyCode >= 112 ||
+      event.target.closest?.('input,select,textarea,button,[role=button],[contenteditable=true]')
+    )
+      return;
+    event.preventDefault();
+    if (!event.repeat) {
+      const vk = binding(hostName(event), event.keyCode);
+      keyboardHeld.set(event.code, vk);
+      if (vk) press(vk, `keyboard:${event.code}`);
+    }
+  });
+  on(window, 'keyup', (event) => {
+    const vk = keyboardHeld.get(event.code);
+    if (vk !== undefined) {
+      event.preventDefault();
+      release(vk, `keyboard:${event.code}`);
+      keyboardHeld.delete(event.code);
+    }
+  });
+  on(window, 'blur', () => {
+    keyboardHeld.clear();
+    setPaused('focus', true);
+  });
+  on(window, 'focus', () => setPaused('focus', false));
+  on(document, 'visibilitychange', () => setPaused('background', document.hidden));
+  const pad = document.querySelector('.pad');
+  const pointers = new Map();
+  on(pad, 'pointerdown', (event) => {
+    const key = event.target.closest('.key');
+    if (!key || pauseReasons.size || !running) return;
+    if (key.dataset.mode === 'click') return;
+    event.preventDefault();
+    key.setPointerCapture(event.pointerId);
+    key.classList.add('down');
+    const vk = Number(key.dataset.vk);
+    pointers.set(event.pointerId, vk);
+    press(vk, `pad:${event.pointerId}`);
+  });
+  const up = (event) => {
+    const vk = pointers.get(event.pointerId);
+    if (vk !== undefined) {
+      release(vk, `pad:${event.pointerId}`);
+      pointers.delete(event.pointerId);
+      event.target.classList.remove('down');
+    }
+  };
+  on(pad, 'pointerup', up);
+  on(pad, 'pointercancel', up);
+  on(pad, 'lostpointercapture', up);
+  on(pad, 'click', (event) => {
+    const key = event.target.closest('.key');
+    if (key?.dataset.mode === 'click' && running && !pauseReasons.size) pulseKey(Number(key.dataset.vk));
+  });
+  on(pad, 'keydown', (event) => {
+    const key = event.target.closest('.key');
+    if (
+      key &&
+      key.dataset.mode !== 'click' &&
+      !pauseReasons.size &&
+      ['Space', 'Enter'].includes(event.code)
+    ) {
+      event.preventDefault();
+      if (!event.repeat) press(Number(key.dataset.vk), `focus:${key.dataset.vk}`);
+    }
+  });
+  on(pad, 'keyup', (event) => {
+    const key = event.target.closest('.key');
+    if (key && key.dataset.mode !== 'click' && ['Space', 'Enter'].includes(event.code)) {
+      event.preventDefault();
+      release(Number(key.dataset.vk), `focus:${key.dataset.vk}`);
+    }
+  });
+  on(pad, 'focusout', (event) => {
+    const key = event.target.closest('.key');
+    if (key) release(Number(key.dataset.vk), `focus:${key.dataset.vk}`);
+  });
+  let poll,
+    menuChord = false;
+  const padsHeld = new Map();
+  const padNames = [
+    'PadA',
+    'PadB',
+    'PadX',
+    'PadY',
+    'PadL1',
+    'PadR1',
+    'PadL2',
+    'PadR2',
+    'PadSelect',
+    'PadStart',
+    'PadL3',
+    'PadR3',
+    'PadUp',
+    'PadDown',
+    'PadLeft',
+    'PadRight',
+  ];
+  const padVks = [13, 32, 16, 17, 9, 27, 9, 27, 9, 27, 0, 0, 38, 40, 37, 39];
+  const pollPads = () => {
+    const devices = [...(navigator.getGamepads?.() || [])].filter(Boolean);
+    const chord = devices.some(
+      (p) =>
+        (p.buttons[8]?.pressed && p.buttons[9]?.pressed) ||
+        (p.buttons[10]?.pressed && !activeControls.bindings.some((b) => b.input.toLowerCase() === 'padl3')),
+    );
+    if (chord && !menuChord) {
+      if (gameMenu.open) gameMenu.close();
+      else openGameMenu();
+    }
+    menuChord = chord;
+    const next = new Map();
+    if (!pauseReasons.size && !chord)
+      for (const device of devices) {
+        const buttons = device.buttons.map((b) => b.pressed);
+        buttons[14] ||= device.axes[0] < -0.5;
+        buttons[15] ||= device.axes[0] > 0.5;
+        buttons[12] ||= device.axes[1] < -0.5;
+        buttons[13] ||= device.axes[1] > 0.5;
+        buttons.forEach((held, i) => {
+          const vk = binding(padNames[i] || `Pad${i}`, padVks[i] || 0);
+          if (held && vk) next.set(`gamepad:${device.index}:${i}`, vk);
+        });
+      }
+    for (const [source, vk] of padsHeld) if (next.get(source) !== vk) release(vk, source);
+    for (const [source, vk] of next)
+      if (padsHeld.get(source) !== vk || !keySources.get(vk)?.has(source)) press(vk, source);
+    padsHeld.clear();
+    for (const pair of next) padsHeld.set(...pair);
+    pad.hidden = activeControls.keys.length === 0 || (activeControls.auto_hide_gamepad && devices.length > 0);
+    poll = requestAnimationFrame(pollPads);
+  };
+  poll = requestAnimationFrame(pollPads);
+  return () => {
+    cancelAnimationFrame(poll);
+    controller.abort();
+    releaseAllInput();
+    releasePointer = () => {};
+  };
+}
+
+let starting = false;
+async function start(index) {
+  if (running || starting) return;
+  starting = true;
+  let config;
+  try {
+    config = readControls(gameId(index));
+  } catch (error) {
+    starting = false;
+    say(String(error), true);
+    return;
   }
-}
-
-// End what a game session set up: its input handlers, held keys and the
-// periodic save.
-let saveTimer = 0;
-function endSession() {
-  document.body.classList.remove('no-pad');
-  $('paused').hidden = true;
-  $('pause').setAttribute('aria-pressed', 'false');
-  M?._pocket_pause?.(0);
-  inputSession?.abort();
-  inputSession = null;
-  releaseAll();
-  clearInterval(saveTimer);
-  saveTimer = 0;
-}
-
-function start(index) {
-  if (running) return;
-  if (M._pocket_boot(index) !== 0) { say(lastError(), true); return; }
+  say(uiText('正在啟動…', 'Starting…'));
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  starting = false;
+  if (M._pocket_boot(index) !== 0) {
+    say(lastError(), true);
+    return;
+  }
   running = true;
-  markPlayed(gameId(index));
+  runningIndex = index;
+  const id = gameId(index);
+  writePresentation(id, { ...readPresentation(id), last_played: Math.floor(Date.now() / 1000) }).catch(
+    (error) => toast(String(error)),
+  );
+  pauseReasons.clear();
+  const session = ++sessionNumber;
   const canvas = $('screen');
   const [width, height] = [M._pocket_width(), M._pocket_height()];
   canvas.width = width;
   canvas.height = height;
   document.body.classList.add('playing');
   $('play-title').textContent = M.UTF8ToString(M._pocket_game_name(index));
+  $('hud').hidden = localStorage.getItem('show-fps') !== 'true';
   initHelp();
-  try { rotation = Number(localStorage.getItem(`rotate:${gameId(index)}`)) || 0; } catch { rotation = 0; }
+  try {
+    rotation = Number(localStorage.getItem(`rotate:${gameId(index)}`)) || 0;
+  } catch {
+    rotation = 0;
+  }
   // On-screen keys: shown unless hidden for this game.
   let showPad = true;
-  try { showPad = localStorage.getItem(`pad:${gameId(index)}`) !== '0'; } catch {}
+  try {
+    showPad = localStorage.getItem(`pad:${gameId(index)}`) !== '0';
+  } catch {}
   const applyPad = () => {
     document.body.classList.toggle('no-pad', !showPad);
     $('pad-toggle').setAttribute('aria-pressed', String(showPad));
@@ -1067,7 +1831,9 @@ function start(index) {
   };
   $('pad-toggle').onclick = () => {
     showPad = !showPad;
-    try { localStorage.setItem(`pad:${gameId(index)}`, showPad ? '1' : '0'); } catch {}
+    try {
+      localStorage.setItem(`pad:${gameId(index)}`, showPad ? '1' : '0');
+    } catch {}
     applyPad();
   };
   applyPad();
@@ -1075,11 +1841,15 @@ function start(index) {
     // 0 -> 270 -> 90 -> 0: games drawn for a device held sideways usually
     // need the anticlockwise turn, so that comes first.
     rotation = rotation === 0 ? 270 : rotation === 270 ? 90 : 0;
-    try { localStorage.setItem(`rotate:${gameId(index)}`, String(rotation)); } catch {}
-    fitCanvas();
+    try {
+      localStorage.setItem(`rotate:${gameId(index)}`, String(rotation));
+    } catch {}
+    applyControls(activeControls);
   };
   canvas.focus();
-  attachInput(canvas, width, height);
+  detachInput();
+  detachInput = attachInput(canvas, width, height);
+  applyControls(config);
   startAudio();
   const warning = M.UTF8ToString(M._pocket_boot_warning());
   if (/mfcce|olece/i.test(warning)) {
@@ -1088,40 +1858,45 @@ function start(index) {
     $('fix-go').onclick = () => fixMfc(index);
     fixMfc(index);
   } else if (warning) toast(warning);
-  $('save-now').onclick = () => { syncFs(false).catch(console.error); exportSave(index); };
+  $('save-now').onclick = async () => {
+    try {
+      await syncFs(false);
+      exportSave(index);
+    } catch (error) {
+      toast(String(error));
+    }
+  };
 
   const context = canvas.getContext('2d');
   const channel = new MessageChannel();
-  let serial = 0, frames = 0, shownAt = performance.now(), lastFrameAt = shownAt;
-  let paused = false;
-  // Pausing stops the ticks, the guest clock (so timers and frame steps do
-  // not jump on resuming) and the sound; resuming picks all three up.
-  const setPaused = (on) => {
-    if (on === paused || !running) return;
-    paused = on;
-    M._pocket_pause(on ? 1 : 0);
-    releaseAll();
-    $('paused').hidden = !on;
+  let serial = 0,
+    frames = 0,
+    shownAt = performance.now(),
+    lastFrameAt = shownAt;
+  // The Pause button and the "paused" overlay use the page-wide setPaused
+  // (guest clock, sound and ticks all stop in the core). Resuming restarts
+  // the frame-rate window so the pause does not show up as a slow frame.
+  pauseObserver = (on) => {
+    $('paused').hidden = !on || !running;
     $('pause').setAttribute('aria-pressed', String(on));
     if (on) {
       $('hud').textContent = '';
       $('hud').classList.remove('slow');
-      audioContext?.suspend().catch(console.error);
-      syncFs(false).catch(console.error);
     } else {
-      audioContext?.resume().catch(console.error);
       lastFrameAt = shownAt = performance.now();
       frames = 0;
       canvas.focus();
-      pump();
     }
   };
-  $('pause').onclick = () => setPaused(!paused);
-  $('paused').onclick = () => setPaused(false);
-  // A hidden tab pauses by itself; the player resumes when back.
-  document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); }, { signal: inputSession.signal });
+  $('pause').onclick = () => setPaused('user', !pauseReasons.has('user'));
+  $('paused').onclick = () => setPaused('user', false);
+  // A hidden tab pauses by itself and resumes when back (the 'background' reason in attachInput).
   const pump = () => {
-    if (paused) return;
+    if (!running || session !== sessionNumber) {
+      channel.port1.close();
+      channel.port2.close();
+      return;
+    }
     const delay = M._pocket_tick();
     const current = M._pocket_frame_serial();
     if (current !== serial) {
@@ -1135,7 +1910,7 @@ function start(index) {
     }
     const now = performance.now();
     if (now - shownAt >= 1000) {
-      const fps = frames * 1000 / (now - shownAt);
+      const fps = (frames * 1000) / (now - shownAt);
       // A screen that is not changing presents no frames; that is a still
       // picture, not a slow game, so it shows no rate at all.
       $('hud').textContent = frames ? `${fps.toFixed(0)} FPS` : '';
@@ -1144,10 +1919,9 @@ function start(index) {
       shownAt = now;
     }
     if (delay < 0) {
-      stopAudio();
-      endSession();
-      running = false;
-      document.body.classList.remove('playing');
+      finishWebSession();
+      channel.port1.close();
+      channel.port2.close();
       syncFs(false);
       const error = lastError();
       say(error || t('js.ended'), Boolean(error));
@@ -1160,15 +1934,16 @@ function start(index) {
       return;
     }
     // setTimeout(0) is clamped to 4 ms, which would cost a slow machine frames.
-    if (delay > 0) setTimeout(pump, delay); else channel.port2.postMessage(0);
+    if (delay > 0) setTimeout(pump, delay);
+    else channel.port2.postMessage(0);
   };
   channel.port1.onmessage = pump;
   pump();
-  clearInterval(saveTimer);
-  saveTimer = setInterval(() => { if (running) syncFs(false).catch(console.error); }, SAVE_EVERY_MS);
+  if (running)
+    saveTimer = setInterval(() => {
+      if (running) syncFs(false).catch(console.error);
+    }, SAVE_EVERY_MS);
 }
-
-
 
 // ---- MFC: take the DLLs from Microsoft's own SDKs on the Internet Archive ----
 // Two builds of mfcce300.dll exist and neither has every export of the
@@ -1177,16 +1952,31 @@ function start(index) {
 // 42 of the 2000 ones. So the import table decides, and the DLL that was
 // fetched is checked against it before it goes in.
 const MFC_SDKS = [
-  { id: '2000', item: 'pocketpc_2000_sdk_web', file: 'pocketpc_2000_sdk_web.exe', label: 'js.sdk2000',
-    cpus: ['arm', 'mips', 'sh3'], path: (cpu, name) => `program files/mfc/lib/${cpu}/${name}`, maxOrdinal: 2730 },
-  { id: '2002', item: 'WMSDK', file: 'ppc2002_sdk.exe', label: 'js.sdk2002',
-    cpus: ['arm'], path: (cpu, name) => `program files/pocket pc 2002/mfc/lib/arm/${name}`, maxOrdinal: 3566 },
+  {
+    id: '2000',
+    item: 'pocketpc_2000_sdk_web',
+    file: 'pocketpc_2000_sdk_web.exe',
+    label: 'js.sdk2000',
+    cpus: ['arm', 'mips', 'sh3'],
+    path: (cpu, name) => `program files/mfc/lib/${cpu}/${name}`,
+    maxOrdinal: 2730,
+  },
+  {
+    id: '2002',
+    item: 'WMSDK',
+    file: 'ppc2002_sdk.exe',
+    label: 'js.sdk2002',
+    cpus: ['arm'],
+    path: (cpu, name) => `program files/pocket pc 2002/mfc/lib/arm/${name}`,
+    maxOrdinal: 3566,
+  },
 ];
 function walk(dir, out = []) {
   for (const name of M.FS.readdir(dir)) {
     if (name === '.' || name === '..') continue;
     const path = `${dir}/${name}`;
-    if (M.FS.isDir(M.FS.stat(path).mode)) walk(path, out); else out.push(path);
+    if (M.FS.isDir(M.FS.stat(path).mode)) walk(path, out);
+    else out.push(path);
   }
   return out;
 }
@@ -1196,19 +1986,35 @@ function pe(bytes) {
   if (bytes.length < 0x40 || v.getUint16(0, true) !== 0x5a4d) return null;
   const at = v.getUint32(0x3c, true);
   if (at + 24 > bytes.length || v.getUint32(at, true) !== 0x4550) return null;
-  const sections = [], count = v.getUint16(at + 6, true), opt = at + 24, optSize = v.getUint16(at + 20, true);
+  const sections = [],
+    count = v.getUint16(at + 6, true),
+    opt = at + 24,
+    optSize = v.getUint16(at + 20, true);
   for (let i = 0, s = opt + optSize; i < count; i++, s += 40)
-    sections.push([v.getUint32(s + 12, true), Math.max(v.getUint32(s + 8, true), v.getUint32(s + 16, true)), v.getUint32(s + 20, true)]);
-  const off = (rva) => { for (const [va, size, raw] of sections) if (rva >= va && rva < va + size) return raw + rva - va; return -1; };
+    sections.push([
+      v.getUint32(s + 12, true),
+      Math.max(v.getUint32(s + 8, true), v.getUint32(s + 16, true)),
+      v.getUint32(s + 20, true),
+    ]);
+  const off = (rva) => {
+    for (const [va, size, raw] of sections) if (rva >= va && rva < va + size) return raw + rva - va;
+    return -1;
+  };
   const dir = (n) => [v.getUint32(opt + 96 + n * 8, true), v.getUint32(opt + 100 + n * 8, true)];
-  const cstr = (o) => { let e = o; while (e < bytes.length && bytes[e]) e++; return new TextDecoder().decode(bytes.subarray(o, e)); };
+  const cstr = (o) => {
+    let e = o;
+    while (e < bytes.length && bytes[e]) e++;
+    return new TextDecoder().decode(bytes.subarray(o, e));
+  };
   return {
     machine: v.getUint16(at + 4, true),
     importsFrom(dll) {
-      const out = new Set(); let d = off(dir(1)[0]);
+      const out = new Set();
+      let d = off(dir(1)[0]);
       if (d < 0) return out;
       for (; d + 20 <= bytes.length; d += 20) {
-        const thunks = v.getUint32(d, true) || v.getUint32(d + 16, true), name = v.getUint32(d + 12, true);
+        const thunks = v.getUint32(d, true) || v.getUint32(d + 16, true),
+          name = v.getUint32(d + 12, true);
         if (!name) break;
         if (cstr(off(name)).toLowerCase() !== dll) continue;
         for (let t = off(thunks); t >= 0 && t + 4 <= bytes.length; t += 4) {
@@ -1220,16 +2026,25 @@ function pe(bytes) {
       return out;
     },
     exports() {
-      const out = new Set(), e = off(dir(0)[0]);
+      const out = new Set(),
+        e = off(dir(0)[0]);
       if (e < 0) return out;
-      const base = v.getUint32(e + 16, true), n = v.getUint32(e + 20, true), f = off(v.getUint32(e + 28, true));
+      const base = v.getUint32(e + 16, true),
+        n = v.getUint32(e + 20, true),
+        f = off(v.getUint32(e + 28, true));
       for (let i = 0; i < n; i++) if (v.getUint32(f + 4 * i, true)) out.add(base + i);
       return out;
     },
   };
 }
-const cpuName = (machine) => [0x1c0, 0x1c2, 0x1c4].includes(machine) ? 'arm'
-  : [0x162, 0x166, 0x169].includes(machine) ? 'mips' : [0x1a2, 0x1a3, 0x1a6].includes(machine) ? 'sh3' : null;
+const cpuName = (machine) =>
+  [0x1c0, 0x1c2, 0x1c4].includes(machine)
+    ? 'arm'
+    : [0x162, 0x166, 0x169].includes(machine)
+      ? 'mips'
+      : [0x1a2, 0x1a3, 0x1a6].includes(machine)
+        ? 'sh3'
+        : null;
 const sdkCache = new Map();
 async function sdkFiles(sdk) {
   if (!sdkCache.has(sdk.id)) {
@@ -1240,11 +2055,15 @@ async function sdkFiles(sdk) {
 }
 async function fixMfc(index, where = 'fix') {
   $(`${where}-go`).disabled = true;
-  const show = (text) => { $(`${where}-text`).textContent = text; };
+  const show = (text) => {
+    $(`${where}-text`).textContent = text;
+  };
   try {
     const dir = `/library/games/${gameId(index)}`;
     const files = walk(dir).filter((p) => /\.(exe|dll)$/i.test(p) && !/\/(mfcce300|olece300)\.dll$/i.test(p));
-    let cpu = null; const need = new Set(); let ole = false;
+    let cpu = null;
+    const need = new Set();
+    let ole = false;
     for (const path of files) {
       const info = pe(M.FS.readFile(path));
       if (!info) continue;
@@ -1254,9 +2073,11 @@ async function fixMfc(index, where = 'fix') {
     }
     cpu = cpu || 'arm';
     const newest = Math.max(0, ...need);
-    const order = MFC_SDKS.filter((s) => s.cpus.includes(cpu))
-      .sort((a, b) => (newest > a.maxOrdinal) - (newest > b.maxOrdinal));
-    let chosen = null, best = null;
+    const order = MFC_SDKS.filter((s) => s.cpus.includes(cpu)).sort(
+      (a, b) => (newest > a.maxOrdinal) - (newest > b.maxOrdinal),
+    );
+    let chosen = null,
+      best = null;
     for (const sdk of order) {
       show(t('js.mfcExtract', { sdk: t(sdk.label) }));
       const sdkMap = await sdkFiles(sdk);
@@ -1266,11 +2087,18 @@ async function fixMfc(index, where = 'fix') {
       const have = pe(dll).exports();
       const missing = [...need].filter((n) => !have.has(n)).length;
       if (!best || missing < best.missing) best = { sdk, dll, missing, sdkMap };
-      if (!missing) { chosen = best; break; }
+      if (!missing) {
+        chosen = best;
+        break;
+      }
     }
     chosen = chosen || best;
     if (!chosen) throw new Error(t('js.mfcNotFound', { cpu: cpu.toUpperCase() }));
-    const targets = new Set(walk(dir).filter((p) => /\.exe$/i.test(p)).map((p) => p.slice(0, p.lastIndexOf('/'))));
+    const targets = new Set(
+      walk(dir)
+        .filter((p) => /\.exe$/i.test(p))
+        .map((p) => p.slice(0, p.lastIndexOf('/'))),
+    );
     const ole300 = chosen.sdkMap.get(chosen.sdk.path(cpu, 'olece300.dll'));
     const oleData = ole300 ? await ole300() : null;
     for (const t of targets) {
@@ -1278,8 +2106,14 @@ async function fixMfc(index, where = 'fix') {
       if (oleData) M.FS.writeFile(`${t}/olece300.dll`, oleData);
     }
     await syncFs(false);
-    show(chosen.missing ? t('js.mfcAddedMissing', { version: chosen.sdk.id, missing: chosen.missing }) : t('js.mfcAdded', { version: chosen.sdk.id }));
-    try { sessionStorage.setItem('pocket-autostart', gameId(index)); } catch {}
+    show(
+      chosen.missing
+        ? t('js.mfcAddedMissing', { version: chosen.sdk.id, missing: chosen.missing })
+        : t('js.mfcAdded', { version: chosen.sdk.id }),
+    );
+    try {
+      sessionStorage.setItem('pocket-autostart', gameId(index));
+    } catch {}
     location.reload();
   } catch (error) {
     show(t('js.mfcFailed', { error: error.message }));
@@ -1288,24 +2122,785 @@ async function fixMfc(index, where = 'fix') {
 }
 
 // ---- Free software wall ----
-const CATALOG = /*CATALOG*/[{"item":"tucows_164867_Pocket_Quake","file":"PocketQuakeARM.zip","title":"Pocket Quake","kind":"game","cpu":"ARM","license":"GPL＋共享版資料","desc":"Quake 掌上版，附 id Software 的共享版第一章。會一併下載 18 MB 的遊戲資料。","shot":"quake","build":"quake"},{"item":"tucows_200089_Free_Cell","file":"FreeCell_ARM.zip","title":"FreeCell","kind":"game","cpu":"ARM","license":"Tucows","desc":"經典新接龍，免費軟體。","shot":"freecell"},{"item":"tucows_182765_Pocket_Slay","file":"PocketSlay.zip","title":"Pocket Slay","kind":"game","cpu":"ARM","license":"Tucows","desc":"六角格回合制領土戰略。開局時畫面是黑的：點一下畫面，選難度後按 OK。","shot":"slay"},{"item":"tucows_254025_Pocket_Taipei","file":"ptaipei10.zip","title":"Pocket Taipei","kind":"game","cpu":"ARM","license":"Tucows","desc":"麻將牌配對消除。","shot":"taipei"},{"item":"tucows_240055_Blocks_extracted","file":"Blocks/install.PPC_ARM.CAB","title":"Blocks","kind":"game","cpu":"ARM","license":"Tucows","desc":"俄羅斯方塊類方塊遊戲。","shot":"blocks"},{"item":"tucows_243676_Hanoi_Tower","file":"CEZebra100b2.exe","title":"CEZebra 黑白棋","kind":"game","cpu":"ARM","license":"Tucows","desc":"CEZebra 黑白棋（Reversi）。","shot":"zebra"},{"item":"tucows_208847_PocketConquest","file":"PocketConquest.zip","title":"PocketConquest","kind":"game","cpu":"ARM","license":"Tucows","desc":"世界地圖上的兵棋征服戰略。","shot":"conquest"},{"item":"tucows_309937_GNUChess","file":"GNUChess.zip","title":"GNUChess","kind":"game","cpu":"ARM","license":"Tucows","desc":"開源西洋棋引擎 GNU Chess。"},{"item":"tucows_229202_Bubble_Shooter","file":"bubshootce.exe","title":"Bubble Shooter","kind":"game","cpu":"ARM","license":"Tucows","desc":"泡泡龍類射擊消除（試用版）。","shot":"tucows_229202_bubble_shooter"},{"item":"tucows_230188_Bubble_Thriller","file":"thrillce.exe","title":"Bubble Thriller","kind":"game","cpu":"ARM","license":"Tucows","desc":"泡泡射擊消除（試用版）。","shot":"tucows_230188_bubble_thriller"},{"item":"tucows_309982_Crack_Game","file":"Crack.exe","title":"Crack Game","kind":"game","cpu":"ARM","license":"Tucows","desc":"撲克牌接龍遊戲。"},{"item":"tucows_291799_DevilDarts","file":"DevilDartsSetup_demo_arm.exe","title":"DevilDarts","kind":"game","cpu":"ARM","license":"Tucows","desc":"射飛鏢（試玩版）。","shot":"tucows_291799_devildarts"},{"item":"tucows_273050_Dragon_Bane_II","file":"DB2SetupARM.exe","title":"Dragon Bane II","kind":"game","cpu":"ARM","license":"Tucows","desc":"角色扮演冒險遊戲。","shot":"tucows_273050_dragon_bane_ii"},{"item":"tucows_314055_Elevens_Game","file":"Elevens.exe","title":"Elevens Game","kind":"game","cpu":"ARM","license":"Tucows","desc":"撲克牌湊十一接龍。"},{"item":"tucows_250046_Gem_Slider","file":"gslidece.exe","title":"Gem Slider","kind":"game","cpu":"ARM","license":"Tucows","desc":"寶石滑動消除（試用版）。"},{"item":"tucows_210362_Line4Line","file":"line4linearm.zip","title":"Line4Line","kind":"game","cpu":"ARM","license":"Tucows","desc":"連線益智遊戲。","shot":"tucows_210362_line4line"},{"item":"tucows_222951_Moline","file":"Moline_PocketPC_Trial.exe","title":"Moline","kind":"game","cpu":"ARM","license":"Tucows","desc":"益智遊戲（試用版）。"},{"item":"tucows_248733_Nerve","file":"NerveDemoSetup.exe","title":"Nerve","kind":"game","cpu":"ARM","license":"Tucows","desc":"動作遊戲（試玩版）。","shot":"tucows_248733_nerve"},{"item":"tucows_250021_Pocket_Pinball","file":"PocketPinballSetupDemo.exe","title":"Pocket Pinball","kind":"game","cpu":"ARM","license":"Tucows","desc":"彈珠台（試玩版）。","shot":"tucows_250021_pocket_pinball"},{"item":"tucows_279494_PocketSol","file":"psol20.zip","title":"PocketSol","kind":"game","cpu":"ARM","license":"Tucows","desc":"五十多種接龍玩法合集（共享軟體）。","shot":"tucows_279494_pocketsol"},{"item":"tucows_219512_Porta-Pinball","file":"PortaPinSetup300.exe","title":"Porta-Pinball","kind":"game","cpu":"ARM","license":"Tucows","desc":"彈珠台。","shot":"tucows_219512_porta-pinball"},{"item":"tucows_312195_Seven_Game","file":"Seven.exe","title":"Seven Game","kind":"game","cpu":"ARM","license":"Tucows","desc":"撲克牌遊戲「七」。"},{"item":"tucows_308748_Sorcery_PDA","file":"InstallDXA.exe","title":"Sorcery PDA","kind":"game","cpu":"ARM","license":"Tucows","desc":"魔法冒險遊戲。"},{"item":"tucows_32181_Yotz","file":"yotzdemo.exe","title":"Yotz","kind":"game","cpu":"ARM","license":"Tucows","desc":"擲骰子遊戲（試玩版）。"},{"item":"tucows_32528_AlarMe","file":"AlarMe_HPC.exe","title":"AlarMe","kind":"tool","cpu":"ARM","license":"Tucows","desc":"鬧鐘提醒。","shot":"tucows_32528_alarme"},{"item":"tucows_272210_AW_RoadLingua","file":"rl_ppc.zip","title":"AW RoadLingua","kind":"tool","cpu":"ARM","license":"Tucows","desc":"旅遊外語片語。","shot":"tucows_272210_aw_roadlingua"},{"item":"tucows_32347_BasiCE","file":"basice.zip","title":"BasiCE","kind":"tool","cpu":"ARM","license":"Tucows","desc":"BASIC 程式語言直譯器。","shot":"tucows_32347_basice"},{"item":"tucows_212355_Calc98","file":"c9853a.exe","title":"Calc98","kind":"tool","cpu":"ARM","license":"Tucows","desc":"工程計算機 Calc98。","shot":"tucows_212355_calc98"},{"item":"tucows_32395_Calendar_Search","file":"CalendarSearchMIPS-PR2.exe","title":"Calendar Search","kind":"tool","cpu":"MIPS","license":"Tucows","desc":"行事曆搜尋。","shot":"tucows_32395_calendar_search"},{"item":"tucows_153762_CE-Star_Suite","file":"ver2PkPCARM.zip","title":"CE-Star Suite","kind":"tool","cpu":"ARM","license":"Tucows","desc":"文書工具套件。","shot":"tucows_153762_ce-star_suite"},{"item":"tucows_232364_CE5250","file":"CE5250_PocketPC.zip","title":"CE5250","kind":"tool","cpu":"ARM","license":"Tucows","desc":"IBM 5250 終端機模擬。","shot":"tucows_232364_ce5250"},{"item":"tucows_38929_CEDBView","file":"cedbview.zip","title":"CEDBView","kind":"tool","cpu":"ARM","license":"Tucows","desc":"Windows CE 資料庫檢視器。"},{"item":"tucows_32190_CEniffer","file":"CEnifferMIPS.zip.CAB","title":"CEniffer","kind":"tool","cpu":"MIPS","license":"Tucows","desc":"網路封包監看。","shot":"tucows_32190_ceniffer"},{"item":"tucows_232362_CETerm","file":"CETerm_PocketPC31.zip","title":"CETerm","kind":"tool","cpu":"ARM","license":"Tucows","desc":"終端機模擬程式。","shot":"tucows_232362_ceterm"},{"item":"tucows_232369_CEVT220","file":"CEVT220_PocketPC.zip","title":"CEVT220","kind":"tool","cpu":"ARM","license":"Tucows","desc":"VT220 終端機模擬。","shot":"tucows_232369_cevt220"},{"item":"tucows_32183_Chat","file":"CHAT.zip","title":"Chat","kind":"tool","cpu":"ARM","license":"Tucows","desc":"聊天程式。","shot":"tucows_32183_chat"},{"item":"tucows_32399_CodeWallet","file":"cwppcev101.exe","title":"CodeWallet","kind":"tool","cpu":"ARM","license":"Tucows","desc":"密碼與個人資料保險箱。","shot":"tucows_32399_codewallet"},{"item":"tucows_358883_CommLog","file":"CommLogCEDesktopSetup.zip","title":"CommLog","kind":"tool","cpu":"ARM","license":"Tucows","desc":"通訊紀錄。","shot":"tucows_358883_commlog"},{"item":"tucows_304510_Connex","file":"Connex_PPC_Setup.exe","title":"Connex","kind":"tool","cpu":"ARM","license":"Tucows","desc":"網路連線工具。","shot":"tucows_304510_connex"},{"item":"tucows_32301_CoolCalc","file":"coolcalcppc.exe","title":"CoolCalc","kind":"tool","cpu":"ARM","license":"Tucows","desc":"計算機。","shot":"tucows_32301_coolcalc"},{"item":"tucows_32532_DeskClock","file":"deskclck.zip","title":"DeskClock","kind":"tool","cpu":"ARM","license":"Tucows","desc":"桌面時鐘。"},{"item":"tucows_270214_dotPocket","file":"dotpocket2003.exe","title":"dotPocket","kind":"tool","cpu":"ARM","license":"Tucows","desc":".NET 開發輔助工具。","shot":"tucows_270214_dotpocket"},{"item":"tucows_32354_dsFORTH","file":"ds2_b3_Setup.exe","title":"dsFORTH","kind":"tool","cpu":"ARM","license":"Tucows","desc":"FORTH 程式語言。","shot":"tucows_32354_dsforth"},{"item":"tucows_32496_dTree","file":"dTree.exe","title":"dTree","kind":"tool","cpu":"ARM","license":"Tucows","desc":"目錄樹檢視。","shot":"tucows_32496_dtree"},{"item":"tucows_330232_ELFView_-_The_Extremely_Large_File_Viewer","file":"ELFViewARM.CAB","title":"ELFView - The Extremely Large File Viewer","kind":"tool","cpu":"ARM","license":"Tucows","desc":"超大檔案檢視器。","shot":"tucows_330232_elfview_-_the_extremely_large_file_viewer"},{"item":"tucows_32432_HPC_Loan_Manager","file":"hpcloan.zip","title":"HPC Loan Manager","kind":"tool","cpu":"ARM","license":"Tucows","desc":"貸款試算（Handheld PC 版）。","shot":"tucows_32432_hpc_loan_manager"},{"item":"tucows_32412_HPC_PPC_Stock_Manager","file":"hpcstock.zip","title":"HPC/PPC Stock Manager","kind":"tool","cpu":"ARM","license":"Tucows","desc":"股票管理（Handheld PC 版）。","shot":"tucows_32412_hpc_ppc_stock_manager"},{"item":"tucows_32414_IntelliGOLF_Par","file":"igtparce.exe","title":"IntelliGOLF Par","kind":"tool","cpu":"ARM","license":"Tucows","desc":"高爾夫計分卡。","shot":"tucows_32414_intelligolf_par"},{"item":"tucows_32505_IrDesk","file":"IrDesk_All.zip","title":"IrDesk","kind":"tool","cpu":"ARM","license":"Tucows","desc":"紅外線傳輸工具。","shot":"tucows_32505_irdesk"},{"item":"tucows_150885_Klondike_WAP_Browser","file":"klondikewapsetup.exe","title":"Klondike WAP Browser","kind":"tool","cpu":"ARM","license":"Tucows","desc":"WAP 手機網頁瀏覽器。","shot":"tucows_150885_klondike_wap_browser"},{"item":"tucows_32202_LinkSpy","file":"LinkSpySH3.zip","title":"LinkSpy","kind":"tool","cpu":"SH3","license":"Tucows","desc":"連線監看工具。","shot":"tucows_32202_linkspy"},{"item":"tucows_222365_Loan_Manager","file":"pkpcloan_setup.exe","title":"Loan Manager","kind":"tool","cpu":"ARM","license":"Tucows","desc":"貸款試算。","shot":"tucows_222365_loan_manager"},{"item":"tucows_328115_Locker","file":"LockerCE_Trial.zip","title":"Locker","kind":"tool","cpu":"ARM","license":"Tucows","desc":"檔案加密鎖（試用版）。","shot":"tucows_328115_locker"},{"item":"tucows_216317_MicroCalc_Standard","file":"MicroCalc108.zip","title":"MicroCalc Standard","kind":"tool","cpu":"ARM","license":"Tucows","desc":"計算機。","shot":"tucows_216317_microcalc_standard"},{"item":"tucows_32364_miniBasic","file":"minibasic.zip","title":"miniBasic","kind":"tool","cpu":"ARM","license":"Tucows","desc":"迷你 BASIC 直譯器。","shot":"tucows_32364_minibasic"},{"item":"tucows_216709_PalmGB","file":"pgbsetup.exe","title":"PalmGB","kind":"tool","cpu":"ARM","license":"Tucows","desc":"Game Boy 模擬器。","shot":"tucows_216709_palmgb"},{"item":"tucows_32646_PalmGB","file":"pgbsetup.exe","title":"PalmGB","kind":"tool","cpu":"ARM","license":"Tucows","desc":"Game Boy 模擬器（舊版）。","shot":"tucows_32646_palmgb"},{"item":"tucows_32648_PilotCE","file":"PilotCE.exe","title":"PilotCE","kind":"tool","cpu":"ARM","license":"Tucows","desc":"飛行計畫計算。","shot":"tucows_32648_pilotce"},{"item":"tucows_255472_Pocket_12C","file":"P12CV150ARM.exe","title":"Pocket 12C","kind":"tool","cpu":"ARM","license":"Tucows","desc":"HP 12C 財務計算機模擬。","shot":"tucows_255472_pocket_12c"},{"item":"tucows_294403_Pocket_15C_Scientific_Calculator","file":"Pocket15CV110.exe","title":"Pocket 15C Scientific Calculator","kind":"tool","cpu":"ARM","license":"Tucows","desc":"HP 15C 科學計算機模擬。","shot":"tucows_294403_pocket_15c_scientific_calculator"},{"item":"tucows_252624_Pocket_Tune","file":"PocketTune_2_0_5.zip","title":"Pocket Tune","kind":"tool","cpu":"ARM","license":"Tucows","desc":"樂器調音器。","shot":"tucows_252624_pocket_tune"},{"item":"tucows_241852_Pocket_Woman","file":"PocketWoman.zip","title":"Pocket Woman","kind":"tool","cpu":"ARM","license":"Tucows","desc":"生理週期行事曆。","shot":"tucows_241852_pocket_woman"},{"item":"tucows_196486_PocketFract","file":"PocketFract.zip","title":"PocketFract","kind":"tool","cpu":"ARM","license":"Tucows","desc":"碎形圖產生器。","shot":"tucows_196486_pocketfract"},{"item":"tucows_145763_PocketNav","file":"pocketnav.zip","title":"PocketNav","kind":"tool","cpu":"ARM","license":"Tucows","desc":"檔案瀏覽與導覽。","shot":"tucows_145763_pocketnav"},{"item":"tucows_145909_PocketNotepad","file":"pocketnotepad21e.zip","title":"PocketNotepad","kind":"tool","cpu":"ARM","license":"Tucows","desc":"記事本。","shot":"tucows_145909_pocketnotepad"},{"item":"tucows_213457_PocketSTM","file":"pocketstmfstrarm.CAB","title":"PocketSTM","kind":"tool","cpu":"ARM","license":"Tucows","desc":"時間管理工具。","shot":"tucows_213457_pocketstm"},{"item":"tucows_76856_Primer","file":"PrimerCE.exe","title":"Primer","kind":"tool","cpu":"ARM","license":"Tucows","desc":"教學工具。","shot":"tucows_76856_primer"},{"item":"tucows_180072_SEdit","file":"seditmips.zip","title":"SEdit","kind":"tool","cpu":"MIPS","license":"Tucows","desc":"文字編輯器。","shot":"tucows_180072_sedit"},{"item":"tucows_216191_SnoopSoft_Dashboard","file":"dashboard.zip","title":"SnoopSoft Dashboard","kind":"tool","cpu":"ARM","license":"Tucows","desc":"系統資訊儀表板。","shot":"tucows_216191_snoopsoft_dashboard"},{"item":"tucows_222355_Stock_Manager","file":"pkpcstocks_setup.exe","title":"Stock Manager","kind":"tool","cpu":"ARM","license":"Tucows","desc":"股票投資組合管理。","shot":"tucows_222355_stock_manager"},{"item":"tucows_277018_TZO_Dynamic_DNS","file":"tzopocketpc.zip","title":"TZO Dynamic DNS","kind":"tool","cpu":"ARM","license":"Tucows","desc":"動態 DNS 用戶端。","shot":"tucows_277018_tzo_dynamic_dns"},{"item":"tucows_245237_UniversalRemoteCE","file":"UniversalRemote_trial.exe","title":"UniversalRemoteCE","kind":"tool","cpu":"ARM","license":"Tucows","desc":"紅外線萬用遙控器（試用版）。","shot":"tucows_245237_universalremotece"},{"item":"tucows_289072_VoiceRecorder","file":"VoiceRecorderSetup_TRIAL_tucows.exe","title":"VoiceRecorder","kind":"tool","cpu":"ARM","license":"Tucows","desc":"錄音機（試用版）。","shot":"tucows_289072_voicerecorder"},{"item":"tucows_226355_WinEyes","file":"wineyesce.zip","title":"WinEyes","kind":"tool","cpu":"ARM","license":"Tucows","desc":"跟著觸控筆轉動的眼睛（經典 xeyes）。","shot":"tucows_226355_wineyes"},{"item":"tucows_32693_XLISP-Plus","file":"xl21gce.zip","title":"XLISP-Plus","kind":"tool","cpu":"ARM","license":"Tucows","desc":"LISP 程式語言直譯器。","shot":"tucows_32693_xlisp-plus"}]/*END*/;
-const corsUrl = (item, file) => `https://archive.org/cors/${item}/${file.split('/').map(encodeURIComponent).join('/')}`;
+const CATALOG = /*CATALOG*/ [
+  {
+    item: 'tucows_164867_Pocket_Quake',
+    file: 'PocketQuakeARM.zip',
+    title: 'Pocket Quake',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'GPL＋共享版資料',
+    desc: 'Quake 掌上版，附 id Software 的共享版第一章。會一併下載 18 MB 的遊戲資料。',
+    shot: 'quake',
+    build: 'quake',
+  },
+  {
+    item: 'tucows_200089_Free_Cell',
+    file: 'FreeCell_ARM.zip',
+    title: 'FreeCell',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '經典新接龍，免費軟體。',
+    shot: 'freecell',
+  },
+  {
+    item: 'tucows_182765_Pocket_Slay',
+    file: 'PocketSlay.zip',
+    title: 'Pocket Slay',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '六角格回合制領土戰略。開局時畫面是黑的：點一下畫面，選難度後按 OK。',
+    shot: 'slay',
+  },
+  {
+    item: 'tucows_254025_Pocket_Taipei',
+    file: 'ptaipei10.zip',
+    title: 'Pocket Taipei',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '麻將牌配對消除。',
+    shot: 'taipei',
+  },
+  {
+    item: 'tucows_240055_Blocks_extracted',
+    file: 'Blocks/install.PPC_ARM.CAB',
+    title: 'Blocks',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '俄羅斯方塊類方塊遊戲。',
+    shot: 'blocks',
+  },
+  {
+    item: 'tucows_243676_Hanoi_Tower',
+    file: 'CEZebra100b2.exe',
+    title: 'CEZebra 黑白棋',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: 'CEZebra 黑白棋（Reversi）。',
+    shot: 'zebra',
+  },
+  {
+    item: 'tucows_208847_PocketConquest',
+    file: 'PocketConquest.zip',
+    title: 'PocketConquest',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '世界地圖上的兵棋征服戰略。',
+    shot: 'conquest',
+  },
+  {
+    item: 'tucows_309937_GNUChess',
+    file: 'GNUChess.zip',
+    title: 'GNUChess',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '開源西洋棋引擎 GNU Chess。',
+  },
+  {
+    item: 'tucows_229202_Bubble_Shooter',
+    file: 'bubshootce.exe',
+    title: 'Bubble Shooter',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '泡泡龍類射擊消除（試用版）。',
+    shot: 'tucows_229202_bubble_shooter',
+  },
+  {
+    item: 'tucows_230188_Bubble_Thriller',
+    file: 'thrillce.exe',
+    title: 'Bubble Thriller',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '泡泡射擊消除（試用版）。',
+    shot: 'tucows_230188_bubble_thriller',
+  },
+  {
+    item: 'tucows_309982_Crack_Game',
+    file: 'Crack.exe',
+    title: 'Crack Game',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '撲克牌接龍遊戲。',
+  },
+  {
+    item: 'tucows_291799_DevilDarts',
+    file: 'DevilDartsSetup_demo_arm.exe',
+    title: 'DevilDarts',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '射飛鏢（試玩版）。',
+    shot: 'tucows_291799_devildarts',
+  },
+  {
+    item: 'tucows_273050_Dragon_Bane_II',
+    file: 'DB2SetupARM.exe',
+    title: 'Dragon Bane II',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '角色扮演冒險遊戲。',
+    shot: 'tucows_273050_dragon_bane_ii',
+  },
+  {
+    item: 'tucows_314055_Elevens_Game',
+    file: 'Elevens.exe',
+    title: 'Elevens Game',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '撲克牌湊十一接龍。',
+  },
+  {
+    item: 'tucows_250046_Gem_Slider',
+    file: 'gslidece.exe',
+    title: 'Gem Slider',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '寶石滑動消除（試用版）。',
+  },
+  {
+    item: 'tucows_210362_Line4Line',
+    file: 'line4linearm.zip',
+    title: 'Line4Line',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '連線益智遊戲。',
+    shot: 'tucows_210362_line4line',
+  },
+  {
+    item: 'tucows_222951_Moline',
+    file: 'Moline_PocketPC_Trial.exe',
+    title: 'Moline',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '益智遊戲（試用版）。',
+  },
+  {
+    item: 'tucows_248733_Nerve',
+    file: 'NerveDemoSetup.exe',
+    title: 'Nerve',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '動作遊戲（試玩版）。',
+    shot: 'tucows_248733_nerve',
+  },
+  {
+    item: 'tucows_250021_Pocket_Pinball',
+    file: 'PocketPinballSetupDemo.exe',
+    title: 'Pocket Pinball',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '彈珠台（試玩版）。',
+    shot: 'tucows_250021_pocket_pinball',
+  },
+  {
+    item: 'tucows_279494_PocketSol',
+    file: 'psol20.zip',
+    title: 'PocketSol',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '五十多種接龍玩法合集（共享軟體）。',
+    shot: 'tucows_279494_pocketsol',
+  },
+  {
+    item: 'tucows_219512_Porta-Pinball',
+    file: 'PortaPinSetup300.exe',
+    title: 'Porta-Pinball',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '彈珠台。',
+    shot: 'tucows_219512_porta-pinball',
+  },
+  {
+    item: 'tucows_312195_Seven_Game',
+    file: 'Seven.exe',
+    title: 'Seven Game',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '撲克牌遊戲「七」。',
+  },
+  {
+    item: 'tucows_308748_Sorcery_PDA',
+    file: 'InstallDXA.exe',
+    title: 'Sorcery PDA',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '魔法冒險遊戲。',
+  },
+  {
+    item: 'tucows_32181_Yotz',
+    file: 'yotzdemo.exe',
+    title: 'Yotz',
+    kind: 'game',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '擲骰子遊戲（試玩版）。',
+  },
+  {
+    item: 'tucows_32528_AlarMe',
+    file: 'AlarMe_HPC.exe',
+    title: 'AlarMe',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '鬧鐘提醒。',
+    shot: 'tucows_32528_alarme',
+  },
+  {
+    item: 'tucows_272210_AW_RoadLingua',
+    file: 'rl_ppc.zip',
+    title: 'AW RoadLingua',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '旅遊外語片語。',
+    shot: 'tucows_272210_aw_roadlingua',
+  },
+  {
+    item: 'tucows_32347_BasiCE',
+    file: 'basice.zip',
+    title: 'BasiCE',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: 'BASIC 程式語言直譯器。',
+    shot: 'tucows_32347_basice',
+  },
+  {
+    item: 'tucows_212355_Calc98',
+    file: 'c9853a.exe',
+    title: 'Calc98',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '工程計算機 Calc98。',
+    shot: 'tucows_212355_calc98',
+  },
+  {
+    item: 'tucows_32395_Calendar_Search',
+    file: 'CalendarSearchMIPS-PR2.exe',
+    title: 'Calendar Search',
+    kind: 'tool',
+    cpu: 'MIPS',
+    license: 'Tucows',
+    desc: '行事曆搜尋。',
+    shot: 'tucows_32395_calendar_search',
+  },
+  {
+    item: 'tucows_153762_CE-Star_Suite',
+    file: 'ver2PkPCARM.zip',
+    title: 'CE-Star Suite',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '文書工具套件。',
+    shot: 'tucows_153762_ce-star_suite',
+  },
+  {
+    item: 'tucows_232364_CE5250',
+    file: 'CE5250_PocketPC.zip',
+    title: 'CE5250',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: 'IBM 5250 終端機模擬。',
+    shot: 'tucows_232364_ce5250',
+  },
+  {
+    item: 'tucows_38929_CEDBView',
+    file: 'cedbview.zip',
+    title: 'CEDBView',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: 'Windows CE 資料庫檢視器。',
+  },
+  {
+    item: 'tucows_32190_CEniffer',
+    file: 'CEnifferMIPS.zip.CAB',
+    title: 'CEniffer',
+    kind: 'tool',
+    cpu: 'MIPS',
+    license: 'Tucows',
+    desc: '網路封包監看。',
+    shot: 'tucows_32190_ceniffer',
+  },
+  {
+    item: 'tucows_232362_CETerm',
+    file: 'CETerm_PocketPC31.zip',
+    title: 'CETerm',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '終端機模擬程式。',
+    shot: 'tucows_232362_ceterm',
+  },
+  {
+    item: 'tucows_232369_CEVT220',
+    file: 'CEVT220_PocketPC.zip',
+    title: 'CEVT220',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: 'VT220 終端機模擬。',
+    shot: 'tucows_232369_cevt220',
+  },
+  {
+    item: 'tucows_32183_Chat',
+    file: 'CHAT.zip',
+    title: 'Chat',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '聊天程式。',
+    shot: 'tucows_32183_chat',
+  },
+  {
+    item: 'tucows_32399_CodeWallet',
+    file: 'cwppcev101.exe',
+    title: 'CodeWallet',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '密碼與個人資料保險箱。',
+    shot: 'tucows_32399_codewallet',
+  },
+  {
+    item: 'tucows_358883_CommLog',
+    file: 'CommLogCEDesktopSetup.zip',
+    title: 'CommLog',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '通訊紀錄。',
+    shot: 'tucows_358883_commlog',
+  },
+  {
+    item: 'tucows_304510_Connex',
+    file: 'Connex_PPC_Setup.exe',
+    title: 'Connex',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '網路連線工具。',
+    shot: 'tucows_304510_connex',
+  },
+  {
+    item: 'tucows_32301_CoolCalc',
+    file: 'coolcalcppc.exe',
+    title: 'CoolCalc',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '計算機。',
+    shot: 'tucows_32301_coolcalc',
+  },
+  {
+    item: 'tucows_32532_DeskClock',
+    file: 'deskclck.zip',
+    title: 'DeskClock',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '桌面時鐘。',
+  },
+  {
+    item: 'tucows_270214_dotPocket',
+    file: 'dotpocket2003.exe',
+    title: 'dotPocket',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '.NET 開發輔助工具。',
+    shot: 'tucows_270214_dotpocket',
+  },
+  {
+    item: 'tucows_32354_dsFORTH',
+    file: 'ds2_b3_Setup.exe',
+    title: 'dsFORTH',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: 'FORTH 程式語言。',
+    shot: 'tucows_32354_dsforth',
+  },
+  {
+    item: 'tucows_32496_dTree',
+    file: 'dTree.exe',
+    title: 'dTree',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '目錄樹檢視。',
+    shot: 'tucows_32496_dtree',
+  },
+  {
+    item: 'tucows_330232_ELFView_-_The_Extremely_Large_File_Viewer',
+    file: 'ELFViewARM.CAB',
+    title: 'ELFView - The Extremely Large File Viewer',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '超大檔案檢視器。',
+    shot: 'tucows_330232_elfview_-_the_extremely_large_file_viewer',
+  },
+  {
+    item: 'tucows_32432_HPC_Loan_Manager',
+    file: 'hpcloan.zip',
+    title: 'HPC Loan Manager',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '貸款試算（Handheld PC 版）。',
+    shot: 'tucows_32432_hpc_loan_manager',
+  },
+  {
+    item: 'tucows_32412_HPC_PPC_Stock_Manager',
+    file: 'hpcstock.zip',
+    title: 'HPC/PPC Stock Manager',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '股票管理（Handheld PC 版）。',
+    shot: 'tucows_32412_hpc_ppc_stock_manager',
+  },
+  {
+    item: 'tucows_32414_IntelliGOLF_Par',
+    file: 'igtparce.exe',
+    title: 'IntelliGOLF Par',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '高爾夫計分卡。',
+    shot: 'tucows_32414_intelligolf_par',
+  },
+  {
+    item: 'tucows_32505_IrDesk',
+    file: 'IrDesk_All.zip',
+    title: 'IrDesk',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '紅外線傳輸工具。',
+    shot: 'tucows_32505_irdesk',
+  },
+  {
+    item: 'tucows_150885_Klondike_WAP_Browser',
+    file: 'klondikewapsetup.exe',
+    title: 'Klondike WAP Browser',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: 'WAP 手機網頁瀏覽器。',
+    shot: 'tucows_150885_klondike_wap_browser',
+  },
+  {
+    item: 'tucows_32202_LinkSpy',
+    file: 'LinkSpySH3.zip',
+    title: 'LinkSpy',
+    kind: 'tool',
+    cpu: 'SH3',
+    license: 'Tucows',
+    desc: '連線監看工具。',
+    shot: 'tucows_32202_linkspy',
+  },
+  {
+    item: 'tucows_222365_Loan_Manager',
+    file: 'pkpcloan_setup.exe',
+    title: 'Loan Manager',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '貸款試算。',
+    shot: 'tucows_222365_loan_manager',
+  },
+  {
+    item: 'tucows_328115_Locker',
+    file: 'LockerCE_Trial.zip',
+    title: 'Locker',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '檔案加密鎖（試用版）。',
+    shot: 'tucows_328115_locker',
+  },
+  {
+    item: 'tucows_216317_MicroCalc_Standard',
+    file: 'MicroCalc108.zip',
+    title: 'MicroCalc Standard',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '計算機。',
+    shot: 'tucows_216317_microcalc_standard',
+  },
+  {
+    item: 'tucows_32364_miniBasic',
+    file: 'minibasic.zip',
+    title: 'miniBasic',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '迷你 BASIC 直譯器。',
+    shot: 'tucows_32364_minibasic',
+  },
+  {
+    item: 'tucows_216709_PalmGB',
+    file: 'pgbsetup.exe',
+    title: 'PalmGB',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: 'Game Boy 模擬器。',
+    shot: 'tucows_216709_palmgb',
+  },
+  {
+    item: 'tucows_32646_PalmGB',
+    file: 'pgbsetup.exe',
+    title: 'PalmGB',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: 'Game Boy 模擬器（舊版）。',
+    shot: 'tucows_32646_palmgb',
+  },
+  {
+    item: 'tucows_32648_PilotCE',
+    file: 'PilotCE.exe',
+    title: 'PilotCE',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '飛行計畫計算。',
+    shot: 'tucows_32648_pilotce',
+  },
+  {
+    item: 'tucows_255472_Pocket_12C',
+    file: 'P12CV150ARM.exe',
+    title: 'Pocket 12C',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: 'HP 12C 財務計算機模擬。',
+    shot: 'tucows_255472_pocket_12c',
+  },
+  {
+    item: 'tucows_294403_Pocket_15C_Scientific_Calculator',
+    file: 'Pocket15CV110.exe',
+    title: 'Pocket 15C Scientific Calculator',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: 'HP 15C 科學計算機模擬。',
+    shot: 'tucows_294403_pocket_15c_scientific_calculator',
+  },
+  {
+    item: 'tucows_252624_Pocket_Tune',
+    file: 'PocketTune_2_0_5.zip',
+    title: 'Pocket Tune',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '樂器調音器。',
+    shot: 'tucows_252624_pocket_tune',
+  },
+  {
+    item: 'tucows_241852_Pocket_Woman',
+    file: 'PocketWoman.zip',
+    title: 'Pocket Woman',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '生理週期行事曆。',
+    shot: 'tucows_241852_pocket_woman',
+  },
+  {
+    item: 'tucows_196486_PocketFract',
+    file: 'PocketFract.zip',
+    title: 'PocketFract',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '碎形圖產生器。',
+    shot: 'tucows_196486_pocketfract',
+  },
+  {
+    item: 'tucows_145763_PocketNav',
+    file: 'pocketnav.zip',
+    title: 'PocketNav',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '檔案瀏覽與導覽。',
+    shot: 'tucows_145763_pocketnav',
+  },
+  {
+    item: 'tucows_145909_PocketNotepad',
+    file: 'pocketnotepad21e.zip',
+    title: 'PocketNotepad',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '記事本。',
+    shot: 'tucows_145909_pocketnotepad',
+  },
+  {
+    item: 'tucows_213457_PocketSTM',
+    file: 'pocketstmfstrarm.CAB',
+    title: 'PocketSTM',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '時間管理工具。',
+    shot: 'tucows_213457_pocketstm',
+  },
+  {
+    item: 'tucows_76856_Primer',
+    file: 'PrimerCE.exe',
+    title: 'Primer',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '教學工具。',
+    shot: 'tucows_76856_primer',
+  },
+  {
+    item: 'tucows_180072_SEdit',
+    file: 'seditmips.zip',
+    title: 'SEdit',
+    kind: 'tool',
+    cpu: 'MIPS',
+    license: 'Tucows',
+    desc: '文字編輯器。',
+    shot: 'tucows_180072_sedit',
+  },
+  {
+    item: 'tucows_216191_SnoopSoft_Dashboard',
+    file: 'dashboard.zip',
+    title: 'SnoopSoft Dashboard',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '系統資訊儀表板。',
+    shot: 'tucows_216191_snoopsoft_dashboard',
+  },
+  {
+    item: 'tucows_222355_Stock_Manager',
+    file: 'pkpcstocks_setup.exe',
+    title: 'Stock Manager',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '股票投資組合管理。',
+    shot: 'tucows_222355_stock_manager',
+  },
+  {
+    item: 'tucows_277018_TZO_Dynamic_DNS',
+    file: 'tzopocketpc.zip',
+    title: 'TZO Dynamic DNS',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '動態 DNS 用戶端。',
+    shot: 'tucows_277018_tzo_dynamic_dns',
+  },
+  {
+    item: 'tucows_245237_UniversalRemoteCE',
+    file: 'UniversalRemote_trial.exe',
+    title: 'UniversalRemoteCE',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '紅外線萬用遙控器（試用版）。',
+    shot: 'tucows_245237_universalremotece',
+  },
+  {
+    item: 'tucows_289072_VoiceRecorder',
+    file: 'VoiceRecorderSetup_TRIAL_tucows.exe',
+    title: 'VoiceRecorder',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '錄音機（試用版）。',
+    shot: 'tucows_289072_voicerecorder',
+  },
+  {
+    item: 'tucows_226355_WinEyes',
+    file: 'wineyesce.zip',
+    title: 'WinEyes',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: '跟著觸控筆轉動的眼睛（經典 xeyes）。',
+    shot: 'tucows_226355_wineyes',
+  },
+  {
+    item: 'tucows_32693_XLISP-Plus',
+    file: 'xl21gce.zip',
+    title: 'XLISP-Plus',
+    kind: 'tool',
+    cpu: 'ARM',
+    license: 'Tucows',
+    desc: 'LISP 程式語言直譯器。',
+    shot: 'tucows_32693_xlisp-plus',
+  },
+]; /*END*/
+const corsUrl = (item, file) =>
+  `https://archive.org/cors/${item}/${file.split('/').map(encodeURIComponent).join('/')}`;
 
 async function download(item, file, label) {
   const response = await fetch(corsUrl(item, file));
   if (!response.ok) throw new Error(t('js.httpError', { status: response.status }));
   const total = Number(response.headers.get('content-length')) || 0;
   const reader = response.body.getReader();
-  const parts = []; let got = 0;
+  const parts = [];
+  let got = 0;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
-    parts.push(value); got += value.length;
-    say(t('js.downloading', { label, progress: total ? Math.round(got * 100 / total) + '%' : Math.round(got / 1024) + ' KB' }));
-    busy(null, t('js.downloading', { label, progress: total ? Math.round(got * 100 / total) + '%' : Math.round(got / 1024) + ' KB' }), total ? got / total : null);
+    parts.push(value);
+    got += value.length;
+    say(
+      t('js.downloading', {
+        label,
+        progress: total ? Math.round((got * 100) / total) + '%' : Math.round(got / 1024) + ' KB',
+      }),
+    );
+    busy(
+      null,
+      t('js.downloading', {
+        label,
+        progress: total ? Math.round((got * 100) / total) + '%' : Math.round(got / 1024) + ' KB',
+      }),
+      total ? got / total : null,
+    );
   }
-  const out = new Uint8Array(got); let at = 0;
-  for (const p of parts) { out.set(p, at); at += p.length; }
+  const out = new Uint8Array(got);
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
   return out;
 }
 
@@ -1320,39 +2915,77 @@ async function unzip(bytes) {
   let at = v.getUint32(eocd + 16, true);
   const files = new Map();
   for (let n = 0; n < count; n++) {
-    const method = v.getUint16(at + 10, true), size = v.getUint32(at + 20, true);
-    const nameLen = v.getUint16(at + 28, true), extraLen = v.getUint16(at + 30, true), commentLen = v.getUint16(at + 32, true);
+    const method = v.getUint16(at + 10, true),
+      size = v.getUint32(at + 20, true);
+    const nameLen = v.getUint16(at + 28, true),
+      extraLen = v.getUint16(at + 30, true),
+      commentLen = v.getUint16(at + 32, true);
     const local = v.getUint32(at + 42, true);
     const name = new TextDecoder().decode(bytes.subarray(at + 46, at + 46 + nameLen));
     at += 46 + nameLen + extraLen + commentLen;
     if (name.endsWith('/')) continue;
     const start = local + 30 + v.getUint16(local + 26, true) + v.getUint16(local + 28, true);
-    const raw = bytes.subarray(start, start + v.getUint32(at - 46 - nameLen - extraLen - commentLen + 20, true));
-    files.set(name, async () => method === 0 ? raw.slice(0, size)
-      : new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()));
+    const raw = bytes.subarray(
+      start,
+      start + v.getUint32(at - 46 - nameLen - extraLen - commentLen + 20, true),
+    );
+    files.set(name, async () =>
+      method === 0
+        ? raw.slice(0, size)
+        : new Uint8Array(
+            await new Response(
+              new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw')),
+            ).arrayBuffer(),
+          ),
+    );
   }
   return files;
 }
-const CRC = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
-const crc32 = (b) => { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+const CRC = new Uint32Array(256).map((_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+const crc32 = (b) => {
+  let c = 0xffffffff;
+  for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+};
 function zipStore(entries) {
-  const enc = new TextEncoder(), chunks = [], central = []; let offset = 0;
+  const enc = new TextEncoder(),
+    chunks = [],
+    central = [];
+  let offset = 0;
   for (const [name, data] of entries) {
-    const n = enc.encode(name), crc = crc32(data);
+    const n = enc.encode(name),
+      crc = crc32(data);
     const h = new DataView(new ArrayBuffer(30));
-    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint32(14, crc, true);
-    h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, n.length, true);
+    h.setUint32(0, 0x04034b50, true);
+    h.setUint16(4, 20, true);
+    h.setUint32(14, crc, true);
+    h.setUint32(18, data.length, true);
+    h.setUint32(22, data.length, true);
+    h.setUint16(26, n.length, true);
     chunks.push(new Uint8Array(h.buffer), n, data);
     const c = new DataView(new ArrayBuffer(46));
-    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint32(16, crc, true);
-    c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, n.length, true); c.setUint32(42, offset, true);
+    c.setUint32(0, 0x02014b50, true);
+    c.setUint16(4, 20, true);
+    c.setUint16(6, 20, true);
+    c.setUint32(16, crc, true);
+    c.setUint32(20, data.length, true);
+    c.setUint32(24, data.length, true);
+    c.setUint16(28, n.length, true);
+    c.setUint32(42, offset, true);
     central.push(new Uint8Array(c.buffer), n);
     offset += 30 + n.length + data.length;
   }
   const size = central.reduce((a, b) => a + b.length, 0);
   const e = new DataView(new ArrayBuffer(22));
-  e.setUint32(0, 0x06054b50, true); e.setUint16(8, entries.length, true); e.setUint16(10, entries.length, true);
-  e.setUint32(12, size, true); e.setUint32(16, offset, true);
+  e.setUint32(0, 0x06054b50, true);
+  e.setUint16(8, entries.length, true);
+  e.setUint16(10, entries.length, true);
+  e.setUint32(12, size, true);
+  e.setUint32(16, offset, true);
   return new Blob([...chunks, ...central, new Uint8Array(e.buffer)]);
 }
 
@@ -1375,7 +3008,10 @@ async function buildQuake(engineItem, engineFile) {
 // The progress card: shown while a one-click game downloads and starts, so
 // the player sees what is happening wherever on the page they clicked.
 function busy(title, text, fraction) {
-  if (title === false) { $('busy').hidden = true; return; }
+  if (title === false) {
+    $('busy').hidden = true;
+    return;
+  }
   $('busy').hidden = false;
   if (title) $('busy-title').textContent = title;
   if (text != null) $('busy-text').textContent = text;
@@ -1386,7 +3022,9 @@ function busy(title, text, fraction) {
 function findGame(title) {
   const want = title.toLowerCase().replace(/[^a-z0-9]/g, '');
   for (let i = 0; i < M._pocket_game_count(); i++) {
-    const name = M.UTF8ToString(M._pocket_game_name(i)).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const name = M.UTF8ToString(M._pocket_game_name(i))
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
     if (name && (name === want || name.includes(want) || want.includes(name))) return i;
   }
   return -1;
@@ -1396,17 +3034,25 @@ async function getFree(entry, button) {
   try {
     // Already in the library: no second download, straight into the game.
     const have = findGame(entry.title);
-    if (have >= 0) { start(have); return; }
+    if (have >= 0) {
+      start(have);
+      return;
+    }
     busy(entry.title, t('js.downloading', { label: entry.title, progress: '' }), null);
     const before = new Set(Array.from({ length: M._pocket_game_count() }, (_, i) => gameId(i)));
-    const file = entry.build === 'quake'
-      ? await buildQuake(entry.item, entry.file)
-      : new File([await download(entry.item, entry.file, entry.title)], entry.file.split('/').pop());
+    const file =
+      entry.build === 'quake'
+        ? await buildQuake(entry.item, entry.file)
+        : new File([await download(entry.item, entry.file, entry.title)], entry.file.split('/').pop());
     busy(null, t('js.importing', { file: entry.title }), null);
     await importFile(file);
     const count = M._pocket_game_count();
     let target = -1;
-    for (let i = 0; i < count; i++) if (!before.has(gameId(i))) { target = i; break; }
+    for (let i = 0; i < count; i++)
+      if (!before.has(gameId(i))) {
+        target = i;
+        break;
+      }
     if (target < 0) target = findGame(entry.title);
     if (target >= 0) start(target);
   } catch (error) {
@@ -1424,12 +3070,24 @@ async function getFree(entry, button) {
 // loaded once, the first time a reader opens one.
 let storiesLoad = null;
 function libraryStories() {
-  storiesLoad ??= fetch('library/story.zh-TW.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+  storiesLoad ??= fetch('library/story.zh-TW.json')
+    .then((r) => (r.ok ? r.json() : {}))
+    .catch(() => ({}));
   return storiesLoad;
 }
 
 // library/desc.<lang>.json holds the descriptions in each language.
-const LIB = { items: [], desc: {}, shown: 0, filter: { status: 'all', cat: 'all', cpu: 'all' }, q: '', pic: false, pick: false, sort: 'default' };
+const LIB = {
+  items: [],
+  desc: {},
+  shown: 0,
+  filter: { status: 'all', cat: 'all', cpu: 'all' },
+  input: 'all',
+  q: '',
+  pic: false,
+  pick: false,
+  sort: 'default',
+};
 const LIB_PAGE = 48;
 const STATUS_ORDER = ['play', 'runs', 'partial', 'untested', 'nostart', 'notppc'];
 const CATS = ['game', 'tool', 'office', 'media', 'net', 'dev', 'system', 'emu', 'book', 'edu', 'other'];
@@ -1438,8 +3096,25 @@ const CPUS = ['ARM', 'MIPS', 'SH3', 'SH4', 'x86'];
 async function loadLibrary() {
   try {
     const response = await fetch('library/index.json');
+    if (!response.ok) throw new Error('Catalog unavailable');
     LIB.items = await response.json();
-  } catch (error) { console.error(error); return; }
+    const controls = await fetch('library/control-guides.json');
+    if (!controls.ok) throw new Error('Control guides unavailable');
+    PocketLibraryUI.setGuides(await controls.json());
+    if (!Array.isArray(LIB.items)) throw new Error('Invalid catalog');
+  } catch (error) {
+    console.error(error);
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'ghost-btn';
+    retry.textContent = uiText('無法載入圖書館，重試', 'Library unavailable — retry');
+    retry.onclick = () => {
+      retry.disabled = true;
+      loadLibrary();
+    };
+    $('lib-cards').replaceChildren(retry);
+    return;
+  }
   await loadLibraryText();
   buildLibraryFilters();
   renderLibrary(true);
@@ -1449,7 +3124,10 @@ async function loadLibraryText() {
   for (const lang of [I18N.lang, 'en', 'zh-TW']) {
     try {
       const response = await fetch(`library/desc.${lang}.json`);
-      if (response.ok) { LIB.desc = await response.json(); return; }
+      if (response.ok) {
+        LIB.desc = await response.json();
+        return;
+      }
     } catch {}
   }
 }
@@ -1460,24 +3138,59 @@ function libMatches(entry, skip) {
   if (skip !== 'cpu' && f.cpu !== 'all' && !entry.cpus.includes(f.cpu)) return false;
   if (LIB.pic && !libHasPicture(entry)) return false;
   if (LIB.pick && !entry.pick) return false;
+  if (
+    LIB.input !== 'all' &&
+    (LIB.input === 'unknown'
+      ? softwareUI.needs(entry).length > 0
+      : !softwareUI.needs(entry).includes(LIB.input))
+  )
+    return false;
   if (LIB.q) {
     // The collection folder and the Mobile01 thread are searchable too.
-    const hay = `${entry.name} ${entry.kw} ${(LIB.desc[entry.id] || '')} ${entry.platforms.join(' ')} ${entry.devices.join(' ')} ${entry.cpus.join(' ')} ${entry.coll || ''} ${entry.m01 ? 'mobile01 ' + entry.m01 + ' ' + (entry.m01note || '') : ''}`.toLowerCase();
+    const hay =
+      `${entry.name} ${entry.kw} ${softwareUI.summary(entry)} ${LIB.desc[entry.id] || ''} ${entry.platforms.join(' ')} ${entry.devices.join(' ')} ${entry.cpus.join(' ')} ${entry.coll || ''} ${entry.m01 ? 'mobile01 ' + entry.m01 + ' ' + (entry.m01note || '') : ''}`.toLowerCase();
     const squashed = hay.replace(/\s+/g, '');
     if (!LIB.q.split(/\s+/).every((word) => hay.includes(word) || squashed.includes(word))) return false;
   }
   return true;
 }
 function buildLibraryFilters() {
-  const groups = [['status', STATUS_ORDER, (v) => t(`lib.status.${v}`)], ['cat', CATS, (v) => t(`lib.cat.${v}`)], ['cpu', CPUS, (v) => v]];
+  $('lib-input-caption').textContent = uiText('操作需求', 'Input needs');
+  $('lib-input').replaceChildren();
+  for (const [value, zh, en] of [
+    ['all', '全部操作', 'All inputs'],
+    ['stylus', '觸控筆', 'Stylus'],
+    ['direction', '方向鍵', 'Direction'],
+    ['text', '文字輸入', 'Text'],
+    ['hardware', '硬體按鈕', 'Hardware keys'],
+    ['mouse', '滑鼠', 'Mouse'],
+    ['keyboard', '鍵盤', 'Keyboard'],
+    ['unknown', '操作資料待補', 'Guide pending'],
+  ]) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = uiText(zh, en);
+    $('lib-input').append(option);
+  }
+  $('lib-input').value = LIB.input;
+  const groups = [
+    ['status', STATUS_ORDER, (v) => t(`lib.status.${v}`)],
+    ['cat', CATS, (v) => t(`lib.cat.${v}`)],
+    ['cpu', CPUS, (v) => v],
+  ];
   for (const [group, values, label] of groups) {
     const box = $(`lib-${group}`);
     box.replaceChildren();
     for (const value of ['all', ...values]) {
       const chip = document.createElement('button');
-      chip.type = 'button'; chip.className = 'chip'; chip.dataset.value = value;
+      chip.type = 'button';
+      chip.className = 'chip';
+      chip.dataset.value = value;
       chip.setAttribute('aria-pressed', String(LIB.filter[group] === value));
-      chip.addEventListener('click', () => { LIB.filter[group] = value; renderLibrary(true); });
+      chip.addEventListener('click', () => {
+        LIB.filter[group] = value;
+        renderLibrary(true);
+      });
       chip.dataset.label = value === 'all' ? t(`lib.all.${group}`) : label(value);
       box.append(chip);
     }
@@ -1487,7 +3200,11 @@ function updateLibraryCounts() {
   for (const group of ['status', 'cat', 'cpu']) {
     for (const chip of $(`lib-${group}`).children) {
       const value = chip.dataset.value;
-      const n = LIB.items.filter((e) => libMatches(e, group) && (value === 'all' || (group === 'cpu' ? e.cpus.includes(value) : e[group] === value))).length;
+      const n = LIB.items.filter(
+        (e) =>
+          libMatches(e, group) &&
+          (value === 'all' || (group === 'cpu' ? e.cpus.includes(value) : e[group] === value)),
+      ).length;
       chip.textContent = `${chip.dataset.label} ${n}`;
       chip.setAttribute('aria-pressed', String(LIB.filter[group] === value));
       chip.hidden = n === 0 && value !== 'all' && LIB.filter[group] !== value;
@@ -1504,7 +3221,10 @@ function renderLibrary(reset) {
   else if (LIB.sort === 'old') list.sort((a, b) => (year(a) || 1e4) - (year(b) || 1e4));
   $('lib-pic').setAttribute('aria-pressed', String(LIB.pic));
   $('lib-pick').setAttribute('aria-pressed', String(LIB.pick));
-  if (reset) { LIB.shown = 0; $('lib-cards').replaceChildren(); }
+  if (reset) {
+    LIB.shown = 0;
+    $('lib-cards').replaceChildren();
+  }
   updateLibraryCounts();
   const next = list.slice(LIB.shown, LIB.shown + LIB_PAGE);
   for (const entry of next) $('lib-cards').append(libraryCard(entry));
@@ -1524,7 +3244,8 @@ const CAT_GLYPHS = {
   media: '<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
   net: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
   dev: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/>',
-  system: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  system:
+    '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
   emu: '<rect x="6" y="2" width="12" height="20" rx="2"/><rect x="8.5" y="4.5" width="7" height="6"/><path d="M10 15v3M8.5 16.5h3"/><circle cx="15" cy="15.5" r=".8"/><circle cx="14" cy="18" r=".8"/>',
   book: '<path d="M4 5c3-1.5 6-1.5 8 0v15c-2-1.5-5-1.5-8 0zM20 5c-3-1.5-6-1.5-8 0v15c2-1.5 5-1.5 8 0z"/>',
   edu: '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5M22 9v6"/>',
@@ -1536,72 +3257,124 @@ function libHasPicture(entry) {
 function libraryCard(entry) {
   const card = document.createElement('article');
   card.className = `card lib-card st-${entry.status}${entry.pick ? ' is-pick' : ''}`;
-  const thumb = document.createElement('div'); thumb.className = 'thumb';
+  const thumb = document.createElement('div');
+  thumb.className = 'thumb';
   // No picture, a picture that fails to load, or a program we cannot run:
   // show the iPAQ with the program's name on its screen instead.
   const placeholder = () => {
-    const dev = document.createElement('div'); dev.className = 'dev';
-    const img = document.createElement('img'); img.src = 'library/device.webp'; img.alt = ''; img.loading = 'lazy'; img.width = 335; img.height = 526;
+    const dev = document.createElement('div');
+    dev.className = 'dev';
+    const img = document.createElement('img');
+    img.src = 'library/device.webp';
+    img.alt = '';
+    img.loading = 'lazy';
+    img.width = 335;
+    img.height = 526;
     // Each program gets its own screen colour (from its name) and initials,
     // so a run of programs without pictures does not look like one image
     // pasted over and over.
     let hash = 0;
     for (const ch of entry.name) hash = (hash * 31 + ch.codePointAt(0)) >>> 0;
-    const screen = document.createElement('div'); screen.className = 'dev-screen';
+    const screen = document.createElement('div');
+    screen.className = 'dev-screen';
     screen.style.setProperty('--h1', String(hash % 360));
     screen.style.setProperty('--h2', String((hash >>> 9) % 360));
     const initials = document.createElement('b');
     const small = new Set(['of', 'the', 'for', 'a', 'an', 'and', 'to', 'in', 'on', 'pocket', 'pc']);
-    const words = entry.name.replace(/[^\p{L}\p{N} ]/gu, ' ').trim().split(/\s+/);
+    const words = entry.name
+      .replace(/[^\p{L}\p{N} ]/gu, ' ')
+      .trim()
+      .split(/\s+/);
     const main = words.filter((w) => !small.has(w.toLowerCase()));
-    initials.textContent = (main.length ? main : words).slice(0, 2).map((w) => [...w][0]).join('').toUpperCase();
-    const label = document.createElement('span'); label.textContent = entry.name;
+    initials.textContent = (main.length ? main : words)
+      .slice(0, 2)
+      .map((w) => [...w][0])
+      .join('')
+      .toUpperCase();
+    const label = document.createElement('span');
+    label.textContent = entry.name;
     // The program's own icon, taken from its executable, stands in for the
     // initials when we have it.
     if (entry.icon) {
-      const icon = document.createElement('img'); icon.className = 'icon'; icon.alt = '';
-      icon.src = `library/icons/${entry.icon}`; icon.loading = 'lazy'; icon.width = 64; icon.height = 64;
+      const icon = document.createElement('img');
+      icon.className = 'icon';
+      icon.alt = '';
+      icon.src = `library/icons/${entry.icon}`;
+      icon.loading = 'lazy';
+      icon.width = 64;
+      icon.height = 64;
       icon.addEventListener('error', () => icon.replaceWith(initials));
       screen.append(icon, label);
     } else {
       // No icon either: a drawing of the program's category.
       const glyph = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      glyph.setAttribute('viewBox', '0 0 24 24'); glyph.setAttribute('class', 'glyph'); glyph.setAttribute('aria-hidden', 'true');
+      glyph.setAttribute('viewBox', '0 0 24 24');
+      glyph.setAttribute('class', 'glyph');
+      glyph.setAttribute('aria-hidden', 'true');
       glyph.innerHTML = CAT_GLYPHS[entry.cat] || CAT_GLYPHS.other;
       screen.append(glyph, label);
     }
-    dev.append(img, screen); thumb.classList.add('device'); thumb.replaceChildren(dev);
+    dev.append(img, screen);
+    thumb.classList.add('device');
+    thumb.replaceChildren(dev);
   };
   if (libHasPicture(entry)) {
     const img = document.createElement('img');
-    img.src = entry.cover ? `library/covers/${entry.cover}` : entry.shot ? `library/shots/${entry.shot}` : `https://archive.org/services/img/${entry.id}`;
-    img.alt = t('lib.shotAlt', { name: entry.name }); img.loading = 'lazy'; img.width = 240; img.height = 320;
-    if (entry.cover) img.classList.add('cover'); else if (!entry.shot) img.classList.add('web');
+    img.src = entry.cover
+      ? `library/covers/${entry.cover}`
+      : entry.shot
+        ? `library/shots/${entry.shot}`
+        : `https://archive.org/services/img/${entry.id}`;
+    img.alt = t('lib.shotAlt', { name: entry.name });
+    img.loading = 'lazy';
+    img.width = 240;
+    img.height = 320;
+    if (entry.cover) img.classList.add('cover');
+    else if (!entry.shot) img.classList.add('web');
     img.addEventListener('error', placeholder);
     thumb.append(img);
   } else placeholder();
-  const body = document.createElement('div'); body.className = 'body';
-  const h = document.createElement('h3'); h.textContent = entry.name;
+  const body = document.createElement('div');
+  body.className = 'body';
+  const h = document.createElement('h3');
+  h.textContent = entry.name;
   // Same-name entries are different downloads; a line under the name tells
   // them apart (year, platform, processor, or a retail-disc record).
   if (entry.variant) {
-    const v = document.createElement('small'); v.className = 'variant';
+    const v = document.createElement('small');
+    v.className = 'variant';
     v.textContent = entry.variant === '@retail' ? t('lib.variant.retail') : entry.variant;
     h.append(v);
   }
-  const tags = document.createElement('div'); tags.className = 'tags';
-  const badge = document.createElement('span'); badge.className = `tag badge st-${entry.status}`; badge.textContent = t(`lib.status.${entry.status}`);
+  const tags = document.createElement('div');
+  tags.className = 'tags';
+  const badge = document.createElement('span');
+  badge.className = `tag badge st-${entry.status}`;
+  badge.textContent = t(`lib.status.${entry.status}`);
   tags.append(badge);
-  if (entry.pick) { const pk = document.createElement('span'); pk.className = 'tag pick'; pk.textContent = t('lib.pick'); tags.append(pk); }
-  for (const text of [t(`lib.cat.${entry.cat}`), ...entry.cpus]) {
-    const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = text; tags.append(tag);
+  if (entry.pick) {
+    const pk = document.createElement('span');
+    pk.className = 'tag pick';
+    pk.textContent = t('lib.pick');
+    tags.append(pk);
   }
-  const desc = document.createElement('p'); desc.className = 'desc'; desc.textContent = LIB.desc[entry.id] || '';
-  const facts = document.createElement('dl'); facts.className = 'facts';
+  for (const text of [t(`lib.cat.${entry.cat}`), ...entry.cpus]) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = text;
+    tags.append(tag);
+  }
+  const desc = document.createElement('p');
+  desc.className = 'desc';
+  desc.textContent = LIB.desc[entry.id] || '';
+  const facts = document.createElement('dl');
+  facts.className = 'facts';
   const fact = (key, value) => {
     if (!value) return;
-    const dt = document.createElement('dt'); dt.textContent = t(key);
-    const dd = document.createElement('dd'); dd.textContent = value;
+    const dt = document.createElement('dt');
+    dt.textContent = t(key);
+    const dd = document.createElement('dd');
+    dd.textContent = value;
     facts.append(dt, dd);
   };
   const sep = /^(zh|ja)/.test(I18N.lang) ? '、' : ', ';
@@ -1611,24 +3384,54 @@ function libraryCard(entry) {
   if (entry.coll) fact('lib.coll', entry.coll);
   if (entry.m01) fact('lib.m01', entry.m01);
   if (entry.m01note) fact('lib.m01note', `「${entry.m01note}」`);
-  fact('lib.difficulty', `${t(`lib.diff.${entry.diff}`)}${entry.reason ? ' — ' + t(`lib.reason.${entry.reason}`) : ''}`);
-  const kw = document.createElement('div'); kw.className = 'kw';
-  const kwLabel = document.createElement('span'); kwLabel.textContent = t('lib.keywords');
-  const kwText = document.createElement('code'); kwText.textContent = entry.kw;
-  const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'copy'; copy.textContent = t('lib.copy');
+  fact(
+    'lib.difficulty',
+    `${t(`lib.diff.${entry.diff}`)}${entry.reason ? ' — ' + t(`lib.reason.${entry.reason}`) : ''}`,
+  );
+  const kw = document.createElement('div');
+  kw.className = 'kw';
+  const kwLabel = document.createElement('span');
+  kwLabel.textContent = t('lib.keywords');
+  const kwText = document.createElement('code');
+  kwText.textContent = entry.kw;
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.className = 'copy';
+  copy.textContent = t('lib.copy');
   copy.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(entry.kw); copy.textContent = t('lib.copied'); }
-    catch { const r = document.createRange(); r.selectNodeContents(kwText); getSelection().removeAllRanges(); getSelection().addRange(r); }
-    setTimeout(() => { copy.textContent = t('lib.copy'); }, 1500);
+    try {
+      await navigator.clipboard.writeText(entry.kw);
+      copy.textContent = t('lib.copied');
+    } catch {
+      const r = document.createRange();
+      r.selectNodeContents(kwText);
+      getSelection().removeAllRanges();
+      getSelection().addRange(r);
+    }
+    setTimeout(() => {
+      copy.textContent = t('lib.copy');
+    }, 1500);
   });
   kw.append(kwLabel, kwText, copy);
   // Platforms, year, difficulty and search keywords wait behind a toggle so
   // a card stays short and more programs fit on a screen.
-  const more = document.createElement('details'); more.className = 'lib-info';
+  const more = document.createElement('details');
+  more.className = 'lib-info';
   const summary = document.createElement('summary');
   const hasStory = entry.story && /^zh/.test(I18N.lang);
   summary.textContent = t(hasStory ? 'lib.detailsStory' : 'lib.details');
   more.append(summary, facts, kw);
+  const controls = document.createElement('button');
+  controls.type = 'button';
+  controls.className = 'lib-controls';
+  controls.textContent = `${uiText('介紹與操作方式', 'About and controls')} · ${softwareUI.summary(entry)}`;
+  controls.addEventListener('click', () => softwareUI.open(entry));
+  const verification = document.createElement('small');
+  verification.className = 'game-controls';
+  verification.textContent = uiText(
+    '目錄啟動紀錄；操作／進度尚未逐項驗證',
+    'Catalog startup record; controls / progress not individually verified',
+  );
   // The story is fetched the first time a card with one is opened.
   if (hasStory) {
     more.addEventListener('toggle', async () => {
@@ -1637,22 +3440,37 @@ function libraryCard(entry) {
       more.dataset.story = '1';
       const text = (await libraryStories())[entry.id];
       if (!text) return;
-      const box = document.createElement('div'); box.className = 'story';
-      const title = document.createElement('h4'); title.textContent = t('lib.story');
-      box.append(title, ...text.split(/\n\s*\n/).map((part) => {
-        const para = document.createElement('p'); para.textContent = part; return para;
-      }));
+      const box = document.createElement('div');
+      box.className = 'story';
+      const title = document.createElement('h4');
+      title.textContent = t('lib.story');
+      box.append(
+        title,
+        ...text.split(/\n\s*\n/).map((part) => {
+          const para = document.createElement('p');
+          para.textContent = part;
+          return para;
+        }),
+      );
       more.insertBefore(box, facts);
     });
   }
-  body.append(h, tags, desc, more);
+  body.append(h, tags, verification, desc, controls, more);
   if (entry.guide) {
-    const a = document.createElement('a'); a.className = 'guide'; a.href = entry.guide; a.textContent = t('lib.guideCard');
+    const a = document.createElement('a');
+    a.className = 'guide';
+    a.href = entry.guide;
+    a.textContent = t('lib.guideCard');
     body.append(a);
   }
   if (entry.play) {
-    const go = document.createElement('button'); go.type = 'button'; go.className = 'go'; go.textContent = t('lib.play');
-    go.addEventListener('click', () => getFree({ item: entry.id, file: entry.play.file, build: entry.play.build, title: entry.name }, go));
+    const go = document.createElement('button');
+    go.type = 'button';
+    go.className = 'go';
+    go.textContent = t('lib.play');
+    go.addEventListener('click', () =>
+      getFree({ item: entry.id, file: entry.play.file, build: entry.play.build, title: entry.name }, go),
+    );
     body.append(go);
   }
   card.append(thumb, body);
@@ -1664,13 +3482,17 @@ function libraryCard(entry) {
 function setHelp(open) {
   $('controls-help').hidden = !open;
   $('help-toggle').setAttribute('aria-pressed', String(open));
-  try { localStorage.setItem('controls-help', open ? '1' : '0'); } catch {}
+  try {
+    localStorage.setItem('controls-help', open ? '1' : '0');
+  } catch {}
 }
 $('help-toggle').addEventListener('click', () => setHelp($('controls-help').hidden));
 function initHelp() {
   let saved = null;
-  try { saved = localStorage.getItem('controls-help'); } catch {}
-  setHelp(saved === null ? (innerWidth >= 1100 && !document.body.classList.contains('touch')) : saved === '1');
+  try {
+    saved = localStorage.getItem('controls-help');
+  } catch {}
+  setHelp(saved === null ? innerWidth >= 1100 && !document.body.classList.contains('touch') : saved === '1');
 }
 
 // An on-screen keyboard, the Pocket PC "SIP": phones have no keys to type
@@ -1687,20 +3509,32 @@ function initHelp() {
   const special = { '⌫': 8, '⏎': 13, '␣': 32, '⇧': 16 };
   let shift = false;
   for (const keys of rows) {
-    const row = document.createElement('div'); row.className = 'row';
+    const row = document.createElement('div');
+    row.className = 'row';
     for (const label of keys) {
-      const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
       const vk = special[label] ?? label.charCodeAt(0);
       if (label === '⇧' || label === '⌫' || label === '⏎') b.className = 'wide';
       if (label === '␣') b.className = 'space';
       b.addEventListener('pointerdown', (event) => {
         event.preventDefault();
         navigator.vibrate?.(6);
-        if (vk === 16) { shift = !shift; b.classList.toggle('on', shift); return; }
+        if (vk === 16) {
+          shift = !shift;
+          b.classList.toggle('on', shift);
+          return;
+        }
         const upper = shift && vk >= 65 && vk <= 90;
-        if (upper) press(16);
-        press(vk); release(vk);
-        if (upper) { release(16); shift = false; row.parentNode.querySelector('.wide.on')?.classList.remove('on'); }
+        if (upper) press(16, 'sip');
+        press(vk, 'sip');
+        release(vk, 'sip');
+        if (upper) {
+          release(16, 'sip');
+          shift = false;
+          row.parentNode.querySelector('.wide.on')?.classList.remove('on');
+        }
       });
       row.append(b);
     }
@@ -1718,26 +3552,49 @@ function initHelp() {
 $('clear-all').addEventListener('click', async () => {
   if (!M || !confirm(t('js.confirmClear', { n: M._pocket_game_count() }))) return;
   for (let i = M._pocket_game_count() - 1; i >= 0; i--) {
-    if (M._pocket_delete_game(i) !== 0) { try { removeTree(`/library/games/${gameId(i)}`); } catch {} }
+    if (M._pocket_delete_game(i) !== 0) {
+      try {
+        removeTree(`/library/games/${gameId(i)}`);
+      } catch {}
+    }
   }
   await syncFs(false);
   location.reload();
 });
 $('lib-more').addEventListener('click', () => renderLibrary(false));
-$('lib-pic').addEventListener('click', () => { LIB.pic = !LIB.pic; renderLibrary(true); });
-$('lib-pick').addEventListener('click', () => { LIB.pick = !LIB.pick; renderLibrary(true); });
-$('lib-sort').addEventListener('change', () => { LIB.sort = $('lib-sort').value; renderLibrary(true); });
+$('lib-pic').addEventListener('click', () => {
+  LIB.pic = !LIB.pic;
+  renderLibrary(true);
+});
+$('lib-pick').addEventListener('click', () => {
+  LIB.pick = !LIB.pick;
+  renderLibrary(true);
+});
+$('lib-sort').addEventListener('change', () => {
+  LIB.sort = $('lib-sort').value;
+  renderLibrary(true);
+});
+$('lib-input').addEventListener('change', () => {
+  LIB.input = $('lib-input').value;
+  renderLibrary(true);
+});
 // More cards arrive on their own as the list scrolls into view; the button
 // stays for browsers without IntersectionObserver.
 if ('IntersectionObserver' in window) {
-  new IntersectionObserver((entries) => {
-    if (entries.some((e) => e.isIntersecting) && !$('lib-more').hidden) renderLibrary(false);
-  }, { rootMargin: '600px 0px' }).observe($('lib-more'));
+  new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting) && !$('lib-more').hidden) renderLibrary(false);
+    },
+    { rootMargin: '600px 0px' },
+  ).observe($('lib-more'));
 }
 let libSearchTimer = 0;
 $('lib-q').addEventListener('input', () => {
   clearTimeout(libSearchTimer);
-  libSearchTimer = setTimeout(() => { LIB.q = $('lib-q').value.trim().toLowerCase(); renderLibrary(true); }, 150);
+  libSearchTimer = setTimeout(() => {
+    LIB.q = $('lib-q').value.trim().toLowerCase();
+    renderLibrary(true);
+  }, 150);
 });
 
 let APP_VERSION = '';
@@ -1745,9 +3602,13 @@ setLang(pickLang()).then(loadLibrary);
 // The newest release on GitHub; the download links above always point at it.
 fetch('https://api.github.com/repos/SzupoTseng/PocketPC3630/releases/latest')
   .then((r) => (r.ok ? r.json() : null))
-  .then((release) => { if (release?.tag_name) { APP_VERSION = release.tag_name; $('app-ver').textContent = t('lib.dl.version', { version: APP_VERSION }); } })
+  .then((release) => {
+    if (release?.tag_name) {
+      APP_VERSION = release.tag_name;
+      $('app-ver').textContent = t('lib.dl.version', { version: APP_VERSION });
+    }
+  })
   .catch(() => {});
-
 
 $('pick').addEventListener('click', () => $('file').click());
 $('pick-hero').addEventListener('click', () => $('file').click());
@@ -1755,8 +3616,11 @@ $('pick-hero').addEventListener('click', () => $('file').click());
 // The hero's Pocket PC shows what the emulator runs, a few seconds each.
 (() => {
   const shots = [
-    ['everquest', 'EverQuest · ARM'], ['quake', 'Pocket Quake · ARM'],
-    ['slay', 'Pocket Slay · ARM'], ['freecell', 'FreeCell · SH3'], ['everquest-create', 'EverQuest · ARM'],
+    ['everquest', 'EverQuest · ARM'],
+    ['quake', 'Pocket Quake · ARM'],
+    ['slay', 'Pocket Slay · ARM'],
+    ['freecell', 'FreeCell · SH3'],
+    ['everquest-create', 'EverQuest · ARM'],
   ];
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   let i = 0;
@@ -1765,7 +3629,11 @@ $('pick-hero').addEventListener('click', () => $('file').click());
     i = (i + 1) % shots.length;
     const img = $('shot');
     img.style.opacity = 0;
-    setTimeout(() => { img.src = `images/shots/${shots[i][0]}.png`; $('shot-caption').textContent = shots[i][1]; img.style.opacity = 1; }, 350);
+    setTimeout(() => {
+      img.src = `images/shots/${shots[i][0]}.png`;
+      $('shot-caption').textContent = shots[i][1];
+      img.style.opacity = 1;
+    }, 350);
   }, 3500);
 })();
 $('help-open').addEventListener('click', () => $('help').showModal());
@@ -1776,20 +3644,27 @@ function toast(text, ms = 9000) {
   box.textContent = text;
   box.style.display = 'block';
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => { box.style.display = 'none'; }, ms);
+  toast.timer = setTimeout(() => {
+    box.style.display = 'none';
+  }, ms);
 }
 // Several files at once (a game plus the DLLs it needs) become one package,
 // so nobody has to build a zip by hand.
 async function importFiles(files) {
   if (!files.length || !M) return;
   try {
-    if (files.length === 1) { await importFile(files[0]); return; }
+    if (files.length === 1) {
+      await importFile(files[0]);
+      return;
+    }
     say(t('js.bundling', { n: files.length }));
     const main = files.find((f) => !/\.dll$/i.test(f.name)) ?? files[0];
     const entries = [];
     for (const f of files) entries.push([f.name, new Uint8Array(await f.arrayBuffer())]);
     await importFile(new File([zipStore(entries)], main.name.replace(/\.[^.]+$/, '') + '.zip'));
-  } catch (error) { say(String(error), true); }
+  } catch (error) {
+    say(String(error), true);
+  }
 }
 $('file').addEventListener('change', (event) => {
   const files = [...event.target.files];
@@ -1800,16 +3675,30 @@ $('file').addEventListener('change', (event) => {
 // overlay up while the pointer crosses child elements.
 let dragDepth = 0;
 const hasFiles = (event) => [...(event.dataTransfer?.types || [])].includes('Files');
-const overlay = (on) => { $('drop-overlay').classList.toggle('on', on); $('pick-hero').classList.toggle('over', on); };
+const overlay = (on) => {
+  $('drop-overlay').classList.toggle('on', on);
+  $('pick-hero').classList.toggle('over', on);
+};
 window.addEventListener('dragenter', (event) => {
   if (!hasFiles(event) || document.body.classList.contains('playing')) return;
-  event.preventDefault(); dragDepth++; overlay(true);
+  event.preventDefault();
+  dragDepth++;
+  overlay(true);
 });
-window.addEventListener('dragover', (event) => { if (hasFiles(event)) event.preventDefault(); });
-window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; overlay(false); } });
+window.addEventListener('dragover', (event) => {
+  if (hasFiles(event)) event.preventDefault();
+});
+window.addEventListener('dragleave', () => {
+  if (--dragDepth <= 0) {
+    dragDepth = 0;
+    overlay(false);
+  }
+});
 window.addEventListener('drop', (event) => {
   if (!hasFiles(event)) return;
-  event.preventDefault(); dragDepth = 0; overlay(false);
+  event.preventDefault();
+  dragDepth = 0;
+  overlay(false);
   if (document.body.classList.contains('playing')) return;
   importFiles([...event.dataTransfer.files]);
 });
@@ -1819,14 +3708,33 @@ $('save-file').addEventListener('change', (event) => {
   if (file && saveTarget !== null) importSave(saveTarget, file).catch((error) => say(String(error), true));
 });
 $('leave').addEventListener('click', async () => {
-  stopAudio();
-  endSession();
-  await syncFs(false).catch(console.error);
-  location.reload();
+  setPaused('leaving', true);
+  try {
+    await preferenceWrites.catch(() => {});
+    await syncFs(false);
+    finishWebSession();
+    location.reload();
+  } catch {
+    setPaused('leaving', false);
+    say(
+      uiText(
+        '進度寫入失敗，請重試返回或先備份。',
+        'Could not write progress. Retry leaving or export a backup first.',
+      ),
+      true,
+    );
+    toast($('status').textContent);
+    const menuError = $('game-menu-error');
+    if (gameMenu.open && menuError) menuError.textContent = $('status').textContent;
+  }
 });
 // A closing tab gets no second chance, so save as soon as it is hidden.
-window.addEventListener('pagehide', () => { if (M) syncFs(false).catch(() => {}); });
-document.addEventListener('visibilitychange', () => { if (M && document.hidden) syncFs(false).catch(() => {}); });
+window.addEventListener('pagehide', () => {
+  if (M) syncFs(false).catch(() => {});
+});
+document.addEventListener('visibilitychange', () => {
+  if (M && document.hidden) syncFs(false).catch(() => {});
+});
 if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
 
 // Two tabs would each restore the same IndexedDB state and overwrite each other's
@@ -1834,10 +3742,12 @@ if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch'
 function holdTabLock() {
   if (!navigator.locks) return Promise.resolve(true);
   return new Promise((resolve) => {
-    navigator.locks.request('pockethle-library', { ifAvailable: true }, (lock) => {
-      resolve(Boolean(lock));
-      return lock ? new Promise(() => {}) : undefined;
-    }).catch(() => resolve(true));
+    navigator.locks
+      .request('pockethle-library', { ifAvailable: true }, (lock) => {
+        resolve(Boolean(lock));
+        return lock ? new Promise(() => {}) : undefined;
+      })
+      .catch(() => resolve(true));
   });
 }
 
@@ -1859,8 +3769,12 @@ function holdTabLock() {
     // kept their entry in the library index; drop those entries now.
     let pruned = false;
     for (let i = M._pocket_game_count() - 1; i >= 0; i--) {
-      try { M.FS.stat(`/library/games/${gameId(i)}`); }
-      catch { M._pocket_delete_game(i); pruned = true; }
+      try {
+        M.FS.stat(`/library/games/${gameId(i)}`);
+      } catch {
+        M._pocket_delete_game(i);
+        pruned = true;
+      }
     }
     if (pruned) await syncFs(false);
     navigator.storage?.persist?.().catch(() => {});
@@ -1873,7 +3787,12 @@ function holdTabLock() {
   try {
     const want = sessionStorage.getItem('pocket-autostart');
     sessionStorage.removeItem('pocket-autostart');
-    if (want) for (let i = 0; i < M._pocket_game_count(); i++) if (gameId(i) === want) { setTimeout(() => start(i), 0); break; }
+    if (want)
+      for (let i = 0; i < M._pocket_game_count(); i++)
+        if (gameId(i) === want) {
+          setTimeout(() => start(i), 0);
+          break;
+        }
   } catch {}
   say(stored ? '' : t('js.noStorage'), !stored);
   window.pocketReady = true;

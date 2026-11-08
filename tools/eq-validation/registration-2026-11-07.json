@@ -1,0 +1,387 @@
+{
+  "scope": "pre-existing docs WASM; excludes current source changes; no successful registration/gameplay tested",
+  "cases": [
+    {
+      "episode": "ep1-disc",
+      "case": "empty-code",
+      "observed": "stays at registration; OK has focus; screenshot inspected",
+      "package": {
+        "name": "ep1-disc.zip",
+        "sha256": "2140670a34d1d7ea3f288ef1cf6524731544412cd45669bfc7e20119e1b9b0be"
+      },
+      "build": {
+        "pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+        "pockethle.wasm": "0b554677186d58c94d291bbdbfd5c6ba8c53da71c92cce3b6423ea752a234b8e"
+      },
+      "stopped": false,
+      "stopReason": null,
+      "error": null,
+      "modules": [],
+      "actions": [
+        {
+          "at": 1,
+          "shot": "before",
+          "actualSeconds": 1.0007213590000001
+        },
+        {
+          "at": 2,
+          "pointer": [
+            1,
+            54,
+            136
+          ],
+          "actualSeconds": 2.01558013
+        },
+        {
+          "at": 2.12,
+          "pointer": [
+            2,
+            54,
+            136
+          ],
+          "actualSeconds": 2.1322179390000002
+        },
+        {
+          "at": 4,
+          "shot": "after-empty-code",
+          "actualSeconds": 4.011838157
+        }
+      ],
+      "screenshots": [
+        {
+          "file": "before.ppm",
+          "width": 240,
+          "height": 320,
+          "rgbSha256": "f8577351d2c69dd53b7c46c93b4ce2f80b55a639b66a902845eff61b9e936f6f"
+        },
+        {
+          "file": "after-empty-code.ppm",
+          "width": 240,
+          "height": 320,
+          "rgbSha256": "3eec2fef8042db18fee735f216ad7c0ad0a1b78a8ad659b317fe7fc79b1e1e21"
+        },
+        {
+          "file": "at-5s.ppm",
+          "width": 240,
+          "height": 320,
+          "rgbSha256": "3eec2fef8042db18fee735f216ad7c0ad0a1b78a8ad659b317fe7fc79b1e1e21"
+        },
+        {
+          "file": "final.ppm",
+          "width": 240,
+          "height": 320,
+          "rgbSha256": "3eec2fef8042db18fee735f216ad7c0ad0a1b78a8ad659b317fe7fc79b1e1e21"
+        }
+      ]
+    },
+    {
+      "episode": "ep3",
+      "case": "empty-code",
+      "observed": "stays at registration; OK has focus; screenshot inspected",
+      "package": {
+        "name": "ep3.zip",
+        "sha256": "083a4b276ce7c332c6382e739e22c1360d3111d367ea601943eedfc0ad246f99"
+      },
+      "build": {
+        "pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+        "pockethle.wasm": "0b554677186d58c94d291bbdbfd5c6ba8c53da71c92cce3b6423ea752a234b8e"
+      },
+      "stopped": false,
+      "stopReason": null,
+      "error": null,
+      "modules": [],
+      "actions": [
+        {
+          "at": 1,
+          "shot": "before",
+          "actualSeconds": 1.00339519
+        },
+        {
+          "at": 2,
+          "pointer": [
+            1,
+            54,
+            146
+          ],
+          "actualSeconds": 2.012783432
+        },
+        {
+          "at": 2.12,
+          "pointer": [
+            2,
+            54,
+            146
+          ],
+          "actualSeconds": 2.1314703799999997
+        },
+        {
+          "at": 4,
+          "shot": "after-empty-code",
+          "actualSeconds": 4.006138314
+        }
+      ],
+      "screenshots": [
+        {
+          "file": "before.ppm",
+          "width": 240,
+          "height": 320,
+          "rgbSha256": "6fbf44a19eacb89c7d768828137e9ea9bdd10ef696676ea9a8973c55e422d61c"
+        },
+        {
+          "file": "after-empty-code.ppm",
+          "width": 240,
+          "height": 320,
+          "rgbSha256": "9f8f2510f34db250888017790eb7b3c8134fe609cbae5363f15ac57c4dff01ec"
+        },
+        {
+          "file": "at-5s.ppm",
+          "width": 240,
+          "height": 320,
+          "rgbSha256": "9f8f2510f34db250888017790eb7b3c8134fe609cbae5363f15ac57c4dff01ec"
+        },
+        {
+          "file": "final.ppm",
+          "width": 240,
+          "height": 320,
+          "rgbSha256": "9f8f2510f34db250888017790eb7b3c8134fe609cbae5363f15ac57c4dff01ec"
+        }
+      ]
+    },
+    {
+      "episode": "ep1",
+      "case": "cancel",
+      "observed": "clean exit after Cancel",
+      "package": {
+        "name": "ep1.zip",
+        "sha256": "6dfd7f3a2ffd5491f7665fbf8272d812a2e24128c9141c0fd51092869049b0cb"
+      },
+      "build": {
+        "pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+        "pockethle.wasm": "0b554677186d58c94d291bbdbfd5c6ba8c53da71c92cce3b6423ea752a234b8e"
+      },
+      "stopped": true,
+      "stopReason": "clean-exit",
+      "error": null,
+      "modules": [
+        {
+          "path": "/library/games/pocketeq_e1/extracted/GD104.dll",
+          "bytes": 114688,
+          "sha256": "877ca3a6ace4c04b36caa82b74323fabd293cbdaa5fd1af191d926472ae0922d"
+        },
+        {
+          "path": "/library/games/pocketeq_e1/extracted/fmodce.dll",
+          "bytes": 284672,
+          "sha256": "3f5bb42a392ced8b23bf2e26dea0e7e2435b7ef7439db80f345cd7a2349623fd"
+        },
+        {
+          "path": "/library/games/pocketeq_e1/extracted/PocketEQ.exe",
+          "bytes": 406016,
+          "sha256": "9775ee1b60507885b4aba39bcaf040dd73ab86fac5fb806a2682b3fc49e62b0b"
+        },
+        {
+          "path": "/library/games/pocketeq_e1/extracted/mfcce300.dll",
+          "bytes": 403968,
+          "sha256": "e7e22d4bc7a864879be0cfe0efbbb51bdad2b3b6dc167d1b439f2e7ec38632b0"
+        }
+      ],
+      "actions": [
+        {
+          "at": 1,
+          "shot": "before",
+          "actualSeconds": 1.0037986200000004
+        },
+        {
+          "at": 2,
+          "pointer": [
+            1,
+            179,
+            110
+          ],
+          "actualSeconds": 2.003641938
+        },
+        {
+          "at": 2.12,
+          "pointer": [
+            2,
+            179,
+            110
+          ],
+          "actualSeconds": 2.121829772
+        }
+      ],
+      "screenshots": [
+        {
+          "file": "before.ppm",
+          "width": 240,
+          "height": 320,
+          "rgbSha256": "56d37de4890020c7ff9129c99d91e4264b9f8395333d281c8e4cc89b24069f9e"
+        },
+        {
+          "file": "final.ppm",
+          "width": 240,
+          "height": 320,
+          "rgbSha256": "7703cf65bf04961c07251a7c5e5dc693aaeae26d975e66b8644fea9600ba6df4"
+        }
+      ]
+    },
+    {
+      "episode": "ep1-disc",
+      "case": "cancel",
+      "observed": "clean exit after Cancel",
+      "package": {
+        "name": "ep1-disc.zip",
+        "sha256": "2140670a34d1d7ea3f288ef1cf6524731544412cd45669bfc7e20119e1b9b0be"
+      },
+      "build": {
+        "pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+        "pockethle.wasm": "0b554677186d58c94d291bbdbfd5c6ba8c53da71c92cce3b6423ea752a234b8e"
+      },
+      "stopped": true,
+      "stopReason": "clean-exit",
+      "error": null,
+      "modules": [
+        {
+          "path": "/library/games/pocketeqppc2002.strongarm/extracted/GD104.dll",
+          "bytes": 114688,
+          "sha256": "877ca3a6ace4c04b36caa82b74323fabd293cbdaa5fd1af191d926472ae0922d"
+        },
+        {
+          "path": "/library/games/pocketeqppc2002.strongarm/extracted/fmodce.dll",
+          "bytes": 284672,
+          "sha256": "3f5bb42a392ced8b23bf2e26dea0e7e2435b7ef7439db80f345cd7a2349623fd"
+        },
+        {
+          "path": "/library/games/pocketeqppc2002.strongarm/extracted/PocketEQ.exe",
+          "bytes": 403456,
+          "sha256": "2dcc8d05e14aa64d32213a9c697e5dfedaafa505053388089d7b28d06f6ecfe5"
+        },
+        {
+          "path": "/library/games/pocketeqppc2002.strongarm/extracted/mfcce300.dll",
+          "bytes": 403968,
+          "sha256": "e7e22d4bc7a864879be0cfe0efbbb51bdad2b3b6dc167d1b439f2e7ec38632b0"
+        }
+      ],
+      "actions": [
+        {
+          "at": 1,
+          "shot": "before",
+          "actualSeconds": 1.0059911689999999
+        },
+        {
+          "at": 2,
+          "pointer": [
+            1,
+            179,
+            136
+          ],
+          "actualSeconds": 2.009401575
+        },
+        {
+          "at": 2.12,
+          "pointer": [
+            2,
+            179,
+            136
+          ],
+          "actualSeconds": 2.128388088
+        }
+      ],
+      "screenshots": [
+        {
+          "file": "before.ppm",
+          "width": 240,
+          "height": 320,
+          "rgbSha256": "f8577351d2c69dd53b7c46c93b4ce2f80b55a639b66a902845eff61b9e936f6f"
+        },
+        {
+          "file": "final.ppm",
+          "width": 240,
+          "height": 320,
+          "rgbSha256": "d33ae6db14b98b6aa99ae2b1356307e33c9c22e379a8fcd321fb794ebf0b976d"
+        }
+      ]
+    },
+    {
+      "episode": "ep3",
+      "case": "cancel",
+      "observed": "clean exit after Cancel",
+      "package": {
+        "name": "ep3.zip",
+        "sha256": "083a4b276ce7c332c6382e739e22c1360d3111d367ea601943eedfc0ad246f99"
+      },
+      "build": {
+        "pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+        "pockethle.wasm": "0b554677186d58c94d291bbdbfd5c6ba8c53da71c92cce3b6423ea752a234b8e"
+      },
+      "stopped": true,
+      "stopReason": "clean-exit",
+      "error": null,
+      "modules": [
+        {
+          "path": "/library/games/eq_e3/extracted/GD104.dll",
+          "bytes": 114688,
+          "sha256": "877ca3a6ace4c04b36caa82b74323fabd293cbdaa5fd1af191d926472ae0922d"
+        },
+        {
+          "path": "/library/games/eq_e3/extracted/gx.dll",
+          "bytes": 8704,
+          "sha256": "b7fb4114b505e8bfa16dffef0b1e8f7149094123d3fcb4a359c1c1f182886d32"
+        },
+        {
+          "path": "/library/games/eq_e3/extracted/PocketEQ.exe",
+          "bytes": 421376,
+          "sha256": "5d1fab4503797a8fc7bc3beae25836dbb2e5758e744a376a4c299a61015ced1e"
+        },
+        {
+          "path": "/library/games/eq_e3/extracted/fmodce.dll",
+          "bytes": 373248,
+          "sha256": "d17483996d4c50d4d8b0369f09e7db43e3896db0c650f28a56357e2a050a6f0a"
+        },
+        {
+          "path": "/library/games/eq_e3/extracted/mfcce300.dll",
+          "bytes": 403968,
+          "sha256": "e7e22d4bc7a864879be0cfe0efbbb51bdad2b3b6dc167d1b439f2e7ec38632b0"
+        }
+      ],
+      "actions": [
+        {
+          "at": 1,
+          "shot": "before",
+          "actualSeconds": 1.0027053590000001
+        },
+        {
+          "at": 2,
+          "pointer": [
+            1,
+            179,
+            146
+          ],
+          "actualSeconds": 2.0035646450000004
+        },
+        {
+          "at": 2.12,
+          "pointer": [
+            2,
+            179,
+            146
+          ],
+          "actualSeconds": 2.1231445869999996
+        }
+      ],
+      "screenshots": [
+        {
+          "file": "before.ppm",
+          "width": 240,
+          "height": 320,
+          "rgbSha256": "6fbf44a19eacb89c7d768828137e9ea9bdd10ef696676ea9a8973c55e422d61c"
+        },
+        {
+          "file": "final.ppm",
+          "width": 240,
+          "height": 320,
+          "rgbSha256": "d17d98bfcbfd212730daad7622fb6516dd8965b3c5b54428c09aacee208e6d3a"
+        }
+      ]
+    }
+  ]
+}

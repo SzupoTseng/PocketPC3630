@@ -141,6 +141,9 @@ struct Shared {
     /// freezes and buffer-done notifications stop until playback
     /// resumes.
     paused: bool,
+    /// Host pause freezes all sources without changing waveOut's own pause.
+    transport_paused: bool,
+    master_volume: f32,
     /// Independent sound-effect voices mixed over the waveOut stream.
     voices: Vec<AudioVoice>,
     reported_output: bool,
@@ -167,6 +170,8 @@ impl Shared {
             virtual_cursor: 0,
             virtual_tick: None,
             paused: false,
+            transport_paused: false,
+            master_volume: 1.0,
             voices: Vec::new(),
             reported_output: false,
             capture: None,
@@ -178,7 +183,7 @@ impl Shared {
     /// what the guest actually submitted, so a game that stops
     /// feeding buffers doesn't see phantom progress.
     fn cursor(&mut self) -> u64 {
-        if self.paused {
+        if self.paused || self.transport_paused {
             // Reset the wall-clock reference so a long pause doesn't
             // release a burst of buffers the moment playback resumes.
             self.virtual_tick = None;
@@ -275,6 +280,10 @@ impl Shared {
     }
 
     fn render_frames(&mut self, output: &mut [f32], output_rate: u32, output_channels: u16) {
+        if self.transport_paused {
+            output.fill(0.0);
+            return;
+        }
         let channels = output_channels.max(1) as usize;
         let frames = output.len() / channels;
         for frame in 0..frames {
@@ -338,8 +347,8 @@ impl Shared {
                     index += 1;
                 }
             }
-            left = left.clamp(-1.0, 1.0);
-            right = right.clamp(-1.0, 1.0);
+            left = (left * self.master_volume).clamp(-1.0, 1.0);
+            right = (right * self.master_volume).clamp(-1.0, 1.0);
             if !self.reported_output && (left.abs() > 0.00001 || right.abs() > 0.00001) {
                 self.reported_output = true;
                 log::info!("AudioEngine: first non-silent mixed output: {output_rate} Hz / {output_channels} ch");
@@ -472,6 +481,22 @@ impl std::fmt::Debug for AudioEngine {
 }
 
 impl AudioEngine {
+    pub fn set_transport_paused(&self, paused: bool) {
+        if let Ok(mut shared) = self.shared.lock() {
+            shared.transport_paused = paused;
+            shared.virtual_tick = None;
+        }
+    }
+
+    pub fn set_master_volume(&self, volume: f32) {
+        if let Ok(mut shared) = self.shared.lock() {
+            shared.master_volume = if volume.is_finite() {
+                volume.clamp(0.0, 1.0)
+            } else {
+                1.0
+            };
+        }
+    }
     pub fn new() -> Self {
         Self {
             shared: Arc::new(Mutex::new(Shared::new())),
@@ -763,6 +788,12 @@ impl Drop for AudioEngine {
 }
 
 impl AudioTap {
+    pub fn set_transport_paused(&self, paused: bool) {
+        if let Ok(mut shared) = self.shared.lock() {
+            shared.transport_paused = paused;
+            shared.virtual_tick = None;
+        }
+    }
     /// The format the guest is currently submitting samples in, so the
     /// host can configure its own output device to match.
     pub fn guest_format(&self) -> GuestFormat {
@@ -1071,6 +1102,30 @@ mod tests {
         drop(audio);
         tap.render_mix(&mut output, 44100, 2);
         assert_eq!(output, [0.0; 2]);
+    }
+
+    #[test]
+    fn host_menu_pause_freezes_pcm_and_voices_without_flushing_them() {
+        let audio = AudioEngine::new();
+        let fmt = GuestFormat {
+            sample_rate: 44100,
+            channels: 1,
+            bits_per_sample: 16,
+        };
+        audio.set_guest_format(fmt);
+        audio.push_samples(&[4096; 8]);
+        audio.play_voice(&[8192, 16384], fmt, false);
+        let tap = audio.tap();
+        let mut output = [0.0; 2];
+        audio.set_transport_paused(true);
+        tap.render_mix(&mut output, 44100, 2);
+        assert_eq!(output, [0.0; 2]);
+        audio.set_transport_paused(false);
+        audio.set_master_volume(0.5);
+        tap.render_mix(&mut output, 44100, 2);
+        assert_eq!(output, [0.1875; 2]);
+        tap.render_mix(&mut output, 44100, 2);
+        assert_eq!(output, [0.3125; 2]);
     }
 
     #[test]

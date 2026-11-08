@@ -34,13 +34,17 @@ use thiserror::Error;
 
 pub mod audio_patch;
 pub mod bundle;
+pub mod catalog;
+pub mod controls;
 pub mod import_kb;
 pub mod import_problem;
 pub mod installshield;
 pub mod is3;
 pub mod keybindings;
+mod player_state;
 pub mod save_archive;
 pub mod save_data;
+pub mod theme;
 pub mod wise;
 
 pub use keybindings::{GuestButton, KeyBinding, KeyBindings};
@@ -496,6 +500,10 @@ impl CpuBackendPref {
 /// `<library_root>/config.json`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LauncherConfig {
+    /// EQ can exceed the old 50-million-slice cap during normal play.
+    /// Keep stored diagnostic limits, but apply them only by explicit opt-in.
+    #[serde(default)]
+    pub apply_run_limits: bool,
     #[serde(default = "default_schema_version")]
     pub schema_version: u32,
     /// Default CPU backend used when importing a new game.
@@ -545,11 +553,11 @@ pub struct LauncherConfig {
 }
 
 fn default_show_fps() -> bool {
-    true
+    false
 }
 
 fn default_show_backend_log() -> bool {
-    true
+    false
 }
 
 fn default_controls_opacity() -> f32 {
@@ -564,10 +572,22 @@ fn default_fullscreen_mode() -> String {
     "with_controls".to_string()
 }
 
+impl LauncherConfig {
+    /// Interactive sessions are unlimited unless diagnostics were enabled.
+    pub fn run_limits(&self, settings: &GameSettings) -> (u64, bool) {
+        if self.apply_run_limits {
+            (settings.max_slices, settings.halt_on_unimplemented)
+        } else {
+            (0, false)
+        }
+    }
+}
+
 impl Default for LauncherConfig {
     fn default() -> Self {
         Self {
             schema_version: 1,
+            apply_run_limits: false,
             default_cpu_backend: CpuBackendPref::default(),
             verbosity: 1,
             last_import_dir: None,
@@ -785,14 +805,77 @@ impl Library {
         &mut self.config
     }
 
+    pub fn controls_path(&self, id: Option<&str>) -> Result<PathBuf, LibraryError> {
+        match id {
+            Some(id) => {
+                self.get(id)
+                    .ok_or_else(|| LibraryError::NotFound(id.to_string()))?;
+                Ok(self.root.join("games").join(id).join("controls.json"))
+            }
+            None => Ok(self.root.join("controls-default.json")),
+        }
+    }
+
+    pub fn effective_controls(&self, id: &str) -> Result<(controls::Controls, bool), LibraryError> {
+        let path = self.controls_path(Some(id))?;
+        if let Some(value) = controls::read(&path)? {
+            return Ok((value, true));
+        }
+        // Web's first UI release wrote this sidecar. Reading it is a migration,
+        // not permission to overwrite a future-version controls.json.
+        if let Some(value) = controls::read(&path.with_file_name("web-controls.json"))? {
+            return Ok((value, true));
+        }
+        Ok((
+            controls::read(&self.controls_path(None)?)?.unwrap_or_default(),
+            false,
+        ))
+    }
+
+    pub fn write_controls(
+        &self,
+        id: Option<&str>,
+        value: &controls::Controls,
+    ) -> Result<(), LibraryError> {
+        controls::write(&self.controls_path(id)?, value)?;
+        Ok(())
+    }
+
+    pub fn presentation(&self, id: &str) -> Result<controls::Presentation, LibraryError> {
+        let path = self
+            .controls_path(Some(id))?
+            .with_file_name("presentation.json");
+        match fs::read(path) {
+            Ok(bytes) => Ok(serde_json::from_slice(&bytes)?),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                Ok(controls::Presentation::default())
+            }
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    pub fn write_presentation(
+        &self,
+        id: &str,
+        value: &controls::Presentation,
+    ) -> Result<(), LibraryError> {
+        let path = self
+            .controls_path(Some(id))?
+            .with_file_name("presentation.json");
+        write_json(&path, value)
+    }
+
     /// Import a Pocket PC `.CAB` into the library.
     ///
     /// Returns the freshly created [`GameEntry`]. The cab is extracted
     /// into `<library_root>/games/<id>/extracted/`, where `<id>` is
     /// derived from the source cab's filename. Existing entries with
-    /// the same id are replaced (the directory is wiped first).
+    /// the same id are updated transactionally, preserving written progress and settings.
     pub fn import_cab(&mut self, cab_path: impl AsRef<Path>) -> Result<&GameEntry, LibraryError> {
         let cab_path = cab_path.as_ref();
+        if self.replaced.is_none() {
+            return self.import_direct(cab_path);
+        }
         let source_cab = cab_path
             .file_name()
             .map(|s| s.to_string_lossy().to_string())
@@ -1020,6 +1103,9 @@ impl Library {
     /// but it has no entry point to start.
     pub fn import_exe(&mut self, exe_path: impl AsRef<Path>) -> Result<&GameEntry, LibraryError> {
         let exe_path = exe_path.as_ref();
+        if self.replaced.is_none() {
+            return self.import_direct(exe_path);
+        }
         if is_nsis_installer(exe_path) {
             return self.import_nsis_installer(exe_path);
         }
@@ -1163,6 +1249,9 @@ impl Library {
     /// ARM PE32 inside the archive is picked as the entry point.
     pub fn import_zip(&mut self, zip_path: impl AsRef<Path>) -> Result<&GameEntry, LibraryError> {
         let zip_path = zip_path.as_ref();
+        if self.replaced.is_none() {
+            return self.import_direct(zip_path);
+        }
         if let Some(patch) = audio_patch::read(zip_path)? {
             let entry = self
                 .get(&patch.game)
@@ -1427,6 +1516,9 @@ impl Library {
     /// selected just like for ZIP imports.
     pub fn import_rar(&mut self, rar_path: impl AsRef<Path>) -> Result<&GameEntry, LibraryError> {
         let rar_path = rar_path.as_ref();
+        if self.replaced.is_none() {
+            return self.import_direct(rar_path);
+        }
         let source_name = rar_path
             .file_name()
             .map(|s| s.to_string_lossy().to_string())
@@ -1661,6 +1753,21 @@ impl Library {
             .import_direct_unchecked(path)
             .map(|entry| entry.id.clone());
         let replaced = self.replaced.take().unwrap_or_default();
+        let outcome = outcome.and_then(|id| {
+            for (old_id, old) in &replaced {
+                let dir = games.join(old_id);
+                if dir.join("game.json").is_file() && self.get(old_id).is_some() {
+                    player_state::preserve(old, &dir)?;
+                    if let Some(previous) = listed.iter().find(|g| g.id == *old_id) {
+                        let entry = self.get_mut(old_id).expect("checked above");
+                        entry.settings = previous.settings.clone();
+                        write_json(&dir.join("game.json"), entry)?;
+                    }
+                }
+            }
+            self.save()?;
+            Ok(id)
+        });
         match outcome {
             Ok(id) => {
                 // Only a game this import actually put in place loses its old
@@ -2032,6 +2139,13 @@ fn recover_replaced(games: &Path) {
         };
         let dir = games.join(id);
         if dir.join("game.json").is_file() {
+            // A tab can close after asset installation but before the normal
+            // commit copies EQ's written progress. Never discard that backup
+            // until preservation succeeds, including on recovery.
+            if let Err(error) = player_state::preserve(&entry.path(), &dir) {
+                log::warn!("could not preserve recovered progress for {id}: {error}");
+                continue;
+            }
             let _ = fs::remove_dir_all(entry.path());
         } else {
             let _ = fs::remove_dir_all(&dir);
@@ -2679,6 +2793,21 @@ fn guess_screen(
 #[cfg(test)]
 mod tests {
     #[test]
+    fn interactive_limits_require_explicit_opt_in() {
+        let mut config: super::LauncherConfig = serde_json::from_str("{}").unwrap();
+        let settings = super::GameSettings {
+            max_slices: 50_000_000,
+            halt_on_unimplemented: true,
+            ..super::GameSettings::default()
+        };
+        assert_eq!(config.run_limits(&settings), (0, false));
+        config.apply_run_limits = true;
+        let restored: super::LauncherConfig =
+            serde_json::from_str(&serde_json::to_string(&config).unwrap()).unwrap();
+        assert_eq!(restored.run_limits(&settings), (50_000_000, true));
+        assert_eq!(settings.max_slices, 50_000_000);
+    }
+    #[test]
     fn a_cabinet_for_an_arm_device_is_preferred() {
         for arm in [
             "ptaipei.arm.CAB",
@@ -3024,15 +3153,15 @@ mod tests {
     }
 
     #[test]
-    fn show_fps_defaults_to_true() {
+    fn show_fps_is_opt_in() {
         // A brand-new library that has never been saved should
-        // come back with the FPS overlay enabled.
+        // come back with the FPS overlay disabled.
         let root = tmpdir("showfps_default");
         let lib = Library::open(&root).unwrap();
-        assert!(lib.config().show_fps);
+        assert!(!lib.config().show_fps);
 
         // A pre-existing config.json that pre-dates the show_fps
-        // field must also default to enabled when re-opened.
+        // field must also default to disabled when re-opened.
         let root2 = tmpdir("showfps_legacy");
         fs::create_dir_all(&root2).unwrap();
         let legacy_config = serde_json::json!({
@@ -3047,7 +3176,7 @@ mod tests {
         )
         .unwrap();
         let lib2 = Library::open(&root2).unwrap();
-        assert!(lib2.config().show_fps);
+        assert!(!lib2.config().show_fps);
     }
 
     #[test]
@@ -3162,6 +3291,39 @@ mod tests {
 
     const MACHINE_ARM: u16 = 0x01c0;
     const MACHINE_X86: u16 = 0x014c;
+
+    #[test]
+    fn public_cab_update_preserves_written_progress_and_controls() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut lib = Library::open(dir.path().join("library")).unwrap();
+        let cab = dir.path().join("device.cab");
+        legacy_cab(&cab, MACHINE_ARM);
+        lib.import_cab(&cab).unwrap();
+        let game_dir = lib.root().join("games/device");
+        fs::create_dir_all(game_dir.join("saves")).unwrap();
+        fs::write(game_dir.join("saves/player.sav"), b"existing progress").unwrap();
+        let cfg = controls::Controls::preset(controls::Profile::Stylus);
+        lib.write_controls(Some("device"), &cfg).unwrap();
+        lib.get_mut("device").unwrap().settings.rotation = RotationPref::Cw90;
+        lib.save().unwrap();
+        lib.import_cab(&cab).unwrap();
+        assert_eq!(
+            fs::read(game_dir.join("saves/player.sav")).unwrap(),
+            b"existing progress"
+        );
+        assert_eq!(lib.effective_controls("device").unwrap().0, cfg);
+        assert_eq!(
+            lib.get("device").unwrap().settings.rotation,
+            RotationPref::Cw90
+        );
+        legacy_cab(&cab, MACHINE_X86);
+        assert!(lib.import_cab(&cab).is_err());
+        assert_eq!(
+            fs::read(game_dir.join("saves/player.sav")).unwrap(),
+            b"existing progress"
+        );
+        assert_eq!(lib.effective_controls("device").unwrap().0, cfg);
+    }
 
     /// A cabinet holding one program of `machine` and an unrelated file,
     /// with no WinCE setup file: the shape of a desktop setup cabinet.

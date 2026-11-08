@@ -1,0 +1,188 @@
+{
+  "date": "2026-11-07",
+  "scope": "Local Web and Android artifacts; supplied package variants and native progress. Not complete-game or device-reference acceptance.",
+  "web": {
+    "engine": "PocketHLE WASM interpreter; real Windows Chrome",
+    "files": {
+      "docs/pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+      "docs/pockethle.wasm": "1f63f9f5ad858f0635d843892a3c254febc3dacac3ce429e3cfa5645c3ddf4c1",
+      "docs/index.html": "d64dd513b8427564a4af937a48ef7815eb90c88103d5a9b5c9eecf2c62e22823"
+    },
+    "episodes": {
+      "1": {
+        "world": "Freeport, Druid Level 1",
+        "reviewed": [
+          "world-canvas.png",
+          "reloaded-world-canvas.png"
+        ],
+        "verified": [
+          "UI package and progress import",
+          "world entry",
+          "pointer movement",
+          "save and page reload",
+          "IndexedDB library restoration and world reload"
+        ],
+        "uncaught_runtime_errors": 0,
+        "console_warning_count": 12,
+        "screenshots": {
+          "target/eq-validation/ep1-browser-docs/world-canvas.png": "f0d61d14fb096d741d33aeb9d191274d4bd91533109af7a0be321e53dfe2b95f",
+          "target/eq-validation/ep1-browser-docs/reloaded-world-canvas.png": "0e8732ac45fd8b2519543070f278451f34d7e8afe99a9a76076486c32c36b900"
+        }
+      },
+      "2": {
+        "world": "Qeynos, Wizard Level 12",
+        "reviewed": [
+          "world-canvas.png",
+          "reloaded-world-canvas.png"
+        ],
+        "verified": [
+          "UI package and progress import",
+          "world entry",
+          "pointer movement",
+          "save and page reload",
+          "IndexedDB library restoration and world reload"
+        ],
+        "uncaught_runtime_errors": 0,
+        "console_warning_count": 24,
+        "screenshots": {
+          "target/eq-validation/ep2-browser/world-canvas.png": "f80e78ed28de48f21ede3c2ae6af38114f5b83eab2c039c3fcc33bacdc8a1d5c",
+          "target/eq-validation/ep2-browser/reloaded-world-canvas.png": "3e52310624790f08c6dd56e479da000cbf38b2dbf310e18335f1102dc31bfc9e"
+        }
+      },
+      "3": {
+        "world": "Butcherblock Mtns, Warrior Level 25",
+        "reviewed": [
+          "world-canvas.png",
+          "reloaded-world-canvas.png"
+        ],
+        "verified": [
+          "UI package and progress import",
+          "world entry",
+          "pointer movement",
+          "save and page reload",
+          "IndexedDB library restoration and world reload"
+        ],
+        "uncaught_runtime_errors": 0,
+        "console_warning_count": 42,
+        "screenshots": {
+          "target/eq-validation/ep3-browser-docs/world-canvas.png": "45c0f7f41dcde65c0d70103a6d2e43180c357c99ba69962c77cce72fcaf8fa69",
+          "target/eq-validation/ep3-browser-docs/reloaded-world-canvas.png": "47c8b01a26f3b74bea3dd574685edf8335514d107dcfc27e46f1181e5b2602d5"
+        }
+      }
+    }
+  },
+  "android": {
+    "engine": "PocketHLE JNI Unicorn; owned Android x86_64 emulator emulator-5580",
+    "apk": {
+      "path": "frontends/pocket-android/app/build/outputs/apk/debug/app-debug.apk",
+      "bytes": 29726965,
+      "sha256": "ce96c938294c5e5ebdb7d4f4a5f2108ecf575973bcbe105630199cedd72d5d84"
+    },
+    "abis": [
+      "arm64-v8a",
+      "x86_64"
+    ],
+    "ndk": "26.3.11579264",
+    "arm64_physical_device_tested": false,
+    "episodes": {
+      "3": {
+        "verified": [
+          "SAF package import",
+          "SAF progress import; three files",
+          "Level 25 role selection",
+          "world entry",
+          "touch movement and scrolling",
+          "options screen",
+          "exit world to save"
+        ],
+        "new_process_reload": "Verified world and moved position after app force-stop and fresh launch; FPS/backend overlays disabled through Settings",
+        "screenshots": {
+          "target/eq-validation/android-ep3-world-confirmed.png": "cb028b9fd674e666f4b48819f73ca88ab64ede162ce82c9d3458beb1f98cb5d3",
+          "target/eq-validation/android-ep3-moved.png": "e7a1ba570e77ab147ea888152c42f1bae9770095fe6d11cc56910817d4574616",
+          "target/eq-validation/android-ep3-saved-character.png": "4cc376d4b5c1a60873b297c89cbd4d410223873981166c7952376dfb2d9ef75e",
+          "target/eq-validation/android-ep3-reloaded-world.png": "fbbd7d4caa8804c60a6ad2747385388cd643114a3589917997ca0be66a5f8fc9"
+        }
+      },
+      "1": {
+        "world": "Freeport, Druid Level 1",
+        "verified": [
+          "SAF game and progress import",
+          "installed EP1 EXE matches authorized replacement SHA256",
+          "world entry",
+          "landscape viewport preserves portrait game aspect ratio",
+          "landscape pointer movement",
+          "fullscreen with on-screen controls; system first-use prompt acknowledged",
+          "portrait restored without restarting guest",
+          "exit world and save to character list",
+          "fresh app process reloads saved role, Freeport world and moved position; manual retry of library selection required"
+        ],
+        "screenshots": {
+          "target/eq-validation/android-ep1-world-guest.png": "90bfa771c83f6237f1379e35cc87412fa9fb4ed67a4ef77c97b7b5c0d5912802",
+          "target/eq-validation/android-ep1-landscape.png": "024f64ce603935084d6f567153ab7ec407fcab16aebd3c2e54b0decaa64a2d82",
+          "target/eq-validation/android-ep1-landscape-moved.png": "f01e7bf984363cf00b3b504778604cc0041c21c8291c77f1878a5f637eae2b7a",
+          "target/eq-validation/android-ep1-landscape-fullscreen-confirmed-guest.png": "6fc07b9acb7e3df8d996c52434bb833e97973b78831bd872817a898be430086f",
+          "target/eq-validation/android-ep1-saved-guest.png": "86d539cfa67e664de66987d81fd45f2f59b5dfc59f934c2dd2629b6193117068",
+          "target/eq-validation/android-ep1-reloaded-character-guest.png": "c8cbb66bb1a1e111dc627b6ff8cddaeee2f3e0f38f393364f12597d6f4bd6230",
+          "target/eq-validation/android-ep1-reloaded-world-guest.png": "80831a83f72f1ede109aaa11266860231ac65778290130c9704343d0a4514ed0"
+        }
+      },
+      "2": {
+        "world": "Qeynos, Wizard Level 12",
+        "verified": [
+          "SAF game and progress import",
+          "role selection",
+          "world entry",
+          "Options screen after 500 ms test press",
+          "Exit writes a changed SAV in game save directory",
+          "fresh process reloads updated SAV after Options Exit"
+        ],
+        "screenshots": {
+          "target/eq-validation/android-ep2-character-guest.png": "a1a58a6a9e41723bc6212be9932701617cfaee13c531a654a25faeae7edbe9ef",
+          "target/eq-validation/android-ep2-world-guest.png": "ae6dca2a04bb33efd870cff78c0241ce707558319e2cc9a6b6c4e014f637dc53",
+          "target/eq-validation/android-ep2-reloaded-world-guest.png": "3ba5caeb5de3f561a8704c836410f55dec9a28945692c266b2471d311bdccf5b"
+        },
+        "save_write": {
+          "pocketeqe2_2.sav": {
+            "bytes": 1946,
+            "sha256": "fdd8a0aebfb73d67ea412ab6ae7dcc3dba412a078021c750b7c041494d7f2246"
+          },
+          "eqppce2.css": {
+            "bytes": 2996,
+            "sha256": "42fa1dbbe2dd37a91d5ecbcc8448262e93a5d04dd516d22e4e35b9aafb1c39b8"
+          },
+          "pockethle-registry.dat": {
+            "bytes": 728,
+            "sha256": "f1977df071854b1bb095030103f038f7475bd281c5b0731f85b15cbc55e8766f"
+          }
+        },
+        "input_limit": "150 ms injected taps were intermittently missed; Options opened with 500 ms press. Short-tap reliability not accepted."
+      }
+    },
+    "android_version": "14",
+    "api_level": 34,
+    "emulator_version": "37.2.13.0"
+  },
+  "remaining": [
+    "Full combat, shops, death/resurrection, long gameplay and quests",
+    "EP3 original MFC registration GUI",
+    "Same-material Windows CE reference display comparison",
+    "Physical ARM64 Android and audio listening validation",
+    "Android short-tap reliability; 150 ms test presses intermittently missed, longer presses worked"
+  ],
+  "checks": {
+    "rust_workspace_previous_runtime_change": {
+      "passed": 588,
+      "ignored": 11,
+      "fmt_exit": 0,
+      "clippy_exit": 0
+    },
+    "cross_platform_followup": {
+      "fmt_exit": 0,
+      "javascript_tests_passed": 5,
+      "android_native_build": "ARM64 and x86_64 succeeded",
+      "android_apk_clean_build": "BUILD SUCCESSFUL"
+    }
+  },
+  "version": "PocketHLE 0.6.0; current local changes",
+  "local_preview": "http://127.0.0.1:8000/"
+}

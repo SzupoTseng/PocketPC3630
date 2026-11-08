@@ -499,7 +499,9 @@ framebuffer at the largest aspect-preserving size that fits. Using the
 viewport rectangle instead of the panel's content rectangle keeps the game
 centered after fullscreen resizing. Pointer input still maps through the same
 inverse rotation. F11 exits and restores the fullscreen state from before the
-mode; outside it, F11 keeps toggling ordinary borderless fullscreen.
+mode; outside it, F11 keeps toggling ordinary borderless fullscreen. The
+centered, scrollable pause menu overlays the game-only view without changing
+guest geometry; F11 remains available while the host menu owns input focus.
 
 **Android throttles WVGA uploads to 30 Hz.** UNO's 480×800 framebuffer expands
 to a 1.5 MB RGBA snapshot; copying and uploading it at 60 Hz creates avoidable
@@ -969,7 +971,7 @@ Dropping `AudioEngine` stops its worker and clears both PCM and voices, even
 when an external `AudioTap` survives. EverQuest restart/error paths must not
 leave a looping theme audible after the guest is destroyed.
 
-**EQ audio supplements remain user-local.** EP2/EP3 request some sounds absent from their local CABs but present in other supplied episodes. Supplements are built locally from the user's own copies and never committed. CAB packages may include safe relative extras such as Sounds/Rat_Att.wav, preserving directories beside the installed EXE. Reject traversal, drive-prefixed and backslash names. Never synthesize a silent replacement or embed game audio in source. For an existing library use the audio-only patch manifest pockethle-audio.json (version 1): it targets an installed game and only adds missing RIFF/WAVE files under Sounds, without reinstalling its CAB or touching progress/manifests. Validate the complete patch before writes, reject conflicting installed sounds, and keep repeated imports idempotent. Full game reimport remains a separate operation.
+**EQ audio supplements remain user-local.** EP2/EP3 request some sounds absent from their local CABs but present in other supplied episodes. `tools/eq-validation/audio-materials.json` records donor files and hashes; generated complete packages stay under ignored target. CAB packages may include safe relative extras such as Sounds/Rat_Att.wav, preserving directories beside the installed EXE. Reject traversal, drive-prefixed and backslash names. Never synthesize a silent replacement or embed game audio in source. For an existing library use the audio-only patch manifest pockethle-audio.json (version 1): it targets an installed game and only adds missing RIFF/WAVE files under Sounds, without reinstalling its CAB or touching progress/manifests. Validate the complete patch before writes, reject conflicting installed sounds, and keep repeated imports idempotent. Full game reimport remains a separate operation.
 
 ## 13. Frontend input and launcher settings
 
@@ -1061,6 +1063,47 @@ settings change must not wipe the host-key map a user set up on the PC.
 Add a field to one side and add it to the other in the same change.
 
 ## 14. Working on this repo
+
+The Web catalog's introductions and control previews live in
+`frontends/pocket-wasm/web/library-ui.js`; `prepare-pages.mjs` preflights all
+inputs and the new WASM exports before copying anything into `docs/`. Previews
+never call guest input APIs. A catalog recommendation does not verify a local
+binary, version, platform or input device. Generic CE Action / App1–6 buttons
+are separate from an OEM Device Emulator skin and its shell-routing baseline.
+
+Host controls now use `pocket_library::controls::Controls` version 1. The
+inheritance order is product defaults → `controls-default.json` at the library
+root → `games/<installed-id>/controls.json`. Legacy `web-controls.json` remains
+a read fallback until the first successful write; a per-game reset removes both
+files to restore inheritance. Invalid/future Rust configurations fail rather
+than silently overwriting them. Bindings use host names and raw CE VKs; layouts
+store normalized position and size separately for portrait/landscape. Hardware
+App keys do not replace the existing GAPI A/B/C mapping. Controls and
+`presentation.json` (alias, favorite, last-played) stay outside progress ZIPs.
+Public CAB/EXE/ZIP/RAR imports enter the shared replacement transaction, keeping
+old saves, registry, controls, presentation and legacy EQ save/settings files
+until a valid installation and preserved player state can be committed.
+
+Desktop/Android runners accept SetPaused and acknowledge it only on the
+emulation thread. They block guest execution while paused but still accept
+Stop, volume, committed text and release edges. Web pauses before its next
+slice. `guest_clock` supplies GetTickCount, native tick-page refresh and
+synthetic timers; menu pauses subtract host elapsed time. Audio transport pause
+freezes voices and PCM cursor, independently of master gain and guest waveOut
+pause. Frontends combine menu/settings/focus/background reasons: closing one
+must not resume another. Clock/audio unit tests are not a physical-device or
+real-game acceptance result.
+
+`InputEvent::Text { unit }` is committed UTF-16 and translates to WM_CHAR,
+independently of action-key remapping. Built-in Edit controls accumulate Unicode
+surrogate pairs only for the same focused control. Host text fields retain IME
+composition until the user commits text. Each Web session disposes its input
+listeners, deferred releases, controller poll and save timer. Input holds are
+combined by source; Android additionally tracks physical/controller device IDs.
+Every IDBFS request waits for its own serialized callback. A failed write rolls
+back host files and never reports success. The new UI source has not yet been
+promoted to `docs/`; see `docs/UI_IMPLEMENTATION_STATUS.md` for build blockers
+and remaining implementation/acceptance gaps.
 
 ```bash
 cargo build --release -p pocket-cli --features unicorn   # → target/release/pockethle
@@ -1157,3 +1200,31 @@ EverQuest registration uses tagged colors; falling through to silver loses
 its background and text colors. Untagged palette behavior is preserved.
 This covers only these measured `GetSysColor` values, not `GetSysColorBrush`
 or a complete device theme. Reference: `tools/wince-dialog-test/reference/`.
+
+### Interactive diagnostic limits
+
+Windows and Android interactive runners read `LauncherConfig.apply_run_limits`
+(default false). They call `run_limits(&GameSettings)` before launch: without
+explicit opt-in, both `max_slices` and `halt_on_unimplemented` are disabled.
+EQ otherwise exits during ordinary play at the legacy 50-million-slice cap.
+Persisted per-game diagnostic values remain intact. CLI diagnostic flags retain
+their existing meaning; WASM interactive execution stays unlimited. Kotlin
+`LauncherConfig` must round-trip `apply_run_limits` alongside Rust.
+
+### Native frame publication (2026-11-08)
+
+Desktop and Android gate dirty-frame snapshots through
+`presentation::frame_ready`: a new `complete_frames` value or guest wait is
+preferred, with a bounded 100 ms fallback for held GAPI pointers and GDI-only
+programs. Input collection and pause acknowledgement keep their existing
+frequency. EQ character slots erase and repaint across many calls, so a dirty
+counter alone can expose a partial black slot. The browser already waits for
+these boundaries with its six-tick fallback. This is host publication policy,
+not a change to guest draw APIs or the framebuffer merge invariants.
+
+Windows F12 (or the pause-menu screenshot action) requests
+`ViewportCommand::Screenshot`; it saves the renderer's pixels instead of a
+Windows GDI screen grab. `POCKETHLE_SCREENSHOT_PATH` optionally supplies a path
+for an isolated test process; otherwise PNGs are saved in the library root’s
+`screenshots/` folder. No modal path picker delays the captured moment. A configured
+menu shortcut takes priority over the screenshot shortcut.

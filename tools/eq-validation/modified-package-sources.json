@@ -1,0 +1,28 @@
+{
+  "user_authorization": "2026-11-07: use existing patch to avoid serial-number entry and continue game tests",
+  "scope": "Separate local modified-game test copies; does not validate original registration path",
+  "ep1": {
+    "patch_source_archive": "/mnt/g/GameDevZ/EverQuest Pocket PC_Codex/Pocket EQ.zip",
+    "patch_member": "Pocket EQ/Episode 1/crack/PocketEQ.exe",
+    "patch_sha256": "ad702136fca20a4548a526ed56471ef7d9877e36a07540485e22139193fe5e02",
+    "package": "target/eq-validation/packages/ep1-patched.zip",
+    "package_sha256": "81eb91a2800eb959427ab00d1a4c97bc1c77d1bff13d48ae718ffe8916542a98",
+    "actual_launch": "target/eq-validation/modified-library/games/pocketeq_e1/extracted/PocketEQ.exe",
+    "actual_exe_sha256": "ad702136fca20a4548a526ed56471ef7d9877e36a07540485e22139193fe5e02",
+    "important": "CLI run of ZIP prioritizes nested CAB and does not apply EXE overlay. Import via Library, then launch verified extracted EXE with install mount and registry.",
+    "initial_observation": "Passed registration into emodiv logo; no gameplay acceptance yet",
+    "verified_observation": "Character selection and character creation screen reached; screenshots manually inspected",
+    "screenshot": "target/eq-validation/ep1-patched-menu-native/final.png",
+    "character_creation_screenshot": "target/eq-validation/ep1-patched-create-native/final.png"
+  },
+  "ep2": {
+    "package": "target/eq-validation/packages/ep2.zip",
+    "source_status": "Previously identified modified E2 CAB; now explicitly authorized for separate modified-game testing",
+    "initial_observation": "Reached emodiv logo; no gameplay acceptance yet",
+    "verified_observation": "Four-slot character selection reached; screenshot manually inspected",
+    "screenshot": "target/eq-validation/ep2-modified-menu-native/final.png"
+  },
+  "ep3": {
+    "patch": "not found"
+  }
+}

@@ -24,6 +24,14 @@ import java.nio.ByteOrder
 import org.json.JSONObject
 import android.content.pm.ActivityInfo
 import android.view.KeyEvent
+import android.content.Intent
+import android.view.Gravity
+import android.widget.FrameLayout
+import android.widget.Button
+import android.widget.EditText
+import android.widget.SeekBar
+import androidx.appcompat.app.AlertDialog
+import androidx.activity.result.contract.ActivityResultContracts
 
 /**
  * Hosts the emulator output for one game.
@@ -39,6 +47,182 @@ import android.view.KeyEvent
  * loading spinner once the real Unicorn backend was wired up.
  */
 class GameActivity : AppCompatActivity() {
+    private var controlConfig = JSONObject()
+    private val pauseReasons = HashSet<String>()
+    private var menuDialog: AlertDialog? = null
+    private var menuPauseAcknowledged:Boolean?=null
+    private lateinit var floatingMenu: Button
+    private val deviceListener = object : android.hardware.input.InputManager.InputDeviceListener {
+        override fun onInputDeviceAdded(id: Int) { updateGamepadVisibility() }
+        override fun onInputDeviceChanged(id: Int) { onInputDeviceRemoved(id);updateGamepadVisibility() }
+        override fun onInputDeviceRemoved(id: Int) {
+            if(session!=0L) {
+                heldPhysicalKeys.filterKeys { it.first==id }.forEach { (source,vk) -> releaseGuestKey(session,vk);heldPhysicalKeys.remove(source) }
+                heldAxisKeys.filterKeys { it.first==id }.forEach { (source,vk) -> releaseGuestKey(session,vk);heldAxisKeys.remove(source) }
+            }
+            updateGamepadVisibility()
+        }
+    }
+    private fun updateGamepadVisibility() {
+        if(!::gameControls.isInitialized) return
+        val connected=InputDevice.getDeviceIds().any { id -> InputDevice.getDevice(id)?.let { it.sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD || it.sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK } ?: false }
+        val empty=(controlConfig.optJSONArray("keys")?.length() ?: 0)==0 && !controlConfig.optBoolean("keyboard")
+        gameControls.visibility=if(empty || (fullscreen && fullscreenMode=="without_controls") || (connected && controlConfig.optBoolean("auto_hide_gamepad",true))) View.GONE else View.VISIBLE
+        updateControlsLayout()
+    }
+    private var inputEpoch=0
+    private var activeStylusId = -1
+    private val backupProgress = registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) {
+            val id = intent.getStringExtra(EXTRA_GAME_ID).orEmpty()
+            val file = java.io.File(cacheDir, "progress-export.zip")
+            val result = JSONObject(NativeBridge.saveAction(LibraryPaths.root(this), id, "export", file.absolutePath))
+            if (result.optBoolean("ok") && file.exists()) {
+                try { requireNotNull(contentResolver.openOutputStream(uri)) { "Cannot open backup destination" }.use { out -> file.inputStream().use { it.copyTo(out) } }; android.widget.Toast.makeText(this, "Progress backup exported", android.widget.Toast.LENGTH_LONG).show() }
+                catch (e: Exception) { android.widget.Toast.makeText(this, e.message, android.widget.Toast.LENGTH_LONG).show() }
+                finally { file.delete() }
+            } else android.widget.Toast.makeText(this, result.optString("error", "No written progress"), android.widget.Toast.LENGTH_LONG).show()
+        }
+        setPauseReason("backup", false)
+    }
+
+    private fun setPauseReason(reason: String, paused: Boolean) {
+        if (paused) { releaseHeldInput(); pauseReasons.add(reason) } else pauseReasons.remove(reason)
+        if (session != 0L) NativeBridge.nativeSetPaused(session, if (pauseReasons.isEmpty()) 0 else 1)
+    }
+
+    private fun openGameMenu() {
+        if (session == 0L || menuDialog?.isShowing == true) return
+        setPauseReason("menu", true)
+        menuPauseAcknowledged=null
+        val options = arrayOf("繼續 / Resume", "操作方式 / Controls", "文字輸入 / Text", "旋轉 / Rotate", "放大 / Zoom", "音量 / Volume", "備份進度 / Backup", "全螢幕 / Fullscreen", "返回遊戲庫 / Library")
+        menuDialog = AlertDialog.Builder(this).setTitle("正在暫停 / Pausing…")
+            .setItems(options) { _, which -> when (which) {
+                1 -> { setPauseReason("settings", true); startActivity(Intent(this, ControlsActivity::class.java).putExtra("game_id", intent.getStringExtra(EXTRA_GAME_ID)).putExtra("game_name", title.toString())) }
+                2 -> openTextInput()
+                3 -> { rotationDegrees = (rotationDegrees + 90) % 360; glRenderer.setRotationDegrees(rotationDegrees); lastFrame?.let { glRenderer.submit(it); surface.requestRender() }; saveRotation() }
+                4 -> openDisplaySettings()
+                5 -> {
+                    setPauseReason("volume",true)
+                    val bar = SeekBar(this).apply { max=100; progress=(controlConfig.optDouble("volume",1.0)*100).toInt() }
+                    bar.setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener {
+                        override fun onStartTrackingTouch(b: SeekBar?) {}
+                        override fun onStopTrackingTouch(b: SeekBar?) {}
+                        override fun onProgressChanged(b: SeekBar?, p: Int, user: Boolean) { controlConfig.put("volume",p/100.0); if(session!=0L) NativeBridge.nativeSetVolume(session,p*10) }
+                    })
+                    AlertDialog.Builder(this).setTitle("Volume").setView(bar).setPositiveButton(android.R.string.ok) { _,_->saveControls() }.setOnDismissListener { setPauseReason("volume",false) }.show()
+                }
+                6 -> { setPauseReason("backup",true); backupProgress.launch("${intent.getStringExtra(EXTRA_GAME_ID)}-progress.zip") }
+                7 -> toggleFullscreenWithControls()
+                8 -> { if(session!=0L) NativeBridge.nativeRequestStop(session); finish() }
+            } }.setOnDismissListener { menuDialog=null; setPauseReason("menu",false) }.create()
+        menuDialog?.show()
+        menuDialog?.listView?.isEnabled = NativeBridge.nativeIsPaused(session)==1
+    }
+
+    private fun openTextInput() {
+        setPauseReason("text",true)
+        val input = EditText(this).apply { hint="輸入文字 / Enter text"; maxLines=4 }
+        val content=android.widget.LinearLayout(this).apply { orientation=android.widget.LinearLayout.VERTICAL;addView(input) }
+        val backspace=Button(this).apply { text="排入客體退格 / Queue guest backspace";setOnClickListener { if(session!=0L) NativeBridge.nativeSendInput(session,NativeBridge.INPUT_TEXT,8,0) } };content.addView(backspace)
+        AlertDialog.Builder(this).setTitle("文字輸入 / Committed text").setView(content)
+            .setPositiveButton("送出 / Send") { _,_->
+                // Deliver committed UTF-16 text after Resume; this is separate
+                // from game key mappings and supports Android IME composition.
+                setPauseReason("text",false)
+                val value=input.text.toString().take(4096)
+                if(session!=0L) for(c in value) NativeBridge.nativeSendInput(session,NativeBridge.INPUT_TEXT,c.code,0)
+            }.setNegativeButton(android.R.string.cancel,null).setOnDismissListener { setPauseReason("text",false) }.show()
+    }
+
+    private fun saveControls() {
+        val id=intent.getStringExtra(EXTRA_GAME_ID) ?: return
+        val reply=JSONObject(NativeBridge.writeControls(LibraryPaths.root(this),id,controlConfig.toString()))
+        if(!reply.optBoolean("ok")) android.widget.Toast.makeText(this,reply.optString("error"),android.widget.Toast.LENGTH_LONG).show()
+    }
+
+    private fun saveRotation() {
+        val id=intent.getStringExtra(EXTRA_GAME_ID) ?: return
+        val current=JSONObject(NativeBridge.readGameSettings(LibraryPaths.root(this),id))
+        current.put("rotation",when(rotationDegrees){90->"cw90";180->"half";270->"ccw90";else->"none"})
+        NativeBridge.writeGameSettings(LibraryPaths.root(this),id,current.toString())
+    }
+
+    private fun openDisplaySettings() {
+        setPauseReason("display",true)
+        val content=android.widget.LinearLayout(this).apply { orientation=android.widget.LinearLayout.VERTICAL;setPadding(24,8,24,8) }
+        for((key,min,max) in listOf(Triple("zoom",1.0,4.0),Triple("zoom_x",0.0,1.0),Triple("zoom_y",0.0,1.0))) {
+            val label=android.widget.TextView(this).apply { text=key };content.addView(label)
+            val bar=SeekBar(this).apply { this.max=100;progress=((controlConfig.optDouble(key,if(key=="zoom")1.0 else .5)-min)/(max-min)*100).toInt() }
+            bar.setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener {
+                override fun onStartTrackingTouch(b:SeekBar?) {}
+                override fun onStopTrackingTouch(b:SeekBar?) {}
+                override fun onProgressChanged(b:SeekBar?,p:Int,user:Boolean) { val value=min+(max-min)*p/100;controlConfig.put(key,value);label.text="$key: ${"%.2f".format(value)}";applyZoom() }
+            });content.addView(bar)
+        }
+        AlertDialog.Builder(this).setTitle("顯示與放大 / Display and zoom").setView(content).setPositiveButton(android.R.string.ok){_,_->saveControls()}.setOnDismissListener{setPauseReason("display",false)}.show()
+    }
+    private fun applyZoom() {
+        if(!::surface.isInitialized) return
+        glRenderer.setView(controlConfig.optDouble("zoom",1.0).toFloat(),controlConfig.optDouble("zoom_x",.5).toFloat(),controlConfig.optDouble("zoom_y",.5).toFloat())
+        surface.requestRender()
+    }
+
+    private fun reloadControls() {
+        val id=intent.getStringExtra(EXTRA_GAME_ID) ?: return
+        val reply=JSONObject(NativeBridge.readControls(LibraryPaths.root(this),id))
+        if(!reply.optBoolean("ok")) { android.widget.Toast.makeText(this,reply.optString("error"),android.widget.Toast.LENGTH_LONG).show(); return }
+        controlConfig=reply.getJSONObject("value")
+        releaseHeldInput()
+        val old=gameControls
+        val parent=old.parent as? FrameLayout ?: return
+        parent.removeView(old)
+        val panel=FrameLayout(this)
+        val density=resources.displayMetrics.density
+        panel.layoutParams=FrameLayout.LayoutParams(-1,(210*density).toInt(),Gravity.BOTTOM)
+        parent.addView(panel); gameControls=panel; panel.alpha=controlConfig.optDouble("opacity",.7).toFloat()
+        val keys=controlConfig.optJSONArray("keys") ?: org.json.JSONArray()
+        val landscape=resources.configuration.orientation==Configuration.ORIENTATION_LANDSCAPE
+        val layout=controlConfig.optJSONArray(if(landscape) "landscape" else "portrait") ?: org.json.JSONArray()
+        val ppcPanel=controlConfig.optString("profile")=="ppc2003"
+        if(ppcPanel) {
+            panel.setBackgroundColor(android.graphics.Color.rgb(27,44,58))
+            val title=android.widget.TextView(this).apply { text="POCKET PC 2003";textSize=10f;setTextColor(android.graphics.Color.rgb(164,191,211));gravity=Gravity.CENTER }
+            panel.addView(title,FrameLayout.LayoutParams(-1,(20*density).toInt(),Gravity.BOTTOM))
+        }
+        val buttons=mutableListOf<Pair<Button,JSONObject>>()
+        for(i in 0 until keys.length()) {
+            val vk=keys.getInt(i)
+            var position:JSONObject?=null
+            for(j in 0 until layout.length()) if(layout.getJSONObject(j).optInt("vk")==vk) position=layout.getJSONObject(j)
+            val reference=if(ppcPanel) Ppc2003Panel.button(vk) else null
+            val point=position ?: reference ?: JSONObject().put("x",.12+(i%5)*.19).put("y",.2+(i/5)*.26).put("size",.17)
+            val button=Button(this).apply { text=ControlNames.label(vk); contentDescription=ControlNames.label(vk); textSize=12f; setPadding(0,0,0,0) }
+            if(ppcPanel) {
+                button.text=reference?.optString("label") ?: ControlNames.label(vk)
+                button.setTextColor(android.graphics.Color.rgb(227,237,245))
+                button.backgroundTintList=android.content.res.ColorStateList.valueOf(android.graphics.Color.rgb(52,78,98))
+                button.stateListAnimator=null
+            }
+            panel.addView(button); bindControlView(button,vk,reference?.optString("mode")=="click"); buttons.add(button to point)
+        }
+        panel.addOnLayoutChangeListener { _,_,_,_,_,_,_,_,_->
+            for((button,position) in buttons) {
+                val size=(position.optDouble("size",.17)*minOf(panel.width,panel.height)).toInt().coerceAtLeast((44*density).toInt())
+                val params=FrameLayout.LayoutParams(size,size).apply { leftMargin=(position.optDouble("x")*panel.width-size/2).toInt().coerceIn(0,(panel.width-size).coerceAtLeast(0)); topMargin=(position.optDouble("y")*panel.height-size/2).toInt().coerceIn(0,(panel.height-size).coerceAtLeast(0)) }
+                val oldParams=button.layoutParams as? FrameLayout.LayoutParams
+                if(oldParams==null || oldParams.width!=size || oldParams.height!=size || oldParams.leftMargin!=params.leftMargin || oldParams.topMargin!=params.topMargin) button.layoutParams=params
+            }
+            updateControlsLayout()
+        }
+        if(controlConfig.optBoolean("keyboard")) {
+            val keyboard=Button(this).apply { text="⌨"; contentDescription="文字輸入 / Text input"; setOnClickListener { openTextInput() } }
+            panel.addView(keyboard); buttons.add(keyboard to JSONObject().put("x",.9).put("y",.82).put("size",.18))
+        }
+        panel.visibility=if((keys.length()==0&&!controlConfig.optBoolean("keyboard")) || (fullscreen&&fullscreenMode=="without_controls")) View.GONE else View.VISIBLE
+        updateGamepadVisibility(); surface.post { applyZoom() }
+        if(session!=0L) NativeBridge.nativeSetVolume(session,(controlConfig.optDouble("volume",1.0)*1000).toInt())
+    }
 
     private lateinit var surface: GLSurfaceView
     private lateinit var progress: ProgressBar
@@ -74,7 +258,7 @@ class GameActivity : AppCompatActivity() {
      * start; toggling the global preference mid-game does not
      * affect an already-running session, the same way j2me-loader
      * applies its `Settings.showFps` snapshot at MIDlet start. */
-    private var showFps: Boolean = true
+    private var showFps: Boolean = false
 
     private var fullscreen: Boolean = false
     private var fullscreenMode: String = "with_controls"
@@ -82,7 +266,7 @@ class GameActivity : AppCompatActivity() {
     /** Mirrors `LauncherConfig::show_backend_log`. The status panel is
      * a developer aid ("Backend: Unicorn (ARM)"), so it has to be
      * possible to get it out of the picture. */
-    private var showBackendLog: Boolean = true
+    private var showBackendLog: Boolean = false
 
     /** Mirrors `LauncherConfig::controls_opacity`, applied as the
      * control strip's alpha. In landscape the buttons float over the
@@ -104,12 +288,12 @@ class GameActivity : AppCompatActivity() {
     private var rotationDegrees: Int = 0
 
     /** Android keycode -> guest virtual key currently held. */
-    private val heldPhysicalKeys = HashMap<Int, Int>()
+    private val heldPhysicalKeys = HashMap<Pair<Int, Int>, Int>()
     /** Guest virtual keys held by either physical or on-screen controls. */
     private val heldGuestKeys = HashMap<Int, Int>()
     private val heldVirtualKeys = HashSet<Int>()
     /** Guest keys currently asserted by a gamepad stick or hat. */
-    private val heldAxisKeys = HashSet<Int>()
+    private val heldAxisKeys = HashMap<Pair<Int, Int>, Int>()
     private var surfacePointerDown = false
     private var lastPointerX = 0
     private var lastPointerY = 0
@@ -121,6 +305,10 @@ class GameActivity : AppCompatActivity() {
     private val pollTick = object : Runnable {
         override fun run() {
             if (session == 0L) return
+            menuDialog?.let { dialog ->
+                val acknowledged=NativeBridge.nativeIsPaused(session)!=0
+                if(menuPauseAcknowledged!=acknowledged){menuPauseAcknowledged=acknowledged;dialog.setTitle(if(acknowledged) "已暫停 / Paused" else "正在暫停 / Pausing…");dialog.listView?.isEnabled=acknowledged}
+            }
             val raw = NativeBridge.nativePollFrame(session)
             if (raw != null) {
                 decodeFrame(raw)?.let { frame ->
@@ -140,6 +328,7 @@ class GameActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Themes.apply(this)
         super.onCreate(savedInstanceState)
         val config = readLauncherConfig()
         fullscreen = config.fullscreen
@@ -172,6 +361,7 @@ class GameActivity : AppCompatActivity() {
 
         surface = findViewById(R.id.surface)
         glRenderer = FrameRenderer()
+        surface.isFocusableInTouchMode=true
         surface.setEGLContextClientVersion(2)
         surface.setRenderer(glRenderer)
         surface.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
@@ -188,6 +378,7 @@ class GameActivity : AppCompatActivity() {
         val id = intent.getStringExtra(EXTRA_GAME_ID)
         if (id == null) {
             status.text = getString(R.string.run_failed_no_id)
+            status.visibility = View.VISIBLE
             progress.visibility = View.GONE
             return
         }
@@ -198,10 +389,15 @@ class GameActivity : AppCompatActivity() {
         val handle = NativeBridge.nativeStartGame(rootDir, id)
         if (handle == 0L) {
             progress.visibility = View.GONE
-            status.text = "Could not start emulator (see logcat)."
+            status.text = "無法啟動程式，請返回遊戲庫重試。 / Could not start program. Return to the library to retry."
+            status.visibility = View.VISIBLE
             return
         }
         session = handle
+        reloadControls()
+        floatingMenu=Button(this).apply { text="☰"; contentDescription="模擬器選單 / Emulator menu"; setOnClickListener { openGameMenu() } }
+        findViewById<FrameLayout>(android.R.id.content).addView(floatingMenu,FrameLayout.LayoutParams((48*resources.displayMetrics.density).toInt(),(48*resources.displayMetrics.density).toInt(),Gravity.TOP or Gravity.END))
+        updateFullscreenLayout()
         startAudio(handle)
         status.text = "Backend: ${NativeBridge.backendName()}\nRunning…"
         // The spinner gets hidden the moment the first frame arrives.
@@ -219,6 +415,7 @@ class GameActivity : AppCompatActivity() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         updateControlsLayout()
+        if(session!=0L) reloadControls()
         if (fullscreen) hideSystemBars()
         // Re-submit the last frame so the picture is re-letterboxed for
         // the new window shape even if the guest is between frames. This
@@ -232,11 +429,16 @@ class GameActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        (getSystemService(INPUT_SERVICE) as android.hardware.input.InputManager).registerInputDeviceListener(deviceListener, mainHandler)
         val handle = session
+        if(handle!=0L) { reloadControls(); setPauseReason("settings",false); setPauseReason("background",false) }
+        updateGamepadVisibility()
         if (handle != 0L && !audioRunning) startAudio(handle)
     }
 
     override fun onPause() {
+        (getSystemService(INPUT_SERVICE) as android.hardware.input.InputManager).unregisterInputDeviceListener(deviceListener)
+        setPauseReason("background",true)
         releaseHeldInput()
         stopAudio()
         super.onPause()
@@ -245,26 +447,17 @@ class GameActivity : AppCompatActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus && fullscreen) hideSystemBars()
+        if(::surface.isInitialized && session!=0L) setPauseReason("focus",!hasFocus)
     }
 
     override fun onSupportNavigateUp(): Boolean {
-        finish()
+        if (session != 0L) openGameMenu() else finish()
         return true
     }
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (fullscreen) {
-            exitFullscreenWithControls()
-            return
-        }
-        // Ask the emulator to wind down gracefully; the polling
-        // tick will notice the worker exited and call finishSession.
-        if (session != 0L) {
-            NativeBridge.nativeRequestStop(session)
-        }
-        @Suppress("DEPRECATION")
-        super.onBackPressed()
+        if(session!=0L) openGameMenu() else super.onBackPressed()
     }
 
     override fun onDestroy() {
@@ -293,7 +486,15 @@ class GameActivity : AppCompatActivity() {
             NativeBridge.nativeRequestStop(handle)
             val summary = NativeBridge.nativeFinishGame(handle)
             mainHandler.post {
-                status.text = summary
+                if (!isFinishing && !isDestroyed) {
+                    status.visibility = View.VISIBLE
+                    status.text = "程式已結束，返回遊戲庫可重新啟動。 / Program ended. Return to the library to start again."
+                    status.setOnClickListener {
+                        AlertDialog.Builder(this).setTitle("診斷明細 / Diagnostic details")
+                            .setMessage(summary).setPositiveButton(android.R.string.ok, null).show()
+                    }
+                    if (::floatingMenu.isInitialized) floatingMenu.visibility = View.GONE
+                }
             }
         }.start()
     }
@@ -446,16 +647,16 @@ class GameActivity : AppCompatActivity() {
 
     /**
      * Read the global "Show FPS counter" preference from the
-     * library's `config.json`. Falls back to `true` if the file is
+     * library's `config.json`. Falls back to `false` if the file is
      * missing or malformed, matching `LauncherConfig::default`.
      */
     private fun readShowFpsPreference(): Boolean {
         val raw = NativeBridge.readConfig(LibraryPaths.root(this))
         return runCatching {
             val obj = JSONObject(raw)
-            if (obj.has("ok") && !obj.optBoolean("ok", true)) true
-            else obj.optBoolean("show_fps", true)
-        }.getOrDefault(true)
+            if (obj.has("ok") && !obj.optBoolean("ok", true)) false
+            else obj.optBoolean("show_fps", false)
+        }.getOrDefault(false)
     }
 
     /**
@@ -522,7 +723,9 @@ class GameActivity : AppCompatActivity() {
     private fun updateFullscreenLayout() {
         toolbar.visibility = if (fullscreen) View.GONE else View.VISIBLE
         gameControls.visibility = if (fullscreen && fullscreenMode == "without_controls") View.GONE else View.VISIBLE
-        updateControlsLayout()
+        if(controlConfig.optJSONArray("keys")?.length()==0&&!controlConfig.optBoolean("keyboard")) gameControls.visibility=View.GONE
+        if(::floatingMenu.isInitialized) floatingMenu.visibility=if(fullscreen) View.VISIBLE else View.GONE
+        updateGamepadVisibility()
     }
 
     /**
@@ -602,17 +805,25 @@ class GameActivity : AppCompatActivity() {
      * Start code.
      */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        val vk = virtualKeyFor(event.keyCode) ?: return super.dispatchKeyEvent(event)
+        val bindings=controlConfig.optJSONArray("bindings")
+        val reservedStick=event.keyCode==KeyEvent.KEYCODE_BUTTON_THUMBL && (bindings==null || (0 until bindings.length()).none { bindings.getJSONObject(it).optString("input").equals("PadL3",true) })
+        if((event.keyCode==KeyEvent.KEYCODE_BUTTON_MODE || reservedStick || ControlNames.input(event.keyCode).equals(controlConfig.optString("menu_key","F1"),true)) && event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0) { if(menuDialog?.isShowing==true)menuDialog?.dismiss() else openGameMenu(); return true }
+        if(pauseReasons.isNotEmpty()) return super.dispatchKeyEvent(event)
+        if(currentFocus is Button && currentFocus?.parent===gameControls && event.source and InputDevice.SOURCE_GAMEPAD != InputDevice.SOURCE_GAMEPAD) return super.dispatchKeyEvent(event)
+        var mapped:Int?=null
+        if(bindings!=null) for(i in 0 until bindings.length()) { val b=bindings.getJSONObject(i); if(ControlNames.canonical(b.optString("input"))==ControlNames.canonical(ControlNames.input(event.keyCode,event.source and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD))) mapped=b.optInt("vk") }
+        val vk = mapped ?: virtualKeyFor(event.keyCode) ?: return super.dispatchKeyEvent(event)
+        if(vk == 0) return true
         val handle = session
         if (handle == 0L) return super.dispatchKeyEvent(event)
         when (event.action) {
             KeyEvent.ACTION_DOWN -> {
-                if (event.repeatCount == 0 && heldPhysicalKeys.putIfAbsent(event.keyCode, vk) == null) {
+                if (event.repeatCount == 0 && heldPhysicalKeys.putIfAbsent(event.deviceId to event.keyCode, vk) == null) {
                     acquireGuestKey(handle, vk)
                 }
             }
             KeyEvent.ACTION_UP -> {
-                heldPhysicalKeys.remove(event.keyCode)?.let { releaseGuestKey(handle, it) }
+                heldPhysicalKeys.remove(event.deviceId to event.keyCode)?.let { releaseGuestKey(handle, it) }
             }
         }
         return true
@@ -656,15 +867,15 @@ class GameActivity : AppCompatActivity() {
         val joystick = event.source and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK ||
             event.source and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD
         val handle = session
-        if (!joystick || handle == 0L || event.action != MotionEvent.ACTION_MOVE) {
+        if (!joystick || handle == 0L || pauseReasons.isNotEmpty() || event.action != MotionEvent.ACTION_MOVE) {
             return super.onGenericMotionEvent(event)
         }
         val x = strongestAxis(event, MotionEvent.AXIS_HAT_X, MotionEvent.AXIS_X)
         val y = strongestAxis(event, MotionEvent.AXIS_HAT_Y, MotionEvent.AXIS_Y)
-        applyAxisKey(handle, VK_LEFT, x <= -AXIS_DEADZONE)
-        applyAxisKey(handle, VK_RIGHT, x >= AXIS_DEADZONE)
-        applyAxisKey(handle, VK_UP, y <= -AXIS_DEADZONE)
-        applyAxisKey(handle, VK_DOWN, y >= AXIS_DEADZONE)
+        applyAxisKey(handle, event.deviceId, VK_LEFT, x <= -AXIS_DEADZONE)
+        applyAxisKey(handle, event.deviceId, VK_RIGHT, x >= AXIS_DEADZONE)
+        applyAxisKey(handle, event.deviceId, VK_UP, y <= -AXIS_DEADZONE)
+        applyAxisKey(handle, event.deviceId, VK_DOWN, y >= AXIS_DEADZONE)
         return true
     }
 
@@ -674,11 +885,16 @@ class GameActivity : AppCompatActivity() {
         return if (kotlin.math.abs(hat) >= AXIS_DEADZONE) hat else event.getAxisValue(stickAxis)
     }
 
-    private fun applyAxisKey(handle: Long, vk: Int, pressed: Boolean) {
+    private fun applyAxisKey(handle: Long, deviceId: Int, vk: Int, pressed: Boolean) {
+        val name = when(vk) { VK_UP -> "PadUp"; VK_DOWN -> "PadDown"; VK_LEFT -> "PadLeft"; else -> "PadRight" }
+        val list = controlConfig.optJSONArray("bindings")
+        var target = vk
+        if(list!=null) for(i in 0 until list.length()) { val b=list.getJSONObject(i);if(b.optString("input").equals(name,true)) target=b.optInt("vk") }
+        if(target == 0) return
         if (pressed) {
-            if (heldAxisKeys.add(vk)) acquireGuestKey(handle, vk)
-        } else if (heldAxisKeys.remove(vk)) {
-            releaseGuestKey(handle, vk)
+            if (heldAxisKeys.putIfAbsent(deviceId to vk, target) == null) acquireGuestKey(handle, target)
+        } else {
+            heldAxisKeys.remove(deviceId to vk)?.let { releaseGuestKey(handle, it) }
         }
     }
 
@@ -702,6 +918,7 @@ class GameActivity : AppCompatActivity() {
 
     /** Release keys and pointer state before the native session can outlive the UI. */
     private fun releaseHeldInput() {
+        inputEpoch++
         val handle = session
         if (handle != 0L) {
             for (vk in heldGuestKeys.keys.toList()) {
@@ -728,30 +945,33 @@ class GameActivity : AppCompatActivity() {
     private fun wireSurfaceTouchInput() {
         surface.setOnTouchListener { v, event ->
             val handle = session
-            if (handle == 0L) return@setOnTouchListener false
+            if (handle == 0L || pauseReasons.isNotEmpty()) return@setOnTouchListener false
             val frame = lastFrame
             val mapped = frame?.let { mapTouchToGame(v, event, it) }
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     val (gx, gy) = mapped ?: return@setOnTouchListener true
+                    v.requestFocus()
                     NativeBridge.nativeSendInput(handle, NativeBridge.INPUT_POINTER_DOWN, gx, gy)
+                    activeStylusId = event.getPointerId(0)
                     surfacePointerDown = true
                     lastPointerX = gx
                     lastPointerY = gy
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    if (surfacePointerDown && mapped != null) {
+                    if (surfacePointerDown && event.getPointerId(0) == activeStylusId && mapped != null) {
                         val (gx, gy) = mapped
                         NativeBridge.nativeSendInput(handle, NativeBridge.INPUT_POINTER_MOVE, gx, gy)
                         lastPointerX = gx
                         lastPointerY = gy
                     }
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (surfacePointerDown) {
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_POINTER_UP -> {
+                    if (surfacePointerDown && (event.actionMasked == MotionEvent.ACTION_CANCEL || event.getPointerId(event.actionIndex) == activeStylusId)) {
                         val (gx, gy) = mapped ?: (lastPointerX to lastPointerY)
                         NativeBridge.nativeSendInput(handle, NativeBridge.INPUT_POINTER_UP, gx, gy)
                         surfacePointerDown = false
+                        activeStylusId = -1
                         lastPointerX = gx
                         lastPointerY = gy
                         if (event.actionMasked == MotionEvent.ACTION_UP) v.performClick()
@@ -786,9 +1006,37 @@ class GameActivity : AppCompatActivity() {
     @SuppressLint("ClickableViewAccessibility")
     private fun bindVk(viewId: Int, vk: Int) {
         val btn = findViewById<View?>(viewId) ?: return
+        bindControlView(btn,vk)
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun bindControlView(btn: View, vk: Int, pulse: Boolean = false) {
+        if(pulse) {
+            // Let Android handle up-inside/cancel and accessibility activation.
+            // This PPC2003 skin sends a short pair even after a long press.
+            btn.setOnClickListener {
+                val handle=session
+                if(handle!=0L && pauseReasons.isEmpty()) {
+                    acquireGuestKey(handle,vk)
+                    releaseGuestKey(handle,vk)
+                }
+            }
+            return
+        }
+        var pointerClick=false
+        btn.setOnClickListener {
+            if(!pointerClick && session!=0L && pauseReasons.isEmpty()) {
+                val handle=session
+                val epoch=inputEpoch
+                acquireGuestKey(handle,vk)
+                // A semantic click has no release edge. Give it its own hold;
+                // it must not release a simultaneously held hardware/touch key.
+                mainHandler.postDelayed({if(session==handle && inputEpoch==epoch)releaseGuestKey(handle,vk)},64)
+            }
+        }
         btn.setOnTouchListener { v, event ->
             val handle = session
-            if (handle == 0L) return@setOnTouchListener false
+            if (handle == 0L || pauseReasons.isNotEmpty()) return@setOnTouchListener false
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     if (heldVirtualKeys.add(vk)) acquireGuestKey(handle, vk)
@@ -797,7 +1045,7 @@ class GameActivity : AppCompatActivity() {
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     if (heldVirtualKeys.remove(vk)) releaseGuestKey(handle, vk)
                     v.isPressed = false
-                    if (event.actionMasked == MotionEvent.ACTION_UP) v.performClick()
+                    if (event.actionMasked == MotionEvent.ACTION_UP) {pointerClick=true;v.performClick();pointerClick=false}
                 }
             }
             true
@@ -841,7 +1089,9 @@ class GameActivity : AppCompatActivity() {
             270 -> (shownH - 1 - py) to px
             else -> px to py
         }
-        return gx.coerceIn(0, frame.width - 1) to gy.coerceIn(0, frame.height - 1)
+        val zoom=controlConfig.optDouble("zoom",1.0).coerceIn(1.0,4.0);val half=.5/zoom
+        val cx=controlConfig.optDouble("zoom_x",.5).coerceIn(half,1-half);val cy=controlConfig.optDouble("zoom_y",.5).coerceIn(half,1-half)
+        return (((gx.toDouble()/frame.width-.5)/zoom+cx)*frame.width).toInt().coerceIn(0,frame.width-1) to (((gy.toDouble()/frame.height-.5)/zoom+cy)*frame.height).toInt().coerceIn(0,frame.height-1)
     }
 
     private data class FrameSnapshot(
@@ -866,6 +1116,8 @@ class GameActivity : AppCompatActivity() {
         private var viewportHeight = 1
         /** Clockwise quarter turn applied when the quad is drawn. */
         @Volatile private var rotationDegrees = 0
+        @Volatile private var view = floatArrayOf(1f,.5f,.5f)
+        fun setView(zoom:Float,x:Float,y:Float) { val z=zoom.coerceIn(1f,4f);val half=.5f/z;view=floatArrayOf(z,x.coerceIn(half,1-half),y.coerceIn(half,1-half)) }
 
         fun submit(frame: FrameSnapshot) {
             pending = frame
@@ -950,6 +1202,8 @@ class GameActivity : AppCompatActivity() {
                 270 -> floatArrayOf(0f, 0f, 0f, 1f, 1f, 0f, 1f, 1f)
                 else -> floatArrayOf(0f, 1f, 1f, 1f, 0f, 0f, 1f, 0f)
             }
+            val crop=view
+            for(i in uv.indices step 2) { uv[i]=crop[1]+(uv[i]-.5f)/crop[0];uv[i+1]=crop[2]+(uv[i+1]-.5f)/crop[0] }
             vertexBuffer?.let { buffer ->
                 buffer.clear()
                 buffer.put(floatArrayOf(

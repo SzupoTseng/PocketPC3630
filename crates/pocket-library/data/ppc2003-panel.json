@@ -1,0 +1,98 @@
+{
+  "id": "ppc2003",
+  "name": "Pocket PC 2003",
+  "reference": "PPC2003 CE 4.21 build 1088 / PPC_2003_SE.xml",
+  "scope": "Functional key panel; duplicate rocker directions share the D-pad; not a device skin or power emulation.",
+  "buttons": [
+    {
+      "id": "up",
+      "vk": 38,
+      "label": "Up",
+      "x": 0.3,
+      "y": 0.43,
+      "size": 0.18,
+      "mode": "hold"
+    },
+    {
+      "id": "down",
+      "vk": 40,
+      "label": "Down",
+      "x": 0.3,
+      "y": 0.85,
+      "size": 0.18,
+      "mode": "hold"
+    },
+    {
+      "id": "left",
+      "vk": 37,
+      "label": "Left",
+      "x": 0.1,
+      "y": 0.64,
+      "size": 0.18,
+      "mode": "hold"
+    },
+    {
+      "id": "right",
+      "vk": 39,
+      "label": "Right",
+      "x": 0.5,
+      "y": 0.64,
+      "size": 0.18,
+      "mode": "hold"
+    },
+    {
+      "id": "action",
+      "vk": 13,
+      "label": "Enter",
+      "x": 0.3,
+      "y": 0.64,
+      "size": 0.18,
+      "mode": "click"
+    },
+    {
+      "id": "soft1",
+      "vk": 112,
+      "label": "F1",
+      "x": 0.1,
+      "y": 0.14,
+      "size": 0.18,
+      "mode": "click"
+    },
+    {
+      "id": "soft2",
+      "vk": 113,
+      "label": "F2",
+      "x": 0.36,
+      "y": 0.14,
+      "size": 0.18,
+      "mode": "click"
+    },
+    {
+      "id": "soft3",
+      "vk": 119,
+      "label": "F8",
+      "x": 0.62,
+      "y": 0.14,
+      "size": 0.18,
+      "mode": "click"
+    },
+    {
+      "id": "soft4",
+      "vk": 120,
+      "label": "F9",
+      "x": 0.88,
+      "y": 0.14,
+      "size": 0.18,
+      "mode": "click"
+    },
+    {
+      "id": "record",
+      "vk": 121,
+      "label": "Rec",
+      "x": 0.84,
+      "y": 0.64,
+      "size": 0.18,
+      "mode": "hold"
+    }
+  ]
+}

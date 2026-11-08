@@ -1,0 +1,8 @@
+{
+  "disc_entry": "PocketEQPPC2002.STRONGARM.cab",
+  "bytes": 6769289,
+  "sha256": "7cc3d6bbd1ada3c10ce5310533444bc40ab7d0011810705929b5d9aeda798238",
+  "archive_name": "EverQuest for the Pocket PC (USA).7z",
+  "archive_sha256": "6ae95c984c404da2a2cae09c4586601a7c25826f7914a0014f4e9fe21f26ace8",
+  "extraction": "7z BIN -> mode-1 CD sectors -> ISO9660 CAB; archive executables never run"
+}

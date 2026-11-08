@@ -41,7 +41,7 @@ PocketPC3630 的名字來自 **Compaq iPAQ H3630**，那台讓 Pocket PC 紅起�
 
 | | 方式 | |
 |---|---|---|
-| 🌐 **瀏覽器** | 打開 **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**，按「匯入遊戲」，選 `.zip` 或 `.cab`。 | 免安裝。內建 **程式圖書館**：收錄 1,203 個 Pocket PC 程式（74 個一鍵就能玩），支援 11 種語言，有盒裝封面、遊戲畫面或程式圖示，可篩選與排序。遊戲與存檔只留在你的瀏覽器。 |
+| 🌐 **瀏覽器** | 打開 **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**，按「匯入遊戲」，選 `.zip` 或 `.cab`。 | 免安裝。內建 **程式圖書館**：收錄 1,202 個 Pocket PC 程式（74 個一鍵就能玩），支援 11 種語言，有盒裝封面、遊戲畫面或程式圖示，可篩選與排序。遊戲與存檔只留在你的瀏覽器。 |
 | 🪟 **Windows** | **[下載 zip](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-windows-x64.zip)**，解壓縮後執行 `PocketPC3630.exe`，按 *Import game*。 | 桌面遊戲庫，有圖示、存檔、鍵盤滑鼠操作。 |
 | 🤖 **Android** | **[下載 APK](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-android.apk)** 並安裝。 | 觸控方向鍵、動作鍵與連發鍵。 |
 | ⌨️ **命令列** | `pockethle play MyGame.zip` | 測試、追蹤呼叫與截圖用。 |
@@ -84,7 +84,7 @@ PocketPC3630 **不附任何遊戲，也不附微軟的檔案**。請使用你合
 遊戲包可以放什麼，請見 [docs/PACKAGE_FORMAT.md](docs/PACKAGE_FORMAT.md)。
 
 ### 值得逛的程式圖書館
-網站的圖書館收錄 **1,203 個 Pocket PC 程式**：archive.org 的下載檔、一套零售光碟收藏、維基百科的 Pocket PC 遊戲列表，以及 Mobile01 Pocket PC 討論串推薦的軟體。
+網站的圖書館收錄 **1,202 個 Pocket PC 程式**：archive.org 的下載檔、一套零售光碟收藏、維基百科的 Pocket PC 遊戲列表，以及 Mobile01 Pocket PC 討論串推薦的軟體。
 
 - **每張卡片都有圖：** 606 個有盒裝封面或遊戲畫面，另外 216 個顯示從執行檔取出的程式圖示，其餘顯示所屬分類的插圖。
 - **誠實的狀態：** 一鍵就能玩（74）、可執行（207）、部分可用（168）、無法啟動（407）、未測試（186）。結果不是 Pocket PC 程式的下載檔（161）仍保留在清單上，並寫明原因：桌面程式、外掛、裡面沒有東西的安裝程式等。

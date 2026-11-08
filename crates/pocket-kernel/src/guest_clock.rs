@@ -51,6 +51,11 @@ pub fn millis() -> u64 {
     elapsed().as_millis() as u64
 }
 
+/// The same as [`millis`]; the name the Codex runners use.
+pub fn milliseconds() -> u64 {
+    millis()
+}
+
 /// Microseconds of guest time, for `QueryPerformanceCounter`.
 pub fn micros() -> u64 {
     elapsed().as_micros() as u64

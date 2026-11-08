@@ -1,17 +1,17 @@
 // Real Chromium page, UI package/save imports, pointer input and IndexedDB reload.
 import {createServer} from 'node:http';
-import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdirSync,existsSync} from 'node:fs';
 import {resolve,join,extname,sep} from 'node:path';
 import {spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
 const [siteArg,pkgArg,saveArg,outArg,chrome,profileArg,slotArg='0',patchArg]=process.argv.slice(2);
 if(!profileArg) throw Error('site package progress output chrome isolated-profile [slot] required');
-const site=resolve(siteArg),out=resolve(outArg),pkg=resolve(pkgArg),save=resolve(saveArg),profile=resolve(profileArg),slot=Number(slotArg);
+const site=resolve(siteArg),out=resolve(outArg),pkg=resolve(pkgArg),save=resolve(saveArg),profile=resolve(profileArg)+'-'+Date.now(),slot=Number(slotArg);
 if(!Number.isInteger(slot)||slot<0||slot>3)throw Error('Invalid character slot');
 mkdirSync(out,{recursive:true});
 const sha=path=>createHash('sha256').update(readFileSync(path)).digest('hex');
 const patch=patchArg?resolve(patchArg):null;
-const inputs=Object.fromEntries([pkg,save,...(patch?[patch]:[]),...['index.html','pockethle.js','pockethle.wasm'].map(f=>join(site,f))].map(p=>[p,sha(p)]));
+const inputs=Object.fromEntries([pkg,save,...(patch?[patch]:[]),...['index.html','pockethle.js','pockethle.wasm',...(existsSync(join(site,'library-ui.js'))?['library-ui.js']:[])].map(f=>join(site,f))].map(p=>[p,sha(p)]));
 const report={inputs,scope:'Real browser page; supplied package and progress; screenshots need visual review',errors:[],consoleErrors:[],steps:[]};
 const server=createServer((req,res)=>{
  try{let name=decodeURIComponent((req.url??'/').split('?')[0]);const file=resolve(site,'.'+(name==='/'?'/index.html':name));if(!file.startsWith(site+sep))throw Error('outside site');const data=readFileSync(file);res.writeHead(200,{'content-type':({'.html':'text/html','.js':'text/javascript','.wasm':'application/wasm','.png':'image/png'})[extname(file)]??'application/octet-stream'});res.end(data);}catch{res.writeHead(404);res.end();}
@@ -21,7 +21,7 @@ const browser=spawn(chrome,['--headless=new','--remote-debugging-port=9336',`--u
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));let ws,sequence=0;const pending=new Map();
 async function command(method,params={}){return new Promise((done,reject)=>{const id=++sequence;const timer=setTimeout(()=>{pending.delete(id);reject(Error('CDP timeout: '+method));},30000);pending.set(id,x=>{clearTimeout(timer);x.error?reject(Error(JSON.stringify(x.error))):done(x.result)});ws.send(JSON.stringify({id,method,params}));});}
 async function evaluate(expression){const r=await command('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true,userGesture:true});if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result?.value;}
-async function until(expression,ms=60000){const end=Date.now()+ms;while(Date.now()<end){if(await evaluate(expression))return;await sleep(250);}throw Error('Timed out: '+expression);}
+async function until(expression,ms=60000){const end=Date.now()+ms;while(Date.now()<end){try{if(await evaluate(expression))return;}catch(error){if(!/Execution context was destroyed|Cannot find context|Inspected target navigated or closed/.test(String(error)))throw error;}await sleep(250);}throw Error('Timed out: '+expression);}
 async function file(selector,path){const {root}=await command('DOM.getDocument');const {nodeId}=await command('DOM.querySelector',{nodeId:root.nodeId,selector});await command('DOM.setFileInputFiles',{nodeId,files:[path]});}
 async function shot(name){const page=await command('Page.captureScreenshot',{format:'png'});writeFileSync(join(out,name+'-page.png'),Buffer.from(page.data,'base64'));if(await evaluate("document.body.classList.contains('playing')")){const data=await evaluate("document.getElementById('screen').toDataURL('image/png')");writeFileSync(join(out,name+'-canvas.png'),Buffer.from(data.split(',')[1],'base64'));}}
 async function tap(x,y){const b=await evaluate("(()=>{const b=document.getElementById('screen').getBoundingClientRect();return {x:b.x,y:b.y,w:b.width,h:b.height}})()");const at={x:b.x+(x+.5)*b.w/240,y:b.y+(y+.5)*b.h/320,button:'left',clickCount:1};await command('Input.dispatchMouseEvent',{type:'mousePressed',...at});await sleep(180);await command('Input.dispatchMouseEvent',{type:'mouseReleased',...at});await sleep(600);}
@@ -44,7 +44,13 @@ async function progressSnapshot(){
   return result;
  })()`);
 }
-async function load(){await command('Page.navigate',{url:'http://127.0.0.1:8174/'});await until('window.pocketReady===true',120000);}
+async function load(){
+ for(let attempt=0;;attempt++){
+  try{await command('Page.navigate',{url:'http://127.0.0.1:8174/'});break;}
+  catch(error){if(attempt>=2||!/Inspected target navigated or closed/.test(String(error)))throw error;await sleep(300);}
+ }
+ await until('window.pocketReady===true',120000);
+}
 try{
  let target;for(let n=0;n<60&&!target;n++){await sleep(500);try{target=(await(await fetch('http://127.0.0.1:9336/json')).json()).find(t=>t.type==='page');}catch{}}
  if(!target)throw Error('Chromium did not expose test page');ws=new WebSocket(target.webSocketDebuggerUrl);await new Promise((done,reject)=>{ws.onopen=done;ws.onerror=reject;});ws.onmessage=event=>{const data=JSON.parse(event.data);if(data.id)pending.get(data.id)?.(data),pending.delete(data.id);else if(data.method==='Runtime.exceptionThrown')report.errors.push(data.params.exceptionDetails);else if(data.method==='Runtime.consoleAPICalled'&&data.params.type==='error')report.consoleErrors.push(data.params.args.map(a=>a.value??a.description).join(' ').slice(0,500));};
@@ -60,7 +66,7 @@ try{
   await shot('patched-library');
  }
  await evaluate("document.querySelector('#games button.play').click()");await until("document.body.classList.contains('playing')");await until(menuReady,90000);await shot('character-list');await tap(120,45+slot*70);await tap(40,305);await sleep(16000);await shot('world');await audioShot('world');report.steps.push('World-load input sequence; image requires review');console.log('World screenshot saved');
- await tap(90,130);await sleep(2500);await shot('moved');await tap(229,10);await tap(185,290);await sleep(1500);await shot('saved-character');await evaluate("document.getElementById('leave').click()");await until("!document.body.classList.contains('playing')");await sleep(1500);
+ await tap(90,130);await sleep(2500);await shot('moved');await tap(229,10);await tap(185,290);await sleep(1500);await shot('saved-character');await evaluate("setTimeout(()=>document.getElementById('leave').click(),0);true");await until("document.body && !document.body.classList.contains('playing')");await sleep(1500);
  await load();await until("document.querySelectorAll('#games button.play').length===1");report.steps.push('Library survives page reload');await evaluate("document.querySelector('#games button.play').click()");await until(menuReady,90000);await shot('reload-character-list');await tap(120,45+slot*70);await tap(40,305);await sleep(16000);await shot('reloaded-world');await audioShot('reloaded-world');report.steps.push('Reload-world input sequence; image requires review');
  report.hud=await evaluate("document.getElementById('hud').textContent");if(process.env.EQ_AUDIO_PROBE==='1'){
    report.missingAudio=report.consoleErrors.filter(s=>/fmod: (?:cannot load|missing audio|unsupported)/i.test(s));

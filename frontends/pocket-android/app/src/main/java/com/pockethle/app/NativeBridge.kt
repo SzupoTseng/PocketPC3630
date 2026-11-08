@@ -16,6 +16,7 @@ package com.pockethle.app
  * encoding the framebuffer on every poll.
  */
 object NativeBridge {
+    external fun catalog(chinese: Int): String
     init {
         System.loadLibrary("pockethle_jni")
     }
@@ -122,6 +123,11 @@ object NativeBridge {
 
     /** Ask the worker to stop at the next slice boundary. */
     @JvmStatic external fun nativeRequestStop(handle: Long)
+    @JvmStatic external fun nativeSetPaused(handle: Long, paused: Int)
+    @JvmStatic external fun nativeIsPaused(handle: Long): Int
+    @JvmStatic external fun nativeSetVolume(handle: Long, volume: Int)
+    @JvmStatic external fun readControls(libraryRoot: String, id: String): String
+    @JvmStatic external fun writeControls(libraryRoot: String, id: String, json: String): String
 
     /**
      * Join the worker thread, free the session, and return the
@@ -135,4 +141,5 @@ object NativeBridge {
     const val INPUT_POINTER_DOWN: Int = 2
     const val INPUT_POINTER_UP: Int = 3
     const val INPUT_POINTER_MOVE: Int = 4
+    const val INPUT_TEXT: Int = 5
 }

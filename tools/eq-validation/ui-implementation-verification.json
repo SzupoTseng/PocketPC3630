@@ -1,0 +1,312 @@
+{
+  "date": "2026-11-08",
+  "scope": "Shared UI implementation; per-platform acceptance is explicit; not full UI completion",
+  "workspace": {
+    "passed": 612,
+    "failed": 0,
+    "ignored": 12,
+    "log": "target/ui-validation/tests-present.log",
+    "clippy": "target/ui-validation/clippy-present.log"
+  },
+  "node": {
+    "passed": 19,
+    "failed": 0
+  },
+  "web": {
+    "checks": 35,
+    "errors": 0,
+    "artifacts": {
+      "index.html": "0bb68783d4cd71a47ee28dba44dd39f21fc1f126413f807d93f041bfeafc7e2c",
+      "library-ui.js": "8a020c563e27214e2d04a21962fcac4d90326cc656dd1cf855c072879af2ddfb",
+      "pockethle.js": "1568b9b00c4330f2f243a2862346dc018b7f4fdf40ca37670db9de5e692b8fc4",
+      "pockethle.wasm": "7ed9ffc5fe38eb0a3f8101d5b2c670ae66f878fefc1686a05aaca261ee26b82c",
+      "library/control-guides.json": "d8f7d5b6dc538cba84e65506b8e8fa934c7e63f1f887cb634e397013e5156d36",
+      "library/index.json": "466e9f84e0d920d824cc782b866ceaf5386e3c5630ff2b5fefa9702337b085f4"
+    },
+    "report": "target/ui-validation/browser-limits/report.json",
+    "episodes": {
+      "1": {
+        "ok": true,
+        "errors": 0,
+        "report": "target/ui-validation/web-limits-world-ep1/browser-report.json",
+        "audio": {
+          "world": {
+            "scope": "Real Web Audio output callback; WAV contains up to ten seconds of audible excerpts, not a continuous listening test",
+            "capturedSamples": 958464,
+            "rate": 48000,
+            "channels": 2,
+            "buffers": 333,
+            "samples": 2727936,
+            "nonzero": 1244544,
+            "peak": 1,
+            "rms": 0.1739851676524114
+          },
+          "reloaded-world": {
+            "scope": "Real Web Audio output callback; WAV contains up to ten seconds of audible excerpts, not a continuous listening test",
+            "capturedSamples": 958464,
+            "rate": 48000,
+            "channels": 2,
+            "buffers": 330,
+            "samples": 2703360,
+            "nonzero": 1236352,
+            "peak": 1,
+            "rms": 0.17378859200199215
+          }
+        },
+        "inputs": {
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\eq-validation\\audio-packages\\ep1-audio-complete.zip": "81eb91a2800eb959427ab00d1a4c97bc1c77d1bff13d48ae718ffe8916542a98",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\eq-validation\\portable-saves\\ep1-progress.zip": "fba7fd145e316f0dbe9df9e34857cbf0cb64a79d389099f602833ae8fdfe912a",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\ui-validation\\web-limits-acceptance\\index.html": "0bb68783d4cd71a47ee28dba44dd39f21fc1f126413f807d93f041bfeafc7e2c",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\ui-validation\\web-limits-acceptance\\pockethle.js": "1568b9b00c4330f2f243a2862346dc018b7f4fdf40ca37670db9de5e692b8fc4",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\ui-validation\\web-limits-acceptance\\pockethle.wasm": "7ed9ffc5fe38eb0a3f8101d5b2c670ae66f878fefc1686a05aaca261ee26b82c",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\ui-validation\\web-limits-acceptance\\library-ui.js": "8a020c563e27214e2d04a21962fcac4d90326cc656dd1cf855c072879af2ddfb"
+        }
+      },
+      "2": {
+        "ok": true,
+        "errors": 0,
+        "report": "target/ui-validation/web-limits-world-ep2/browser-report.json",
+        "audio": {
+          "world": {
+            "scope": "Real Web Audio output callback; WAV contains up to ten seconds of audible excerpts, not a continuous listening test",
+            "capturedSamples": 958464,
+            "rate": 48000,
+            "channels": 2,
+            "buffers": 346,
+            "samples": 2834432,
+            "nonzero": 1318264,
+            "peak": 0.501960813999176,
+            "rms": 0.0892203189525365
+          },
+          "reloaded-world": {
+            "scope": "Real Web Audio output callback; WAV contains up to ten seconds of audible excerpts, not a continuous listening test",
+            "capturedSamples": 958464,
+            "rate": 48000,
+            "channels": 2,
+            "buffers": 338,
+            "samples": 2768896,
+            "nonzero": 1301880,
+            "peak": 0.501960813999176,
+            "rms": 0.08936061758682748
+          }
+        },
+        "inputs": {
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\eq-validation\\audio-packages\\ep2-audio-complete.zip": "cc5ea0e5830b7a059fa5c696b477d5e7cfb81811f1c5016b462019841f7fc238",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\eq-validation\\portable-saves\\ep2-progress.zip": "acd7563a7758c2ddc11ec7ccdcd849b7622bd255c006ce9fcd74b4c8eaf6ae30",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\ui-validation\\web-limits-acceptance\\index.html": "0bb68783d4cd71a47ee28dba44dd39f21fc1f126413f807d93f041bfeafc7e2c",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\ui-validation\\web-limits-acceptance\\pockethle.js": "1568b9b00c4330f2f243a2862346dc018b7f4fdf40ca37670db9de5e692b8fc4",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\ui-validation\\web-limits-acceptance\\pockethle.wasm": "7ed9ffc5fe38eb0a3f8101d5b2c670ae66f878fefc1686a05aaca261ee26b82c",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\ui-validation\\web-limits-acceptance\\library-ui.js": "8a020c563e27214e2d04a21962fcac4d90326cc656dd1cf855c072879af2ddfb"
+        }
+      },
+      "3": {
+        "ok": true,
+        "errors": 0,
+        "report": "target/ui-validation/web-limits-world-ep3-retry/browser-report.json",
+        "audio": {
+          "world": {
+            "scope": "Real Web Audio output callback; WAV contains up to ten seconds of audible excerpts, not a continuous listening test",
+            "capturedSamples": 958464,
+            "rate": 48000,
+            "channels": 2,
+            "buffers": 328,
+            "samples": 2686976,
+            "nonzero": 1351022,
+            "peak": 0.501960813999176,
+            "rms": 0.09281740994568481
+          },
+          "reloaded-world": {
+            "scope": "Real Web Audio output callback; WAV contains up to ten seconds of audible excerpts, not a continuous listening test",
+            "capturedSamples": 958464,
+            "rate": 48000,
+            "channels": 2,
+            "buffers": 330,
+            "samples": 2703360,
+            "nonzero": 1318264,
+            "peak": 0.501960813999176,
+            "rms": 0.09135763554099054
+          }
+        },
+        "inputs": {
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\eq-validation\\audio-packages\\ep3-audio-complete.zip": "1b2d633a88413164f7a0c2e6664e290143cf57ba1cd93bb1917a7487ffc1464b",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\eq-validation\\portable-saves\\ep3-progress.zip": "8f2407e1f8306ae6fab505d06c9003378bc1a28cb39da3f0e02cb55a938da195",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\ui-validation\\web-limits-acceptance\\index.html": "0bb68783d4cd71a47ee28dba44dd39f21fc1f126413f807d93f041bfeafc7e2c",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\ui-validation\\web-limits-acceptance\\pockethle.js": "1568b9b00c4330f2f243a2862346dc018b7f4fdf40ca37670db9de5e692b8fc4",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\ui-validation\\web-limits-acceptance\\pockethle.wasm": "7ed9ffc5fe38eb0a3f8101d5b2c670ae66f878fefc1686a05aaca261ee26b82c",
+          "G:\\GameDevZ\\PocketPC3630_Codex\\target\\ui-validation\\web-limits-acceptance\\library-ui.js": "8a020c563e27214e2d04a21962fcac4d90326cc656dd1cf855c072879af2ddfb"
+        }
+      }
+    }
+  },
+  "android_builds": {
+    "interpreter": {
+      "apk": "pockethle-ui-interpreter-debug.apk",
+      "sha256": "95a000021c532e3405cf7eab66b0fba410845b98e6c960c491b198e60d889c04",
+      "bytes": 18550625,
+      "jni": {
+        "arm64-v8a": "199ac05eee5a4454ceaf7aeb9422ccd742b6c5bdbe5423bb59074a09653d37bd",
+        "x86_64": "b9e64ca6fadbfd8c192c80e33052997ba39d584cace127a13a83ab97fcffa525"
+      },
+      "scope": "release Rust; debug signed; build evidence only, not device acceptance"
+    },
+    "unicorn": {
+      "apk": "pockethle-ui-unicorn-debug.apk",
+      "sha256": "cf2485c0176a5b2d16d976d4657dcdbbdac9f96477db421f6f8161681f32f3c7",
+      "bytes": 31783641,
+      "jni": {
+        "arm64-v8a": "b350c73e1dcc62f6de0a5460353a0afd9811a0628a0ce4a8c058ef3feba5c370",
+        "x86_64": "f34e7e90accad5a85294136a4997508e16520d2ac36030bd9ba34ccaf5128b0a"
+      },
+      "scope": "release Rust; debug signed; build evidence only, not device acceptance"
+    }
+  },
+  "pending": [
+    "Windows full input/device/save/reload application matrix",
+    "Repeated short-touch sweep, rotation/zoom/device/source combinations and full non-EQ software matrix",
+    "Device Emulator PPC2003 reference assets now found and isolated; guest hardware-event measurements pending",
+    "Physical controllers, ARM64 device and accessibility acceptance",
+    "Relative mouse/pointer capture and complete per-program matrix"
+  ],
+  "proof": {
+    "android-ep1-ended.png": "d8aa33aa8812ef49416242e867f05d73309c0cb1dd7a67a3a840850d5f2f7622",
+    "android-ep1-paused.png": "0e3e77f54c93f9d18fac4b120d0bf2cf48078df1ca8d6736a6821771ec6c26e3",
+    "android-ep1-world.png": "13dcd7a54676adfe585f5ea22d01862c9bd8eeb784476dde918a3ae9cb7cd0a9",
+    "android-ep2-ended.png": "3b12c7f9901649d4531f9393501fd78cadeb0ef399ffcfae85c0fa2a26c3378c",
+    "android-ep2-paused.png": "e28ae3a8bd2ede7f7cfec77b24e729785448a00c6b24a49a596e87241d902e11",
+    "android-ep2-world.png": "e9d83e333553845ea65aa0b3c47c203f5a8a8745b8be04a63667ea6d169b8743",
+    "android-ep3-ended.png": "ef66d6d2d6698671f474c648959a73b87b610c023bfccccb7c964897edef5e70",
+    "android-ep3-paused.png": "a7dd5dd3534e4a30ad2903508a011704a3c0b2fc2f090048bea583cd7de21fba",
+    "android-ep3-world.png": "432b88b3fca621cb411cfe05197e89526f00ad3163cf11706209582431257d22",
+    "android-interpreter-ep2-world.png": "4f5a846febc8e9fbacb1a87e440207132094ac79d1c710d69c45c1a1a114cd86",
+    "web-ep1-world.png": "0e8732ac45fd8b2519543070f278451f34d7e8afe99a9a76076486c32c36b900",
+    "web-ep2-world.png": "150aa0690513962105b976d8f6964d0a765d0c1df588b7107aad9f6a4190b440",
+    "web-ep3-world.png": "a4d1672deada86d423d55fd517cd3e71ad40a127fb7b15027d4b3d2ea59221bb",
+    "web-landscape-menu.png": "cdf72a1db73b107804b1e7e9fbbcd28d21b5c4f14a7a36a4fcba6effc1beda8b",
+    "web-mobile-controls.png": "9815f62b5e6333907ce81ad99da761c8699c0eef7ad2a1b5b4fd9e55f5bd19fe",
+    "windows-ep1-world.png": "4830ed8cb0b9dd91b6ea5b92eb366406a2e1ec8131d5661b1679d805b5f6ac49",
+    "windows-ep2-world.png": "9524929edcb21ae486a6e12b913a0a35502b458667f7844561e5a270c3d2b6d4",
+    "windows-ep3-world.png": "15162e6fb8a5323fb75c3028748d9a392bb4a10f94a3e9edabb10fbd0155aa51",
+    "windows-f11-menu.png": "2270705cb5ec44f1bab70554185910dd0b6b41543fe86ef86826c96499d502b5",
+    "windows-fullscreen-menu.png": "014cccabfcbc4da3383a5e50017d1fa24525ac679d1b356848cb5ec43beffe90"
+  },
+  "native_intermediate": {
+    "scope": "UI capture before native frame-publication change; final presentation acceptance pending",
+    "gpu_menu": "target/ui-validation/native-gpu-fullscreen-menu.png",
+    "gpu_resume": "target/ui-validation/native-gpu-resumed.png",
+    "result": "EP2 world; F1 pause acknowledged; F11 window restore; renderer capture used because GDI grabs were stale"
+  },
+  "android_short_touch": {
+    "artifact_sha256": "b7e2bdae7ed0c100d207ee0fd62f1113baf42f9ae4a84a950722698cb545ca30",
+    "scope": "Before native frame-publication change; not final acceptance",
+    "observations": [
+      "0 ms synthetic tap did not visibly select",
+      "40 ms touch visibly selected in one run; confirmation not accepted",
+      "80 ms run exposed partial black frame",
+      "Fixed-delay startup cases invalid: actual ready menu took 58.75 seconds in observed run",
+      "Observed 150 ms selection took 3.65 seconds; world appeared after 79.36 seconds; image visually reviewed",
+      "Fixed 5-second confirmation checks cannot establish failure for this package",
+      "Selection is dark blue (blue >= 80), not necessarily bright blue; old >150 detector was wrong."
+    ],
+    "result": "Earlier selection timeouts used an invalid bright-blue threshold and are inconclusive; corrected dark-blue detection is used by final cases. Fixed-delay checks during long world loads are also inconclusive.",
+    "baseline_world": "target/ui-validation/android-observed-150-world.png"
+  },
+  "windows": {
+    "artifact": "target/release/pockethle-gui.exe",
+    "sha256": "a7a6e5b42e650a8ead1829e031c064b99e8c2ad20b76e8a6f371c038610dbc21",
+    "build_log": "target/ui-validation/native-root-build.log",
+    "clippy": "target/ui-validation/native-root-clippy.log",
+    "episodes": {
+      "1": {
+        "world": true,
+        "pause_acknowledged": true,
+        "screenshot": "proof/ui-shared/windows-ep1-world.png",
+        "case": "target/ui-validation/native-final-ep1.json",
+        "log": "target/ui-validation/native-final-ep1.log"
+      },
+      "2": {
+        "world": true,
+        "pause_acknowledged": true,
+        "screenshot": "proof/ui-shared/windows-ep2-world.png",
+        "case": "target/ui-validation/native-final-ep2.json",
+        "log": "target/ui-validation/native-final-ep2.log"
+      },
+      "3": {
+        "world": true,
+        "pause_acknowledged": true,
+        "screenshot": "proof/ui-shared/windows-ep3-world.png",
+        "case": "target/ui-validation/native-final-ep3.json",
+        "log": "target/ui-validation/native-final-ep3.log"
+      }
+    },
+    "fullscreen": "Centered pause menu overlays game; F11 exits while menu remains open; GPU captures visually reviewed",
+    "scope": "EP1/2/3 worlds and host pause; not full gamepad, save/reload, accessibility or all-application matrix",
+    "artifact_report": "target/ui-validation/native-final-report.json"
+  },
+  "packaging_safety": {
+    "passed": 4,
+    "failed": 0,
+    "log": "target/ui-validation/package-safety-tests.log",
+    "tests": "tools/eq-validation/test-package-ui-android.py"
+  },
+  "android": {
+    "device": "Owned emulator-5580; API 34 x86_64; not ARM64 hardware",
+    "touch_ms": 150,
+    "scope": "Observed guest states; normal short touch, host pause acknowledgement, in-game save, guest exit and toolbar return. Not CT-02 repeated timing sweep or full application matrix.",
+    "unicorn": {
+      "apk_sha256": "cf2485c0176a5b2d16d976d4657dcdbbdac9f96477db421f6f8161681f32f3c7",
+      "installed_report": "target/ui-validation/android-final-installed.log",
+      "episodes": {
+        "1": {
+          "ok": true,
+          "case": "target/ui-validation/android-final-ep1.json",
+          "log": "target/ui-validation/android-final-ep1.log",
+          "world": "proof/ui-shared/android-ep1-world.png"
+        },
+        "2": {
+          "ok": true,
+          "case": "target/ui-validation/android-final-ep2.json",
+          "log": "target/ui-validation/android-final-ep2.log",
+          "world": "proof/ui-shared/android-ep2-world.png"
+        },
+        "3": {
+          "ok": true,
+          "case": "target/ui-validation/android-final-ep3.json",
+          "log": "target/ui-validation/android-final-ep3.log",
+          "world": "proof/ui-shared/android-ep3-world.png"
+        }
+      }
+    },
+    "interpreter": {
+      "apk_sha256": "95a000021c532e3405cf7eab66b0fba410845b98e6c960c491b198e60d889c04",
+      "episode": 2,
+      "ok": true,
+      "report": "target/ui-validation/android-interpreter-final-retry.log",
+      "restored_unicorn": true,
+      "world": "proof/ui-shared/android-interpreter-ep2-world.png"
+    }
+  },
+  "native_screenshot_autosave": {
+    "ok": true,
+    "file": "G:\\GameDevZ\\PocketPC3630_Codex\\target\\ui-validation\\native-library-1794110787\\screenshots\\pockethle-1794120728904.png",
+    "sha256": "9524929edcb21ae486a6e12b913a0a35502b458667f7844561e5a270c3d2b6d4",
+    "size": [
+      960,
+      600
+    ],
+    "scope": "F12 without capture override saves renderer pixels in library/screenshots"
+  },
+  "device_emulator_reference": {
+    "report": "tools/wince-input-test/reference/ppc2003-input-observations.json",
+    "single_press_buttons": 12,
+    "hold_trials": 4,
+    "full_matrix_passed": false,
+    "app_key_routing_verified": false
+  },
+  "cli_capture": {
+    "build_log": "target/ui-validation/cli-probe-build.log",
+    "run_log": "target/ui-validation/probe-hle-before/run.log",
+    "final_frame": "target/ui-validation/probe-hle-before/frames/final.ppm",
+    "sha256": "c1eb9f67cb0510d528e9ee9a6b695c20995f9c11c0bf28c3527b9392885b3152",
+    "scope": "Probe startup and output path only; no HLE hardware key acceptance"
+  }
+}

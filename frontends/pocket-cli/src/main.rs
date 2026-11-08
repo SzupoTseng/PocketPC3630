@@ -1131,7 +1131,11 @@ fn cmd_run(
 
     if let Some(p) = emu.process() {
         let ppm = p.state.framebuffer.snapshot_ppm();
-        let final_path = std::path::PathBuf::from("/tmp/pockethle-final.ppm");
+        // Keep EQ captures together. A literal /tmp resolved against the
+        // drive root on Windows and let unrelated runs overwrite each other.
+        let final_path = dump_frames_to
+            .map(|dir| dir.join("final.ppm"))
+            .unwrap_or_else(|| std::env::temp_dir().join("pockethle-final.ppm"));
         if let Err(e) = std::fs::write(&final_path, &ppm) {
             eprintln!("warn: could not write {} ({e})", final_path.display());
         } else {
@@ -1501,7 +1505,8 @@ impl ScheduledInputHook {
             pocket_core::kernel::InputEvent::PointerUp { x, y } => {
                 self.held_pointers.remove(&(x, y));
             }
-            pocket_core::kernel::InputEvent::PointerMove { .. } => {}
+            pocket_core::kernel::InputEvent::PointerMove { .. }
+            | pocket_core::kernel::InputEvent::Text { .. } => {}
         }
     }
 }

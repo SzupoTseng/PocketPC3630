@@ -1,0 +1,12 @@
+{
+  "date": "2026-11-07",
+  "package_name": "ep2.zip",
+  "package_sha256": "03a5081f22083533e03179bd82fe42e60505fe540e014665978141f401ecbf58",
+  "cab_name": "EQ_E2.cab",
+  "cab_bytes": 8171481,
+  "cab_sha256": "d718ce2ef366f3a31476b93100dd05fe78566b5f78f03369a26ee36552f1d3f2",
+  "dependency_sha256": "e7e22d4bc7a864879be0cfe0efbbb51bdad2b3b6dc167d1b439f2e7ec38632b0",
+  "matches_prior_flagged_cab": true,
+  "publisher_provenance": "not independently verified; exact match to E2.cab flagged in earlier handoff",
+  "validation_status": "not run as an original-package acceptance test"
+}

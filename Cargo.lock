@@ -2973,6 +2973,7 @@ dependencies = [
  "log",
  "pocket-core",
  "pocket-library",
+ "serde_json",
 ]
 
 [[package]]

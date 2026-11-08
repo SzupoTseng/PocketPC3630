@@ -1,0 +1,28 @@
+{
+  "ep1": {
+    "install_save_payloads_unchanged": true,
+    "overlay_files": {
+      "darkheart.css": {
+        "bytes": 2040,
+        "sha256": "9b29c0920de2210c67ca1303bc6b8066e3b10e6be06273d59c1cc6b5f7f227c3"
+      },
+      "pocketeqdarkheart0.sav": {
+        "bytes": 3777,
+        "sha256": "9e144da70099b2ee537563c4f7bc176bbf78d03df58f2e304903bb5e9490892d"
+      }
+    }
+  },
+  "ep2": {
+    "install_save_payloads_unchanged": true,
+    "overlay_files": {
+      "eqppce2.css": {
+        "bytes": 2996,
+        "sha256": "42fa1dbbe2dd37a91d5ecbcc8448262e93a5d04dd516d22e4e35b9aafb1c39b8"
+      },
+      "pocketeqe2_2.sav": {
+        "bytes": 1946,
+        "sha256": "b828f38d23e8ff652d0a61ea092454a71723c26d2f6850aa343246239a73f552"
+      }
+    }
+  }
+}

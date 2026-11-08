@@ -1,0 +1,121 @@
+{
+  "scope": "Windows native Unicorn interactive EP1/EP2; incomplete full gameplay and device-reference validation",
+  "unit_checks": {
+    "passed": 584,
+    "ignored": 11,
+    "workspace_exit": 0,
+    "fmt_exit": 0,
+    "clippy_exit": 0,
+    "clippy_warning": "Existing unknown clippy::chunks_exact_to_as_chunks"
+  },
+  "cli_sha256": "730c9fddefdf09058a18ccc57b8f651042aca1ec9db9954bb42f1190d8eae62a",
+  "ep1": {
+    "world": "Freeport, Druid Level 1",
+    "verified": [
+      "character creation",
+      "tutorial pages",
+      "movement and scrolling",
+      "inventory and equipment",
+      "health/mana item descriptions",
+      "spellbook",
+      "quest log",
+      "map",
+      "options volume",
+      "credits",
+      "exit to character selection",
+      "reopen process and reload world",
+      "new process reloads changed location from save overlay"
+    ],
+    "save_overlay_runtime": "CSS and SAV written to configured save folder; install-file hashes unchanged; a new process restores updated world location"
+  },
+  "ep2": {
+    "world": "Qeynos, Wizard Level 12",
+    "verified": [
+      "character creation",
+      "tutorial pages",
+      "movement and scrolling",
+      "inventory and equipment",
+      "spellbook",
+      "quest log",
+      "map",
+      "options",
+      "exit to character selection",
+      "reopen process and reload world",
+      "NPC dialogue advances first quest objective",
+      "new process reloads updated quest objective from save overlay"
+    ],
+    "missing_sound_assets": [
+      "Rat_Att.wav",
+      "Rat_Hit.wav",
+      "Rat_Die.wav",
+      "Croc_Att.wav",
+      "Croc_Hit.wav",
+      "Croc_Die.wav"
+    ],
+    "save_overlay_runtime": "CSS and SAV written to configured save folder; install-file hashes unchanged; reloaded quest retains Captain of the Guards objective"
+  },
+  "remaining": [
+    "combat",
+    "shop interactions",
+    "quest progression",
+    "death and resurrection",
+    "long duration gameplay",
+    "same-material Device Emulator visual comparison",
+    "WASM/Android updated artifacts and runtime checks"
+  ],
+  "ep3": "Deferred at user request; full goal retains EP3",
+  "screenshots": {
+    "target/eq-validation/ep1-persona.png": {
+      "sha256": "93ead80cadb8a5630929a2eea3355f6623fbcdaab1c33e82e2020c80af8d9081",
+      "scope": "Manually inspected native host-window capture; device-reference comparison remains pending"
+    },
+    "target/eq-validation/ep1-spellbook.png": {
+      "sha256": "dc36d1c1ca706df15b74cf2a0620675570d67c965f61fde4ee3b928bbb6a4f50",
+      "scope": "Manually inspected native host-window capture; device-reference comparison remains pending"
+    },
+    "target/eq-validation/ep1-questlog.png": {
+      "sha256": "964eb716dba14699a4c15b5c2f41c272c3d38936846f7527794dd566aef1de8f",
+      "scope": "Manually inspected native host-window capture; device-reference comparison remains pending"
+    },
+    "target/eq-validation/ep1-map.png": {
+      "sha256": "254fbe95cb99d60bb6db20667d98351f59f0c6b87f0e7b8efd76d5090949dd36",
+      "scope": "Manually inspected native host-window capture; device-reference comparison remains pending"
+    },
+    "target/eq-validation/ep1-reloaded-world.png": {
+      "sha256": "47146769a05c5b2a89f90052659b0a6372c32b26a7389ae83feb7aa7da4a4e45",
+      "scope": "Manually inspected native host-window capture; device-reference comparison remains pending"
+    },
+    "target/eq-validation/ep1-overlay-reloaded-world.png": {
+      "sha256": "90bfa771c83f6237f1379e35cc87412fa9fb4ed67a4ef77c97b7b5c0d5912802",
+      "scope": "Manually inspected native host-window capture; device-reference comparison remains pending"
+    },
+    "target/eq-validation/ep2-inventory.png": {
+      "sha256": "40515b2b2ecd3f006b704809f695f6ce9a78f700bc587242e5750920be4db931",
+      "scope": "Manually inspected native host-window capture; device-reference comparison remains pending"
+    },
+    "target/eq-validation/ep2-spellbook.png": {
+      "sha256": "4b66f63f40d215cbf945ab526fff5027aa079c5cff1229e65f621208ce475d73",
+      "scope": "Manually inspected native host-window capture; device-reference comparison remains pending"
+    },
+    "target/eq-validation/ep2-questlog.png": {
+      "sha256": "a17ae25bceff87d46666088a240f41892d4b30bdfc2367cf5b24430f8be6f838",
+      "scope": "Manually inspected native host-window capture; device-reference comparison remains pending"
+    },
+    "target/eq-validation/ep2-map.png": {
+      "sha256": "f8c0ed0df8bccdfe0fd24b4fe5ffa79d2655a079c0672a939502ad7c94effbfc",
+      "scope": "Manually inspected native host-window capture; device-reference comparison remains pending"
+    },
+    "target/eq-validation/ep2-reloaded-world.png": {
+      "sha256": "65b5f7d69b26bac93719c31c43e322f872ee361af6c1a27fa5980a8ec53db8dd",
+      "scope": "Manually inspected native host-window capture; device-reference comparison remains pending"
+    },
+    "target/eq-validation/ep2-overlay-reloaded-world.png": {
+      "sha256": "3ba5caeb5de3f561a8704c836410f55dec9a28945692c266b2471d311bdccf5b",
+      "scope": "Manually inspected native host-window capture; device-reference comparison remains pending"
+    },
+    "target/eq-validation/ep2-overlay-reloaded-quest.png": {
+      "sha256": "26e7c5baf46634a418d726375c5b4ce60a1f2d761fe74b4db9f3e7ce38351c94",
+      "scope": "Manually inspected native host-window capture; device-reference comparison remains pending"
+    }
+  }
+}

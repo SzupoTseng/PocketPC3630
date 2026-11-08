@@ -11,6 +11,8 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod app;
+mod catalog_ui;
+mod gamepad;
 mod runner;
 
 use anyhow::{Context, Result};

@@ -12,14 +12,14 @@
     <string name="import_note">Found inside the download: %1$s</string>
     <string name="error_listing_games">Could not list games: %1$s</string>
     <string name="game_icon">Game icon</string>
-    <string name="action_run">Run</string>
+    <string name="action_run">Start game</string>
     <string name="action_settings">Settings</string>
     <string name="action_remove">Remove</string>
-    <string name="action_export_save">Export save</string>
-    <string name="action_import_save">Import save</string>
+    <string name="action_export_save">Back up written progress ZIP</string>
+    <string name="action_import_save">Restore progress</string>
     <string name="action_reset_save">Reset save</string>
     <string name="save_none">This game has not saved anything yet.</string>
-    <string name="save_exported">Saved %1$d file(s).</string>
+    <string name="save_exported">Backed up %1$d written progress file(s).</string>
     <string name="save_imported">Restored %1$d file(s).</string>
     <string name="save_reset_title">Reset progress?</string>
     <string name="save_reset_message">This deletes all progress of %1$s. Export a save first to keep it.</string>
@@ -133,4 +133,25 @@
         <item>landscape</item>
     </string-array>
     <string name="toggle_fullscreen">Toggle controls and fullscreen</string>
+
+    <string name="pref_ui_theme_title">Interface theme</string>
+    <string name="pref_ui_theme_summary">Colors of the PocketPC3630 interface. Red is the default.</string>
+    <string-array name="ui_theme_entries">
+        <item>Red / 紅</item>
+        <item>Blue + orange / 藍＋橘</item>
+        <item>Green / 綠</item>
+        <item>Purple / 紫</item>
+        <item>Orange / 橘</item>
+        <item>Graphite / 石墨</item>
+        <item>Dark red (night) / 深色紅（夜間）</item>
+    </string-array>
+    <string-array name="ui_theme_values">
+        <item>red</item>
+        <item>blue</item>
+        <item>green</item>
+        <item>purple</item>
+        <item>orange</item>
+        <item>graphite</item>
+        <item>nightred</item>
+    </string-array>
 </resources>

@@ -1,0 +1,52 @@
+{
+  "source_archive": "User-local Pocket EQ.zip",
+  "member": "Pocket EQ/Episode 3 - War on Faydwer/howtoinstall.txt",
+  "instruction_sha256": "cd9baa677a67f12a6f13ceca9118809e2e385a19cfce457ac40b12069cf7189b",
+  "registration_value": "Loaded locally from bundled instructions; omitted from report",
+  "status": "Confirmed world entry and clean-import save reload",
+  "executable_modified": false,
+  "registration_method": "CAB-provided owner string plus supplied instruction value replayed into game RegistrationE3 registry setting; no EXE patch",
+  "fresh_import_owner_not_path": true,
+  "keyboard_edge_test_passed": true,
+  "cab_tests": {
+    "unit_passed": 17,
+    "integration_passed": 2
+  },
+  "workspace": {
+    "passed": 588,
+    "ignored": 11,
+    "exit_code": 0,
+    "fmt_exit_code": 0,
+    "clippy_exit_code": 0,
+    "warning": "Existing unknown clippy::chunks_exact_to_as_chunks"
+  },
+  "cli_sha256": "e19066d225696aaa6ca138e16b588823c4fd38796fc2b9af0b74d9857ec74033",
+  "world": {
+    "zone": "Butcherblock Mtns",
+    "class": "Warrior",
+    "level": 25,
+    "observed": [
+      "tutorial",
+      "stylus movement",
+      "world map",
+      "exit to character selection",
+      "SAV and NAM written"
+    ]
+  },
+  "screenshots": {
+    "target/eq-validation/ep3-world-first.png": "7d06bc7abb1572a2700f62bd877c12e4a1cda1f5bef34c31ea475e5143b2ae2a",
+    "target/eq-validation/ep3-world-moved.png": "eaf3e0d3e562cfd4257fbb74dec4d395fe959f99f2f0f1eaabb89d49062b5502",
+    "target/eq-validation/ep3-map.png": "63fd6fc0ccc6dae5c55802bfc79c8c6851de2e3581279e33333adbac38d3c40d",
+    "target/eq-validation/ep3-saved-character.png": "e9dc696c3e2a94eaa619caf0221dbd4952751a4aa59124f96babeb14deae44c3",
+    "target/eq-validation/ep3-clean-reloaded-world.png": "6b29fda2688d9ec729103608120add9b74dbb3b901c2967540af1d2d73139956"
+  },
+  "remaining": [
+    "MFC registration-dialog owner initialization",
+    "full combat and quest progression",
+    "same-material Device Emulator visual comparison",
+    "WASM/Android rebuild and runtime verification"
+  ],
+  "registry_save_migration": "Confirmed Char0Class/Diff/File/Level/Zone snapshot now under configured save folder; clean installation shows same Level 25 Warrior",
+  "clean_import_world_reload_verified": true,
+  "live_test_window": "Left open in Butcherblock Mtns; tracked by target/eq-validation/native-ui-state.json"
+}

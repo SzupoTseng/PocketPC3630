@@ -1,0 +1,33 @@
+{
+  "toolchain": {
+    "cargo": "1.97.1",
+    "rustc": "1.97.1",
+    "clippy": "0.1.97",
+    "host": "Windows x86_64 MSVC"
+  },
+  "checks": [
+    {
+      "command": "cargo test -p pocket-kernel --offline",
+      "exit_code": 0,
+      "tests_passed": 123
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0
+    },
+    {
+      "command": "cargo clippy -p pocket-kernel --all-targets --offline -- -D warnings",
+      "exit_code": 101,
+      "reason": "existing unrecognized clippy::chunks_exact_to_as_chunks lint"
+    },
+    {
+      "command": "cargo clippy -p pocket-kernel --all-targets --offline -- -D warnings -A unknown_lints",
+      "exit_code": 0
+    }
+  ],
+  "source_sha256": {
+    "crates/pocket-kernel/src/font.rs": "6bdb046afc470c9f3a600541f59a434c3f9f5356da96d2ba175712a0a9ff94fd",
+    "crates/pocket-kernel/src/lib.rs": "c8213b743114dadcea51c9c9e552ac6c0769fbbde33b5aee562b958f91cc200a"
+  },
+  "scope": "kernel unit tests, workspace formatting and kernel Clippy only; not full workspace, game regression or all-platform acceptance"
+}

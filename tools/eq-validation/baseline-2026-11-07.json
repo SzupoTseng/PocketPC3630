@@ -1,0 +1,81 @@
+{
+  "build_kind": "pre-existing docs WASM; excludes current source changes",
+  "episodes": {
+    "ep1": {
+      "input": {
+        "name": "ep1.zip",
+        "sha256": "6dfd7f3a2ffd5491f7665fbf8272d812a2e24128c9141c0fd51092869049b0cb"
+      },
+      "build": {
+        "pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+        "pockethle.wasm": "0b554677186d58c94d291bbdbfd5c6ba8c53da71c92cce3b6423ea752a234b8e"
+      },
+      "imported": true,
+      "booted": true,
+      "error": null,
+      "ticks": 2109,
+      "presentation_events": 2105,
+      "distinct_captured_frames": 1,
+      "observed_screen": "registration dialog; visually inspected",
+      "warnings": [
+        "WARN: mfcce300.dll: import commctrl.dll!ord 6 answered by a zero stub",
+        "WARN: mfcce300.dll: import commctrl.dll!ord 19 answered by a zero stub",
+        "WARN: mfcce300.dll: import commctrl.dll!ord 20 answered by a zero stub",
+        "WARN: mfcce300.dll: import commctrl.dll!ord 18 answered by a zero stub",
+        "WARN: mfcce300.dll: import DocList.dll!DocList_Create answered by a zero stub"
+      ]
+    },
+    "ep3": {
+      "input": {
+        "name": "ep3.zip",
+        "sha256": "083a4b276ce7c332c6382e739e22c1360d3111d367ea601943eedfc0ad246f99"
+      },
+      "build": {
+        "pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+        "pockethle.wasm": "0b554677186d58c94d291bbdbfd5c6ba8c53da71c92cce3b6423ea752a234b8e"
+      },
+      "imported": true,
+      "booted": true,
+      "error": null,
+      "ticks": 2057,
+      "presentation_events": 2052,
+      "distinct_captured_frames": 1,
+      "observed_screen": "registration dialog; visually inspected",
+      "warnings": [
+        "WARN: mfcce300.dll: import commctrl.dll!ord 6 answered by a zero stub",
+        "WARN: mfcce300.dll: import commctrl.dll!ord 19 answered by a zero stub",
+        "WARN: mfcce300.dll: import commctrl.dll!ord 20 answered by a zero stub",
+        "WARN: mfcce300.dll: import commctrl.dll!ord 18 answered by a zero stub",
+        "WARN: mfcce300.dll: import DocList.dll!DocList_Create answered by a zero stub"
+      ]
+    },
+    "ep2": {
+      "status": "not run",
+      "reason": "available E2 CABs flagged as modified in prior handoff; original candidate required"
+    },
+    "ep1-disc": {
+      "input": {
+        "name": "ep1-disc.zip",
+        "sha256": "2140670a34d1d7ea3f288ef1cf6524731544412cd45669bfc7e20119e1b9b0be"
+      },
+      "build": {
+        "pockethle.js": "2a532c81f8280a8d51ba651bbdd614f4789569c6606a87404cb1a747277f5310",
+        "pockethle.wasm": "0b554677186d58c94d291bbdbfd5c6ba8c53da71c92cce3b6423ea752a234b8e"
+      },
+      "imported": true,
+      "booted": true,
+      "error": null,
+      "ticks": 2090,
+      "presentation_events": 2088,
+      "distinct_captured_frames": 1,
+      "observed_screen": "registration dialog, visually inspected; layout differs from the newer local EP1 CAB",
+      "warnings": [
+        "WARN: mfcce300.dll: import commctrl.dll!ord 6 answered by a zero stub",
+        "WARN: mfcce300.dll: import commctrl.dll!ord 19 answered by a zero stub",
+        "WARN: mfcce300.dll: import commctrl.dll!ord 20 answered by a zero stub",
+        "WARN: mfcce300.dll: import commctrl.dll!ord 18 answered by a zero stub",
+        "WARN: mfcce300.dll: import DocList.dll!DocList_Create answered by a zero stub"
+      ]
+    }
+  }
+}

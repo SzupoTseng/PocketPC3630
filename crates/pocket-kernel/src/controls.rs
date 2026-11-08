@@ -716,6 +716,7 @@ pub enum ControlAction {
 /// Every built-in control the guest has created, plus the focus.
 #[derive(Debug, Clone)]
 pub struct Controls {
+    pending_text_surrogate: Option<(u32, u16)>,
     children: Vec<ChildWindow>,
     /// Dialog panels created from a `DLGTEMPLATE`. A child whose parent
     /// is one of these is positioned relative to it.
@@ -741,6 +742,7 @@ pub struct Controls {
 impl Default for Controls {
     fn default() -> Self {
         Self {
+            pending_text_surrogate: None,
             children: Vec::new(),
             panels: Vec::new(),
             focus: 0,
@@ -753,6 +755,36 @@ impl Default for Controls {
 }
 
 impl Controls {
+    pub fn text_input(&mut self, unit: u16) -> Option<ControlAction> {
+        let focus = self.focus;
+        if !self
+            .get(focus)
+            .is_some_and(|c| c.enabled && c.class == ControlClass::Edit)
+        {
+            self.pending_text_surrogate = None;
+            return None;
+        }
+        if (0xd800..=0xdbff).contains(&unit) {
+            self.pending_text_surrogate = Some((focus, unit));
+            return Some(ControlAction::Consumed);
+        }
+        let value = if let Some((owner, high)) = self.pending_text_surrogate.take() {
+            if owner == focus && (0xdc00..=0xdfff).contains(&unit) {
+                String::from_utf16_lossy(&[high, unit])
+            } else {
+                String::from_utf16_lossy(&[unit])
+            }
+        } else {
+            String::from_utf16_lossy(&[unit])
+        };
+        let child = self.get_mut(focus)?;
+        if unit == 8 {
+            child.text.pop();
+        } else if unit >= 32 || ((unit == 10 || unit == 13) && child.style & 4 != 0) {
+            child.text.push_str(&value);
+        }
+        Some(ControlAction::Consumed)
+    }
     /// First handle handed out to a control. Kept in the same
     /// `0xDEAD_xxxx` space as the other synthetic window handles, in a
     /// range wide enough that [`Self::is_child_hwnd`] can recognise one
@@ -1497,6 +1529,32 @@ mod tests {
         // VK_BACK rubs out the last character.
         assert_eq!(ctrls.key_down(0x08), Some(ControlAction::Consumed));
         assert_eq!(ctrls.get(edit).unwrap().text, "ab ");
+    }
+
+    #[test]
+    fn committed_text_preserves_unicode_case_and_focus() {
+        let mut controls = Controls::default();
+        let edit = controls.create(
+            PARENT,
+            ControlClass::Edit,
+            203,
+            String::new(),
+            WS_VISIBLE,
+            0,
+            0,
+            100,
+            24,
+        );
+        controls.focus = edit;
+        for unit in "Hero 中文🙂".encode_utf16() {
+            assert_eq!(controls.text_input(unit), Some(ControlAction::Consumed));
+        }
+        assert_eq!(controls.get(edit).unwrap().text, "Hero 中文🙂");
+        controls.text_input(8);
+        assert_eq!(controls.get(edit).unwrap().text, "Hero 中文");
+        controls.focus = 0;
+        assert_eq!(controls.text_input('X' as u16), None);
+        assert_eq!(controls.get(edit).unwrap().text, "Hero 中文");
     }
 
     #[test]

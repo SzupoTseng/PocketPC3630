@@ -46,6 +46,7 @@ pub mod gz;
 pub mod itemview;
 pub mod msgbox;
 pub mod native_thunks;
+pub mod presentation;
 pub mod profile;
 pub mod registry;
 pub mod tracker;
@@ -322,6 +323,10 @@ pub enum KernelError {
 /// back to its synthetic timer / paint loop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputEvent {
+    /// Committed UTF-16 text, independent of physical/game key bindings.
+    Text {
+        unit: u16,
+    },
     /// Stylus down at game-space `(x, y)` (0..240, 0..320). Translated
     /// into `WM_LBUTTONDOWN` with the standard `lParam = (y << 16) | x`.
     PointerDown {

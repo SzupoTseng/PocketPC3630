@@ -35,6 +35,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recycler: RecyclerView
     private lateinit var emptyState: TextView
     private lateinit var rootDir: String
+    private var launching = false
+    private var libraryItems: List<GameEntry> = emptyList()
+    private var query = ""
+    private var recentFirst = true
+    private var refreshGeneration = 0
+    private fun showFiltered() {
+        val filtered = libraryItems.filter { it.displayName.contains(query, true) || it.alias.contains(query,true) }
+        adapter.submit(if(recentFirst) filtered.sortedWith(compareByDescending<GameEntry> { it.favorite }.thenByDescending { it.lastPlayed }) else filtered.sortedBy { it.alias.ifBlank { it.displayName }.lowercase() })
+        recycler.visibility = if(filtered.isEmpty()) View.GONE else View.VISIBLE
+        emptyState.visibility = if(filtered.isEmpty()) View.VISIBLE else View.GONE
+        emptyState.text = if(libraryItems.isEmpty()) getString(R.string.empty_library) else "找不到符合的軟體 / No matching programs"
+    }
 
     private val importGame = registerForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -54,10 +66,13 @@ class MainActivity : AppCompatActivity() {
     ) { uri -> saveGame?.let { game -> if (uri != null) runSave(game, "import", uri) } }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Themes.apply(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setSupportActionBar(findViewById<Toolbar>(R.id.toolbar))
 
+        query=savedInstanceState?.getString("library_query").orEmpty()
+        recentFirst=savedInstanceState?.getBoolean("recent_first",true) ?: true
         rootDir = LibraryPaths.root(this)
         emptyState = findViewById(R.id.empty_state)
         recycler = findViewById(R.id.recycler)
@@ -72,6 +87,7 @@ class MainActivity : AppCompatActivity() {
             },
             onRemove = { entry -> confirmRemove(entry) },
             onSave = { entry, action -> startSaveAction(entry, action) },
+            onControls = { entry -> startActivity(Intent(this, ControlsActivity::class.java).putExtra("game_id",entry.id).putExtra("game_name",entry.displayName)) },
             libraryRoot = rootDir,
         )
         recycler.layoutManager = GridLayoutManager(this, gridSpanCount())
@@ -82,18 +98,34 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onSaveInstanceState(state: Bundle) {state.putString("library_query",query);state.putBoolean("recent_first",recentFirst);super.onSaveInstanceState(state)}
     override fun onResume() {
         super.onResume()
+        launching = false
         refreshLibrary()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main_menu, menu)
+        menu.add(0,990,0,"全域操作 / Default controls")
+        menu.add(0,993,0,"程式圖書館 / Catalog")
+        menu.add(0,991,0,"最近遊玩／名稱 / Recent or name")
+        val search = androidx.appcompat.widget.SearchView(this)
+        search.queryHint = "搜尋名稱／別名 / Search programs"
+        search.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(text: String?): Boolean { query=text.orEmpty();showFiltered();return true }
+            override fun onQueryTextChange(text: String?): Boolean { query=text.orEmpty();showFiltered();return true }
+        })
+        search.setQuery(query,false)
+        menu.add(0,992,0,"搜尋 / Search").apply { actionView=search; setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM or MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW) }
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            993 -> { startActivity(Intent(this,CatalogActivity::class.java)); true }
+            991 -> { recentFirst = !recentFirst; showFiltered(); true }
+            990 -> { startActivity(Intent(this,ControlsActivity::class.java)); true }
             R.id.action_settings -> {
                 startActivity(Intent(this, SettingsActivity::class.java))
                 true
@@ -117,15 +149,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshLibrary() {
-        val raw = NativeBridge.listGames(rootDir)
-        val parsed = parseGamesOrToast(raw)
-        adapter.submit(parsed)
-        if (parsed.isEmpty()) {
-            recycler.visibility = View.GONE
-            emptyState.visibility = View.VISIBLE
-        } else {
-            recycler.visibility = View.VISIBLE
-            emptyState.visibility = View.GONE
+        val generation = ++refreshGeneration
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) { runCatching { NativeBridge.listGames(rootDir) } }
+            if(generation != refreshGeneration) return@launch
+            result.onSuccess { libraryItems = parseGamesOrToast(it); showFiltered() }
+                .onFailure { Snackbar.make(recycler,"Library: ${it.message}",Snackbar.LENGTH_LONG).show() }
         }
     }
 
@@ -314,10 +343,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun launchGame(entry: GameEntry) {
-        startActivity(
+        if(launching) return
+        launching = true
+        try {
+            val file = java.io.File(rootDir,"games/${entry.id}/presentation.json")
+            val value = if(file.isFile) JSONObject(file.readText()) else JSONObject()
+            value.put("last_played",System.currentTimeMillis()/1000)
+            val staged = java.io.File(file.parentFile,"presentation.json.new")
+            staged.writeText(value.toString()); check(staged.renameTo(file)) { "Cannot record recent program" }
+        } catch(e: Exception) { Snackbar.make(recycler,"Recent: ${e.message}",Snackbar.LENGTH_LONG).show() }
+        try { startActivity(
             Intent(this, GameActivity::class.java)
                 .putExtra(GameActivity.EXTRA_GAME_ID, entry.id)
-                .putExtra(GameActivity.EXTRA_GAME_NAME, entry.displayName),
-        )
+                .putExtra(GameActivity.EXTRA_GAME_NAME, entry.alias.ifBlank { entry.displayName }),
+        ) } catch(e: Exception) { launching=false; Snackbar.make(recycler,"Start failed: ${e.message}",Snackbar.LENGTH_LONG).show() }
     }
 }
