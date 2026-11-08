@@ -8,15 +8,15 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Crect%20x%3D%225.5%22%20y%3D%221.5%22%20width%3D%2213%22%20height%3D%2221%22%20rx%3D%223.2%22%20fill%3D%22%23c8372d%22/%3E%3Crect%20x%3D%227.8%22%20y%3D%224.6%22%20width%3D%228.4%22%20height%3D%2210.2%22%20rx%3D%221%22%20fill%3D%22%23fff%22/%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2218.6%22%20r%3D%221.7%22%20fill%3D%22%23fff%22/%3E%3C/svg%3E">
 <style>
 :root {
-  /* PPC chrome: blue title bars, quiet gray surfaces, compact command rows. */
-  --bg: #e9eef2; --surface: #fafcfd; --ink: #203447; --dim: #5c7080; --line: #c6d2dc;
-  --accent: #235f8c; --accent-ink: #ffffff; --bad: #b03a3a; --shadow: 0 6px 20px rgb(90 70 40 / 18%);
+  /* Palette from zjmud: 宣紙日 (rice paper) by day, 竹簡夜 (bamboo slips) by night. */
+  --bg: #efe9dd; --surface: #fffbf2; --ink: #2b2620; --dim: #5e564a; --line: #d3c8b4;
+  --accent: #9c6d1e; --accent-ink: #fffbf2; --bad: #b03a3a; --shadow: 0 6px 20px rgb(90 70 40 / 18%);
   --stage: #12100e; --pad: rgb(255 255 255 / 9%); --pad-press: rgb(255 255 255 / 22%); --pad-ink: rgb(255 255 255 / 70%);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #101923; --surface: #192734; --ink: #e1ebf2; --dim: #a4b7c7; --line: #344a5c;
-    --accent: #8abddd; --accent-ink: #102535; --bad: #e07a7a; --shadow: 0 8px 28px rgb(0 0 0 / 45%);
+    --bg: #12100e; --surface: #1a1714; --ink: #e8e0d4; --dim: #a89e90; --line: #3a322a;
+    --accent: #d9a441; --accent-ink: #12100e; --bad: #e07a7a; --shadow: 0 8px 28px rgb(0 0 0 / 45%);
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -422,11 +422,11 @@ html[lang^="zh"] .facts dt::after, html[lang="ja"] .facts dt::after { content: "
 .bar #leave{background:var(--em-btn);color:var(--em-btnink);border-color:var(--em-btnline);font-weight:700}
 #play-title{color:#fff;text-shadow:0 1px 0 rgb(0 0 0 / 30%)}
 #hud{background:rgb(0 0 0 / 28%);color:#fff}
-.key{background:var(--em-btn);color:var(--em-btnink);border:1px solid var(--em-btnline);box-shadow:inset 0 1px 0 #fff;opacity:.86}
-.key.down,.vkbd button:active,.vkbd button.on{background:var(--em-sel);color:var(--em-selink);border-color:var(--em-edge)}
-.dpad{background:rgb(255 255 255 / 5%)}.dpad .key{background:transparent;border-color:transparent;box-shadow:none;color:rgb(255 255 255 / 80%)}
-.dpad .center,.dpad .key.down{background:var(--em-btn);color:var(--em-btnink)}
-.vkbd button{background:var(--em-btn);color:var(--em-btnink);border:1px solid var(--em-btnline)}
+#stage .key{background:var(--em-btn);color:var(--em-btnink);border:1px solid var(--em-btnline);box-shadow:inset 0 1px 0 #fff;opacity:.86}
+#stage .key.down,#stage .vkbd button:active,#stage .vkbd button.on{background:var(--em-sel);color:var(--em-selink);border-color:var(--em-edge)}
+#stage .dpad{background:rgb(255 255 255 / 5%)}#stage .dpad .key{background:transparent;border-color:transparent;box-shadow:none;color:rgb(255 255 255 / 80%)}
+#stage .dpad .center,#stage .dpad .key.down{background:var(--em-btn);color:var(--em-btnink)}
+#stage .vkbd button{background:var(--em-btn);color:var(--em-btnink);border:1px solid var(--em-btnline)}
 .paused{background:rgb(8 6 6 / 66%);color:#fff}.paused .ico{color:var(--em-flat);text-shadow:0 0 0 #fff;filter:brightness(1.5)}
 body.playing .software-dialog,.software-dialog.game-menu{
   --surface:var(--em-panel);--bg:var(--em-panel2);--ink:var(--em-ink);--line:var(--em-line);--accent:var(--em-flat);--dim:var(--em-dim);
@@ -437,7 +437,7 @@ body.playing .software-dialog button,.software-dialog.game-menu button{backgroun
 body.playing .software-dialog button:hover,.software-dialog.game-menu button:hover{filter:brightness(.97)}
 .software-dialog.game-menu select,body.playing .software-dialog select{border-radius:8px;background:var(--em-panel);color:var(--em-ink)}
 body.playing .software-dialog input[type="range"],.software-dialog.game-menu input[type="range"]{accent-color:var(--em-flat)}
-.software-header{background:var(--em-title);color:#fff;border-bottom:1px solid var(--em-edge)}
+body.playing .software-header{background:var(--em-title);color:#fff;border-bottom:1px solid var(--em-edge)}
 body.playing .software-header h2{color:#fff}
 .brand{display:inline-flex;align-items:center;gap:6px;color:#fff;font-weight:700;letter-spacing:.01em;text-shadow:0 1px 0 rgb(0 0 0 / 30%);white-space:nowrap}
 .brand-icon{flex:none;filter:drop-shadow(0 1px 1px rgb(0 0 0 / 35%))}
