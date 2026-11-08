@@ -197,15 +197,19 @@ jobs:
             -t x86_64 \
             -o frontends/pocket-android/app/src/main/jniLibs \
             build --release -p pocket-android-jni --no-default-features
+      # The Gradle wrapper is committed (frontends/pocket-android/gradlew, gradle/wrapper/),
+      # and the Gradle distribution it names is cached by its properties file, so a run
+      # downloads Gradle only when the version changes. Before this, every run generated
+      # a wrapper and downloaded Gradle 8.7 from GitHub releases, and the Android build
+      # failed whenever GitHub answered that download with HTTP 504.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.gradle/wrapper/dists
+          key: gradle-dist-${{ hashFiles('frontends/pocket-android/gradle/wrapper/gradle-wrapper.properties') }}
       - uses: gradle/actions/setup-gradle@v3
       - name: build APK
         working-directory: frontends/pocket-android
-        run: |
-          # The runner's Gradle checks the distribution URL with a request that fails
-          # intermittently ("Test of distribution url ... failed"), before any of our
-          # code is built. The real download still happens in the next step.
-          gradle wrapper --gradle-version 8.7 --no-validate-url
-          ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: PocketHLE-android
