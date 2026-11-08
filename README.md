@@ -41,7 +41,13 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 > ### 👉 Try it now: **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**
 > Nothing to install. Pick one of **75 free Pocket PC games and apps** (FreeCell, Pocket Quake, Pocket Slay, mahjong, Tetris, chess...) and press *Download and play*: it is fetched from the Internet Archive, imported and started in one click. A step-by-step guide on the page covers controls, saves, phones and the MFC library.
 
-<p align="center"><a href="https://szupotseng.github.io/PocketPC3630/"><img src="docs/images/website.png" alt="The PocketPC3630 website: introduction and the free games wall" width="88%" /></a></p>
+<p align="center"><a href="https://szupotseng.github.io/PocketPC3630/"><img src="docs/images/website.png" alt="The PocketPC3630 website: drop a game to import it, My games, and the software library" width="88%" /></a></p>
+
+The **software library** lists 1,202 Pocket PC programs with box covers, screenshots or program icons.
+Every card tells the program's story: what it was, what using it felt like, and how it runs in PocketPC3630 today
+(in Traditional Chinese, Simplified Chinese and English; the last part always comes from our own test results).
+
+<p align="center"><a href="https://szupotseng.github.io/PocketPC3630/#library"><img src="docs/images/library.png" alt="The software library: EverQuest, Pocket Quake, Call of Duty 2, Bejeweled 2, Age of Empires and more, with covers and screenshots" width="88%" /></a></p>
 
 PocketPC3630 is named after the **Compaq iPAQ H3630**, the StrongARM pocket computer that made Pocket PC famous.
 It is a fork of [PocketHLE](https://github.com/j92580498-max/PocketHLE) that grew the original Pocket PC 2002/2003 ARM emulator into a home for the whole Pocket PC era:
@@ -56,14 +62,29 @@ That is why it needs no Microsoft ROM and starts in a second.
 
 | | How | |
 |---|---|---|
-| 🌐 **Browser** | Open **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**, choose *Import game*, pick a `.zip` or `.cab`. | Nothing to install. Browse the **software library** of 1,202 Pocket PC programs (74 play with one click), in 11 languages, with box covers, screenshots or program icons, filters and sorting. Your games and saves stay in your browser. |
-| 🪟 **Windows** | **[Download the zip](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-windows-x64.zip)**, unzip, run `PocketPC3630.exe`, then *Import game*. | Desktop library with icons, saves, keyboard and mouse. |
-| 🤖 **Android** | **[Download the APK](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-android.apk)** and install it. | Touch controls with a D-pad, action buttons and Turbo. |
+| 🌐 **Browser** | Open **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**, choose *Import game*, pick a `.zip` or `.cab`. | Nothing to install. Browse the **software library** of 1,202 Pocket PC programs (74 play with one click), in 11 languages, with box covers, screenshots or program icons, a story for every program, filters and sorting. Your games and saves stay in your browser. |
+| 🪟 **Windows** | **[Download the zip](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-windows-x64.zip)**, unzip, run `PocketPC3630.exe`, then *Import game*. | Desktop library with icons, saves, keyboard, mouse and Xbox controllers; themes. |
+| 🤖 **Android** | **[Download the APK](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-android.apk)** and install it. | Touch controls with a D-pad, action buttons and Turbo; game controllers; themes. |
 | ⌨️ **Command line** | `pockethle play MyGame.zip` | For testing, tracing and screenshots. |
 
 PocketPC3630 ships **no games and no Microsoft files**. Bring your own legally obtained packages.
 
 ## ✨ What it can do
+
+### A player made for Pocket PC games
+<p align="center"><img src="docs/images/play.png" alt="Playing FreeCell with the red toolbar, the pause menu in red and in blue + orange, and the phone layout" width="100%" /></p>
+
+- **Looks like its era.** The glossy Windows Mobile 5/6 look, red by default, with seven more themes
+  (*2003 classic* uses the flat blue of a real Pocket PC 2003 screen). The same palette on the web, Windows and Android;
+  the theme dresses the player only, the library keeps its own look.
+- **A real pause.** The in-game menu (F1, the Menu button or a gamepad's left stick) stops the game's clock, timers and sound together,
+  so nothing jumps when you resume. A hidden browser tab pauses by itself.
+- **Controls per program.** Eight schemes (stylus first, D-pad and action, full Pocket PC keys, text and reading, mouse and keyboard,
+  custom, Windows CE device buttons, the Pocket PC 2003 button panel), each with its own key layout, size, opacity and zoom,
+  inherited from your defaults unless you change them for one program.
+- **Gamepads and text.** Xbox controllers on Windows, the Gamepad API in the browser, game controllers on Android;
+  type names and text with your own keyboard or IME, sent to the game as real characters.
+- **Your progress is safe.** Importing a newer copy of a game keeps its saves, registry and settings; backups are ordinary `.zip` files.
 
 <p align="center"><img src="docs/images/cpus.png" alt="FreeCell running from its ARM, MIPS and SH3 builds" width="92%" /></p>
 

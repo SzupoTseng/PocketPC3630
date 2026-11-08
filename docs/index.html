@@ -42,6 +42,10 @@ h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
 .game .when { display: block; font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 2px; }
 .find-game { width: 100%; box-sizing: border-box; margin: 0 0 10px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: inherit; font: inherit; }
 .game[hidden] { display: none; }
+.games-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; align-items: center; }
+.games-tool { min-height: 40px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; }
+.games-tool:hover { border-color: var(--accent); }
+.games-search { flex: 1 1 12rem; min-width: 0; }
 .play { flex: 1; display: flex; align-items: center; gap: 14px; text-align: left; min-width: 0; padding: 0; }
 .icon { width: 40px; height: 40px; border-radius: 9px; flex: none; object-fit: cover; image-rendering: pixelated; background: var(--line); }
 .letter { display: grid; place-items: center; font-weight: 600; color: var(--dim); }
@@ -1117,7 +1121,13 @@ defaultButton.onclick = () => {
     { id: '', config, invalid },
   );
 };
-$('games').before(defaultButton);
+// Search, order and default controls share one row above the list, in the page's own
+// style (they were unstyled browser controls). Behaviour is unchanged.
+const gamesTools = document.createElement('div');
+gamesTools.className = 'games-tools';
+$('games').before(gamesTools);
+defaultButton.className = 'games-tool';
+gamesTools.append(defaultButton);
 $('software-controls').onclick = () => {
   if (running && runningIndex !== null) openLocalControls(runningIndex);
 };
@@ -1264,7 +1274,8 @@ librarySearch.type = 'search';
 librarySearch.placeholder = uiText('搜尋名稱／別名', 'Search name / alias');
 librarySearch.setAttribute('aria-label', librarySearch.placeholder);
 librarySearch.oninput = () => listGames();
-$('games').before(librarySearch);
+librarySearch.className = 'games-tool games-search';
+gamesTools.prepend(librarySearch);
 const recentSort = document.createElement('select');
 recentSort.setAttribute('aria-label', uiText('遊戲庫排序', 'Library order'));
 for (const [value, zh, en] of [
@@ -1277,7 +1288,8 @@ for (const [value, zh, en] of [
   recentSort.append(option);
 }
 recentSort.onchange = () => listGames();
-$('games').before(recentSort);
+recentSort.className = 'games-tool';
+gamesTools.insertBefore(recentSort, defaultButton);
 function listGames() {
   const list = $('games');
   list.replaceChildren();

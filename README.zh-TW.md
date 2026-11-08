@@ -27,7 +27,13 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 > ### 👉 馬上試玩：**[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**
 > 不用安裝。從 **75 款免費的 Pocket PC 遊戲與軟體**（FreeCell、Pocket Quake、Pocket Slay、麻將、俄羅斯方塊、西洋棋……）挑一個按「下載並開始」，就會從 Internet Archive 取得、匯入並直接開始。網站上有完整新手教學：操作方式、存檔、手機上玩、MFC 系統檔怎麼取得。
 
-<p align="center"><a href="https://szupotseng.github.io/PocketPC3630/"><img src="docs/images/website.png" alt="PocketPC3630 網站：介紹與免費遊戲牆" width="88%" /></a></p>
+<p align="center"><a href="https://szupotseng.github.io/PocketPC3630/"><img src="docs/images/website.png" alt="PocketPC3630 網站：拖曳匯入遊戲、我的遊戲庫與程式圖書館" width="88%" /></a></p>
+
+**程式圖書館**收錄 1,202 個 Pocket PC 程式，有盒裝封面、遊戲畫面或程式圖示。
+每張卡片都附一段「當年的故事」：它是什麼、當年用起來的感覺，以及現在在 PocketPC3630 上的狀況
+（繁體中文、簡體中文、英文三種語言；最後一段一律依我們的實測結果寫成）。
+
+<p align="center"><a href="https://szupotseng.github.io/PocketPC3630/#library"><img src="docs/images/library.png" alt="程式圖書館：EverQuest、Pocket Quake、決勝時刻 2、Bejeweled 2、世紀帝國等，附封面與遊戲畫面" width="88%" /></a></p>
 
 PocketPC3630 的名字來自 **Compaq iPAQ H3630**，那台讓 Pocket PC 紅起來的 StrongARM 掌上電腦。
 它 fork 自 [PocketHLE](https://github.com/j92580498-max/PocketHLE)，把原本只跑 Pocket PC 2002/2003 ARM 程式的模擬器，擴充成整個 Pocket PC 年代的家：
@@ -41,7 +47,7 @@ PocketPC3630 的名字來自 **Compaq iPAQ H3630**，那台讓 Pocket PC 紅起�
 
 | | 方式 | |
 |---|---|---|
-| 🌐 **瀏覽器** | 打開 **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**，按「匯入遊戲」，選 `.zip` 或 `.cab`。 | 免安裝。內建 **程式圖書館**：收錄 1,202 個 Pocket PC 程式（74 個一鍵就能玩），支援 11 種語言，有盒裝封面、遊戲畫面或程式圖示，可篩選與排序。遊戲與存檔只留在你的瀏覽器。 |
+| 🌐 **瀏覽器** | 打開 **[szupotseng.github.io/PocketPC3630](https://szupotseng.github.io/PocketPC3630/)**，按「匯入遊戲」，選 `.zip` 或 `.cab`。 | 免安裝。內建 **程式圖書館**：收錄 1,202 個 Pocket PC 程式（74 個一鍵就能玩），支援 11 種語言，有盒裝封面、遊戲畫面或程式圖示，每個程式都有自己的故事，可篩選與排序。遊戲與存檔只留在你的瀏覽器。 |
 | 🪟 **Windows** | **[下載 zip](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-windows-x64.zip)**，解壓縮後執行 `PocketPC3630.exe`，按 *Import game*。 | 桌面遊戲庫，有圖示、存檔、鍵盤滑鼠操作。 |
 | 🤖 **Android** | **[下載 APK](https://github.com/SzupoTseng/PocketPC3630/releases/latest/download/PocketPC3630-android.apk)** 並安裝。 | 觸控方向鍵、動作鍵與連發鍵。 |
 | ⌨️ **命令列** | `pockethle play MyGame.zip` | 測試、追蹤呼叫與截圖用。 |
@@ -49,6 +55,17 @@ PocketPC3630 的名字來自 **Compaq iPAQ H3630**，那台讓 Pocket PC 紅起�
 PocketPC3630 **不附任何遊戲，也不附微軟的檔案**。請使用你合法取得的遊戲包。
 
 ## ✨ 功能
+
+### 為 Pocket PC 遊戲打造的播放器
+<p align="center"><img src="docs/images/play.png" alt="紅色工具列下的 FreeCell、紅色與藍＋橘的暫停選單，以及手機寬度的版面" width="100%" /></p>
+
+- **有那個年代的味道。** Windows Mobile 5/6 的玻璃光澤外觀，預設紅色，另有七種主題可選（「2003 經典」取自真正 Pocket PC 2003 畫面的平藍色）。
+  網頁、Windows、Android 用同一套色票；主題只用在播放器本身，圖書館維持原本的樣子。
+- **真正的暫停。** 遊戲中選單（F1、選單按鈕或手把左搖桿）會一起停住遊戲的時鐘、計時器與聲音，恢復時不會跳格；瀏覽器分頁切到背景時自動暫停。
+- **每個程式各自的操作方式。** 八種方案（觸控筆優先、方向＋動作鍵、完整 Pocket PC 按鍵、文字／閱讀、滑鼠＋鍵盤、自訂、Windows CE 裝置按鍵、Pocket PC 2003 按鍵面板），
+  各自設定按鍵位置、大小、透明度與放大；沒特別設定的程式沿用你的預設。
+- **手把與文字輸入。** Windows 支援 Xbox 手把，瀏覽器支援 Gamepad API，Android 支援遊戲控制器；名字與文字可以用自己的鍵盤或輸入法打，以真正的字元送進遊戲。
+- **進度不會不見。** 匯入同一個遊戲的新版本會保留存檔、登錄檔與設定；備份就是一般的 `.zip`。
 
 <p align="center"><img src="docs/images/cpus.png" alt="FreeCell 的 ARM、MIPS、SH3 三個版本" width="92%" /></p>
 
