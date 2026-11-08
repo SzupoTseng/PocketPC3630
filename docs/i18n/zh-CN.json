@@ -239,5 +239,7 @@
  "play.padTitle": "显示或隐藏屏幕按键；用触控笔玩的游戏可隐藏，让画面更大",
  "play.pause": "暂停",
  "play.paused": "已暂停",
- "play.resumeHint": "点一下继续；游戏时间也停在这一刻"
+ "play.resumeHint": "点一下继续；游戏时间也停在这一刻",
+ "lib.story": "当年的故事",
+ "lib.detailsStory": "故事与详细信息"
 }
